@@ -17,6 +17,9 @@ function Host() {
   const [importStatus, setImportStatus] = useState("");
   const [importing, setImporting] = useState(false);
   const [questionCounts, setQuestionCounts] = useState({ 1: 0, 2: 0 });
+  const [settings, setSettings] = useState({ roundSeconds: { 1: 20, 2: 30 }, marks: { 1: 5, 2: 10 } });
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
     const applyHostSnapshot = (response) => {
@@ -31,6 +34,7 @@ function Host() {
       setRound(response.round || 0);
       setLeaderboard(response.leaderboard || []);
       setQuestionCounts(response.questionCounts || { 1: 0, 2: 0 });
+      if (response.settings) setSettings(response.settings);
       setQuestion(response.question || null);
       setSecondsLeft(response.question?.endsAt ? Math.max(0, Math.ceil((response.question.endsAt - Date.now()) / 1000)) : 0);
     };
@@ -80,12 +84,27 @@ function Host() {
       setStatus(response.status || "waiting");
       setRound(response.round || 0);
       setLeaderboard(response.leaderboard || []);
+      setQuestionCounts(response.questionCounts || { 1: 0, 2: 0 });
+      if (response.settings) setSettings(response.settings);
       setQuestion(response.question || null);
       setSecondsLeft(response.question?.endsAt ? Math.max(0, Math.ceil((response.question.endsAt - Date.now()) / 1000)) : 0);
       setError("");
     });
   };
   const action = (event) => socket.emit(event, (response) => { if (!response.success) setError(response.message); });
+  const updateSetting = (group, roundNumber, value) => {
+    setSettings((current) => ({ ...current, [group]: { ...current[group], [roundNumber]: Number(value) } }));
+    setSettingsSaved(false);
+  };
+  const saveSettings = () => {
+    setSavingSettings(true); setError("");
+    socket.emit("update_quiz_settings", settings, (response) => {
+      setSavingSettings(false);
+      if (!response?.success) return setError(response?.message || "Could not save quiz settings.");
+      setSettings(response.settings);
+      setSettingsSaved(true);
+    });
+  };
 
   const downloadTemplate = () => {
     const headers = ["round", "question", "option_a", "option_b", "option_c", "option_d", "correct_option", "explanation"];
@@ -131,6 +150,24 @@ function Host() {
     <header className="topbar"><div><p className="eyebrow">CONTROL ROOM</p><h1>CLOUD CLASH</h1></div><span className="live-pill">{status.toUpperCase().replace("_", " ")}</span></header>
     <div className="stats-grid"><section className="panel"><p className="muted">Participants</p><h2>{participants.length}</h2></section><section className="panel"><p className="muted">Current round</p><h2>{round || "—"}</h2></section></div>
     {status === "waiting" && <>
+      <section className="panel settings-panel">
+        <div className="section-heading"><div><p className="eyebrow">EVENT CONFIGURATION</p><h2>Quiz settings</h2></div><span className="settings-lock">Locked after start</span></div>
+        <p>Set the rules for each round. These values are enforced by the quiz server.</p>
+        <div className="settings-round-grid">
+          {[1, 2].map((roundNumber) => <div className="settings-round" key={roundNumber}>
+            <div className="settings-round-title"><span>ROUND 0{roundNumber}</span><small>{questionCounts[roundNumber]} questions loaded</small></div>
+            <label>Time per question <span className="unit-label">seconds</span>
+              <input type="number" min="5" max="300" step="5" value={settings.roundSeconds[roundNumber]} onChange={(e) => updateSetting("roundSeconds", roundNumber, e.target.value)} />
+            </label>
+            <label>Points per correct answer <span className="unit-label">points</span>
+              <input type="number" min="1" max="100" step="1" value={settings.marks[roundNumber]} onChange={(e) => updateSetting("marks", roundNumber, e.target.value)} />
+            </label>
+            <div className="settings-hint">Maximum available: {questionCounts[roundNumber] * settings.marks[roundNumber]} points</div>
+          </div>)}
+        </div>
+        <div className="settings-footer"><p className="muted">Timing: 5–300 seconds · Points: 1–100 · No negative marking</p><button onClick={saveSettings} disabled={savingSettings}>{savingSettings ? "Saving..." : "Save quiz settings"}</button></div>
+        {settingsSaved && <p className="success-message">Quiz settings saved and ready for the event.</p>}
+      </section>
       <section className="panel">
         <h2>Question bank</h2>
         <p>Build your question bank in a spreadsheet and import it here. Each round can have a different number of questions.</p>
@@ -149,7 +186,7 @@ function Host() {
       <section className="panel"><h2>Lobby ready</h2><p>{participants.length} participants have joined.</p><button disabled={!participants.length || questionCounts[1] === 0} onClick={() => action("start_competition")}>Start Round 1</button>
         {questionCounts[1] === 0 && <p className="muted">Add at least one Round 1 question to enable the start control.</p>}</section>
     </>}
-    {status === "running" && <section className="panel"><div className="question-meta"><span>ROUND {round} · QUESTION {question?.questionNumber || "—"}/{question?.totalQuestions || "—"}</span><strong>{secondsLeft}s</strong></div><h2>{question?.text || "Preparing next question..."}</h2><div className="option-grid">{question?.options.map((option, i) => <div className="option host-option" key={option}>{String.fromCharCode(65+i)}. {option}</div>)}</div><p className="muted">Questions advance automatically when the timer expires.</p></section>}
+    {status === "running" && <section className="panel"><div className="question-meta"><span>ROUND {round} · QUESTION {question?.questionNumber || "—"}/{question?.totalQuestions || "—"}</span><strong>{secondsLeft}s</strong></div><h2>{question?.text || "Preparing next question..."}</h2><div className="option-grid">{question?.options.map((option, i) => <div className="option host-option" key={option}>{String.fromCharCode(65+i)}. {option}</div>)}</div><p className="muted">Each question is worth {question?.marks ?? "—"} points. Questions advance automatically when the timer expires.</p></section>}
     {status === "round_break" && <section className="panel"><h2>Round 1 complete</h2><p>Review the standings, then start Round 2 when ready.</p><button onClick={() => action("start_round_two")}>Start Round 2</button></section>}
     {(status === "round_break" || status === "finished") && <section className="panel"><h2>{status === "finished" ? "Final leaderboard" : "Round 1 leaderboard"}</h2>{leaderboard.map((p) => <div className="leader-row" key={p.id}><strong>#{p.rank} {p.name}</strong><span>{p.score} pts</span></div>)}</section>}
     {status === "finished" && <section className="panel"><h2>Competition finished</h2><p>Final scores are displayed above.</p></section>}
