@@ -14,7 +14,25 @@ const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
 
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
-app.get("/health", (_req, res) => res.json({ status: "ok", service: "cloud-clash", persistence: persistenceEnabled ? "supabase" : "memory-only" }));
+
+let lastPersistenceSuccessAt = null;
+let lastPersistenceError = null;
+let isRestored = !persistenceEnabled;
+
+app.get("/health", (_req, res) => {
+  const healthy = isRestored && !lastPersistenceError;
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? "ok" : "degraded",
+    service: "cloud-clash",
+    competition: status,
+    persistence: {
+      mode: persistenceEnabled ? "supabase" : "memory-only",
+      healthy: persistenceEnabled ? !lastPersistenceError && isRestored : false,
+      lastSuccessAt: lastPersistenceSuccessAt,
+      lastError: lastPersistenceError,
+    },
+  });
+});
 
 const io = new Server(httpServer, {
   cors: { origin: allowedOrigins, methods: ["GET", "POST"] },
@@ -72,7 +90,11 @@ function persistState() {
   const save = persistenceQueue.then(() => saveCompetitionState(snapshot));
   // Keep the queue usable after a failed write, while returning the rejection
   // to the caller that needs to know whether its change became durable.
-  persistenceQueue = save.catch((error) => {
+  persistenceQueue = save.then(() => {
+    lastPersistenceSuccessAt = new Date().toISOString();
+    lastPersistenceError = null;
+  }).catch((error) => {
+    lastPersistenceError = error.message;
     console.error("Supabase save failed:", error.message);
   });
   return save;
@@ -97,6 +119,7 @@ async function restoreState() {
     return;
   }
   const saved = await loadCompetitionState();
+  isRestored = true;
   if (!saved) {
     console.log("No saved competition state found. Starting fresh.");
     return;
@@ -314,7 +337,13 @@ function snapshotForParticipant(id) {
     participants: [...participants.values()].map(publicParticipant),
   };
   if (status === "running" && questionIndex >= 0 && !questionLocked) {
-    return { ...base, question: safeQuestion(roundQuestions(currentRound)[questionIndex], questionIndex, currentRound) };
+    const key = answerKey(currentRound, questionIndex, id);
+    const ownAnswer = answers.get(key);
+    return {
+      ...base,
+      question: safeQuestion(roundQuestions(currentRound)[questionIndex], questionIndex, currentRound),
+      answer: ownAnswer ? { selectedOption: ownAnswer.selectedOption } : null,
+    };
   }
   return base;
 }
