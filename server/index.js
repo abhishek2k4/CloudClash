@@ -57,8 +57,8 @@ function parseCsv(source) {
       else field += char;
     } else if (char === '"') quoted = true;
     else if (char === ",") { row.push(field); field = ""; }
-    else if (char === "\\n") { row.push(field); rows.push(row); row = []; field = ""; }
-    else if (char !== "\\r") field += char;
+    else if (char === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else if (char !== "\r") field += char;
   }
   if (quoted) throw new Error("CSV contains an unclosed quotation mark.");
   if (field.length || row.length) { row.push(field); rows.push(row); }
@@ -66,7 +66,7 @@ function parseCsv(source) {
 }
 
 function validateQuestionCsv(csvText) {
-  const rows = parseCsv(csvText.replace(/^\\uFEFF/, ""));
+  const rows = parseCsv(csvText.replace(/^\uFEFF/, ""));
   if (rows.length < 2) throw new Error("The CSV is empty. Add your questions below the header row.");
   const headers = rows[0].map((header) => header.trim().toLowerCase());
   const required = ["round", "question", "option_a", "option_b", "option_c", "option_d", "correct_option", "explanation"];
@@ -96,7 +96,7 @@ function validateQuestionCsv(csvText) {
     }
   });
 
-  if (errors.length) throw new Error(errors.slice(0, 8).join("\\n") + (errors.length > 8 ? `\\nAnd ${errors.length - 8} more issue(s).` : ""));
+  if (errors.length) throw new Error(errors.slice(0, 8).join("\n") + (errors.length > 8 ? `\nAnd ${errors.length - 8} more issue(s).` : ""));
   for (const round of [1, 2]) {
     if (imported[round].length !== 25) {
       throw new Error(`Round ${round} must contain exactly 25 questions. Found ${imported[round].length}.`);
