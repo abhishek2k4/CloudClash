@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { randomUUID } from "crypto";
 import { Server } from "socket.io";
 import { QUESTIONS as DEMO_QUESTIONS } from "./data/questions.js";
+import { persistenceEnabled, loadCompetitionState, saveCompetitionState } from "./persistence.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -13,7 +14,7 @@ const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
 
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
-app.get("/health", (_req, res) => res.json({ status: "ok", service: "cloud-clash" }));
+app.get("/health", (_req, res) => res.json({ status: "ok", service: "cloud-clash", persistence: persistenceEnabled ? "supabase" : "memory-only" }));
 
 const io = new Server(httpServer, {
   cors: { origin: allowedOrigins, methods: ["GET", "POST"] },
@@ -46,6 +47,64 @@ const roundStats = new Map(); // participantId -> { correct, timeMs }
 const totalStats = new Map(); // participantId -> { score, correct, timeMs }
 
 const roundQuestions = (round) => activeQuestions[round] || [];
+let persistenceQueue = Promise.resolve();
+
+function createStateSnapshot() {
+  return {
+    version: 1,
+    activeQuestions,
+    participants: [...participants.entries()],
+    status,
+    currentRound,
+    questionIndex,
+    questionEndsAt,
+    questionLocked,
+    roundStartedAt,
+    answers: [...answers.entries()],
+    roundStats: [...roundStats.entries()],
+    totalStats: [...totalStats.entries()],
+  };
+}
+
+function persistState() {
+  if (!persistenceEnabled) return persistenceQueue;
+  const snapshot = createStateSnapshot();
+  persistenceQueue = persistenceQueue
+    .catch((error) => console.error("Previous Supabase save failed:", error.message))
+    .then(() => saveCompetitionState(snapshot))
+    .catch((error) => console.error("Supabase save failed:", error.message));
+  return persistenceQueue;
+}
+
+async function restoreState() {
+  if (!persistenceEnabled) {
+    console.warn("Supabase is not configured. Running in memory-only mode.");
+    return;
+  }
+  const saved = await loadCompetitionState();
+  if (!saved) {
+    console.log("No saved competition state found. Starting fresh.");
+    return;
+  }
+  if (saved.version !== 1) throw new Error("Unsupported saved competition state version.");
+  activeQuestions = saved.activeQuestions || activeQuestions;
+  participants.clear();
+  for (const entry of saved.participants || []) participants.set(entry[0], entry[1]);
+  status = saved.status || "waiting";
+  currentRound = saved.currentRound || 0;
+  questionIndex = Number.isInteger(saved.questionIndex) ? saved.questionIndex : -1;
+  questionEndsAt = saved.questionEndsAt ?? null;
+  questionLocked = Boolean(saved.questionLocked);
+  roundStartedAt = saved.roundStartedAt ?? null;
+  answers.clear();
+  for (const entry of saved.answers || []) answers.set(entry[0], entry[1]);
+  roundStats.clear();
+  for (const entry of saved.roundStats || []) roundStats.set(entry[0], entry[1]);
+  totalStats.clear();
+  for (const entry of saved.totalStats || []) totalStats.set(entry[0], entry[1]);
+  console.log(`Restored competition state: ${participants.size} participant(s), status=${status}.`);
+}
+
 
 function parseCsv(source) {
   const rows = [];
@@ -165,12 +224,14 @@ function startQuestion() {
   io.to("competition").emit("question_started", question);
   io.to("host").emit("question_started", question);
   questionTimer = setTimeout(() => endQuestion("time"), CONFIG.roundSeconds[currentRound] * 1000);
+  persistState();
 }
 
 function endQuestion(reason = "completed") {
   if (questionLocked || currentRound === 0 || questionIndex < 0) return;
   questionLocked = true;
   clearTimeout(questionTimer);
+  persistState();
   const question = roundQuestions(currentRound)[questionIndex];
   io.to("competition").emit("question_ended", {
     round: currentRound,
@@ -186,6 +247,7 @@ function endQuestion(reason = "completed") {
     reason,
   });
   io.to("host").emit("leaderboard_updated", leaderboard());
+  persistState();
   questionTimer = setTimeout(startQuestion, 2500);
 }
 
@@ -208,6 +270,7 @@ function finishRound() {
     io.to("competition").emit("competition_finished", { leaderboard: results });
     io.to("host").emit("competition_finished", { leaderboard: results });
   }
+  persistState();
 }
 
 function startRound(round) {
@@ -224,6 +287,7 @@ function startRound(round) {
   io.to("competition").emit("round_started", { round, totalQuestions: roundQuestions(round).length });
   io.to("host").emit("competition_status_updated", status);
   startQuestion();
+  persistState();
   return true;
 }
 
@@ -255,6 +319,7 @@ io.on("connection", (socket) => {
     } else {
       participant.name = cleanName;
     }
+    persistState();
 
     socket.data.participantId = participant.id;
     socket.join("competition");
@@ -288,6 +353,7 @@ io.on("connection", (socket) => {
     try {
       const imported = validateQuestionCsv(csv);
       activeQuestions = imported;
+      persistState();
       callback({ success: true, counts: { 1: imported[1].length, 2: imported[2].length } });
       console.log("Host imported 50 quiz questions.");
     } catch (error) {
@@ -334,6 +400,7 @@ io.on("connection", (socket) => {
       total.timeMs += elapsed;
       total.score += CONFIG.marks[currentRound];
     }
+    persistState();
     callback({ success: true, accepted: true });
   });
 
@@ -343,4 +410,29 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT, () => console.log(`CLOUD CLASH server listening on ${PORT}`));
+
+async function boot() {
+  await restoreState();
+  httpServer.listen(PORT, () => {
+    console.log(`CLOUD CLASH server listening on ${PORT}`);
+    if (status === "running") {
+      if (questionLocked) {
+        questionTimer = setTimeout(startQuestion, 2500);
+      } else if (questionEndsAt && questionEndsAt > Date.now()) {
+        const remaining = questionEndsAt - Date.now();
+        const question = roundQuestions(currentRound)[questionIndex];
+        if (!question) throw new Error("Saved active question is missing.");
+        io.to("competition").emit("question_started", safeQuestion(question, questionIndex, currentRound));
+        io.to("host").emit("question_started", safeQuestion(question, questionIndex, currentRound));
+        questionTimer = setTimeout(() => endQuestion("time"), remaining);
+      } else {
+        endQuestion("time");
+      }
+    }
+  });
+}
+
+boot().catch((error) => {
+  console.error("CLOUD CLASH failed to restore persistent state:", error);
+  process.exit(1);
+});
