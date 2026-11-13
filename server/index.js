@@ -41,17 +41,16 @@ const io = new Server(httpServer, {
 const CONFIG = {
   competitionCode: process.env.COMPETITION_CODE || "CLOUD26",
   hostPassword: process.env.HOST_PASSWORD,
-  roundSeconds: {
-    1: Number(process.env.ROUND_1_SECONDS || 20),
-    2: Number(process.env.ROUND_2_SECONDS || 30),
+  defaults: {
+    roundSeconds: { 1: Number(process.env.ROUND_1_SECONDS || 20), 2: Number(process.env.ROUND_2_SECONDS || 30) },
+    marks: { 1: 5, 2: 10 },
   },
-  marks: { 1: 5, 2: 10 },
 };
 if (!CONFIG.hostPassword) {
   console.warn("HOST_PASSWORD is not set. Host login is disabled until configured.");
 }
 
-let activeQuestions = { 1: [...DEMO_QUESTIONS[1]], 2: [...DEMO_QUESTIONS[2]] };
+let activeQuestions = { 1: [...DEMO_QUESTIONS[1]], 2: [...DEMO_QUESTIONS[2]] };\nlet quizSettings = structuredClone(CONFIG.defaults);
 const participants = new Map();
 let status = "waiting";
 let currentRound = 0;
@@ -125,7 +124,7 @@ async function restoreState() {
     return;
   }
   if (saved.version !== 1) throw new Error("Unsupported saved competition state version.");
-  activeQuestions = saved.activeQuestions || activeQuestions;
+  activeQuestions = saved.activeQuestions || activeQuestions;\n  quizSettings = { roundSeconds: { ...CONFIG.defaults.roundSeconds, ...(saved.quizSettings?.roundSeconds || {}) }, marks: { ...CONFIG.defaults.marks, ...(saved.quizSettings?.marks || {}) } };
   participants.clear();
   for (const entry of saved.participants || []) participants.set(entry[0], entry[1]);
   status = saved.status || "waiting";
@@ -240,7 +239,7 @@ function safeQuestion(question, index, round) {
     text: question.text,
     options: question.options,
     endsAt: questionEndsAt,
-    marks: CONFIG.marks[round],
+    marks: quizSettings.marks[round],
   };
 }
 
@@ -255,11 +254,11 @@ function startQuestion() {
   }
 
   questionLocked = false;
-  questionEndsAt = Date.now() + CONFIG.roundSeconds[currentRound] * 1000;
+  questionEndsAt = Date.now() + quizSettings.roundSeconds[currentRound] * 1000;
   const question = safeQuestion(list[questionIndex], questionIndex, currentRound);
   io.to("competition").emit("question_started", question);
   io.to("host").emit("question_started", question);
-  questionTimer = setTimeout(() => endQuestion("time"), CONFIG.roundSeconds[currentRound] * 1000);
+  questionTimer = setTimeout(() => endQuestion("time"), quizSettings.roundSeconds[currentRound] * 1000);
   persistStateSafely();
 }
 
@@ -400,9 +399,25 @@ io.on("connection", (socket) => {
       question: status === "running" && questionIndex >= 0 && !questionLocked
         ? safeQuestion(roundQuestions(currentRound)[questionIndex], questionIndex, currentRound) : null,
       leaderboard: leaderboard(),
-      roundSeconds: CONFIG.roundSeconds,
+      settings: quizSettings,
       questionCounts: { 1: roundQuestions(1).length, 2: roundQuestions(2).length },
     });
+  });
+
+  socket.on("update_quiz_settings", (incoming = {}, callback = () => {}) => {
+    if (!socket.rooms.has("host")) return callback({ success: false, message: "Unauthorized." });
+    if (status !== "waiting") return callback({ success: false, message: "Quiz settings are locked after the competition starts." });
+    const next = {
+      roundSeconds: { 1: Number(incoming.roundSeconds?.[1]), 2: Number(incoming.roundSeconds?.[2]) },
+      marks: { 1: Number(incoming.marks?.[1]), 2: Number(incoming.marks?.[2]) },
+    };
+    for (const round of [1, 2]) {
+      if (!Number.isInteger(next.roundSeconds[round]) || next.roundSeconds[round] < 5 || next.roundSeconds[round] > 300) return callback({ success: false, message: "Question timing must be between 5 and 300 seconds for each round." });
+      if (!Number.isInteger(next.marks[round]) || next.marks[round] < 1 || next.marks[round] > 100) return callback({ success: false, message: "Points per correct answer must be between 1 and 100 for each round." });
+    }
+    quizSettings = next;
+    persistStateSafely();
+    callback({ success: true, settings: quizSettings });
   });
 
   socket.on("import_questions", ({ csv }, callback = () => {}) => {
@@ -468,7 +483,7 @@ io.on("connection", (socket) => {
       return callback({ success: false, message: "You have already submitted an answer." });
     }
 
-    const questionDuration = CONFIG.roundSeconds[receivedRound] * 1000;
+    const questionDuration = quizSettings.roundSeconds[receivedRound] * 1000;
     const questionStartedAt = receivedDeadline - questionDuration;
     const elapsed = Math.min(questionDuration, Math.max(0, receivedAt - questionStartedAt));
     const now = receivedAt;
@@ -486,7 +501,7 @@ io.on("connection", (socket) => {
       round.timeMs += elapsed;
       total.correct += 1;
       total.timeMs += elapsed;
-      total.score += CONFIG.marks[submittedRound];
+      total.score += quizSettings.marks[submittedRound];
     }
 
     try {
@@ -500,7 +515,7 @@ io.on("connection", (socket) => {
         submittedRoundStats.timeMs -= elapsed;
         submittedTotalStats.correct -= 1;
         submittedTotalStats.timeMs -= elapsed;
-        submittedTotalStats.score -= CONFIG.marks[submittedRound];
+        submittedTotalStats.score -= quizSettings.marks[submittedRound];
       }
       // A timer transition may have queued a snapshot while this save was in
       // flight. Queue a compensating snapshot after rollback so stale answer
