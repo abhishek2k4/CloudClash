@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useRef,useState} from "react";
+import {useCallback,useEffect,useState} from "react";
 import {socket} from "./socket";
 import "./App.css";
 
@@ -9,7 +9,7 @@ export default function Host({onHome}){
  const [participants,setParticipants]=useState([]),[counts,setCounts]=useState({});
  const [round,setRound]=useState(0),[question,setQuestion]=useState(null),[seconds,setSeconds]=useState(0),[leaderboard,setLeaderboard]=useState([]);
  const [error,setError]=useState(""),[importStatus,setImportStatus]=useState("");
- const apply=useCallback(response=>{if(!response?.success){setError(response?.message||"Host login failed.");return;}setAuthenticated(true);setRoomCode(response.roomCode||"");setStatus(response.status||"idle");setRounds(response.rounds||2);if(response.quizSettings)setSettings(response.quizSettings);setParticipants(response.participants||[]);setCounts(response.questionCounts||{});setRound(response.round||0);setQuestion(response.question||null);setLeaderboard(response.leaderboard||[]);if(response.question?.endsAt)setSeconds(Math.max(0,Math.ceil((response.question.endsAt-Date.now())/1000)));},[]);
+ const apply=useCallback(response=>{if(!response?.success){setError(response?.message||"Could not open host controls.");return;}setAuthenticated(true);setRoomCode(response.roomCode||"");setStatus(response.status||"idle");setRounds(response.rounds||2);if(response.quizSettings)setSettings(response.quizSettings);setParticipants(response.participants||[]);setCounts(response.questionCounts||{});setRound(response.round||0);setQuestion(response.question||null);setLeaderboard(response.leaderboard||[]);if(response.question?.endsAt)setSeconds(Math.max(0,Math.ceil((response.question.endsAt-Date.now())/1000)));},[]);
  useEffect(()=>{const connect=()=>{setConnected(true);socket.emit("host_login",apply);};const disconnect=()=>setConnected(false);
  const onPeople=setParticipants,onStatus=setStatus,onQuestion=q=>{setQuestion(q);setRound(q.round);setSeconds(Math.max(0,Math.ceil((q.endsAt-Date.now())/1000)));},onResume=d=>setQuestion(q=>q?({...q,endsAt:d.endsAt}):q),onEnded=()=>setQuestion(null),onRound=d=>{setRound(d.round);setStatus("running");setQuestion(null);},onBreak=d=>{setLeaderboard(d.leaderboard||[]);setStatus("round_break");setQuestion(null);},onFinish=d=>{setLeaderboard(d.leaderboard||[]);setStatus("finished");setQuestion(null);};
  socket.on("connect",connect);socket.on("disconnect",disconnect);socket.on("participants_updated",onPeople);socket.on("competition_status_updated",onStatus);socket.on("question_started",onQuestion);socket.on("question_resumed",onResume);socket.on("question_ended",onEnded);socket.on("round_started",onRound);socket.on("round_finished",onBreak);socket.on("competition_finished",onFinish);socket.connect();
