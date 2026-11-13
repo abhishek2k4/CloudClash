@@ -46,3 +46,13 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .upload-button:hover{background:#5595ff}
 .upload-button input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
 .success-message{color:#8ce0bc;background:#102b29;border:1px solid #24544e;padding:12px 14px;border-radius:9px}
+
+
+/* Question bank workspace */
+.question-bank-counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}
+.bank-count{display:flex;flex-direction:column;gap:5px;padding:16px;border:1px solid #2a405d;border-radius:14px;background:linear-gradient(145deg,rgba(33,55,84,.75),rgba(12,22,40,.8))}
+.bank-count span{font-size:.68rem;letter-spacing:.12em;font-weight:700;color:#8da8c8}
+.bank-count strong{font-family:'Space Grotesk',sans-serif;font-size:2rem;line-height:1.1;color:#f4f7fc}
+.bank-count small{font-size:.78rem;color:#8ea0ba}
+.bank-total{border-color:#315b80;background:linear-gradient(145deg,rgba(35,83,125,.35),rgba(12,22,40,.8))}
+@media(max-width:480px){.question-bank-counts{grid-template-columns:1fr 1fr}.bank-total{grid-column:1/-1}}
