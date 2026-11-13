@@ -1,14 +1,26 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Host from "./Host";
 import Participant from "./Participant";
 import "./App.css";
 
 export default function App(){
  const [path,setPath]=useState(window.location.pathname);
+ const activeSessionRef=useRef(false);
+ const setActiveSession=useCallback(active=>{activeSessionRef.current=active;},[]);
  const navigate=next=>{window.history.pushState({}, "", next);setPath(next);};
- useEffect(()=>{const back=()=>setPath(window.location.pathname);window.addEventListener("popstate",back);return()=>window.removeEventListener("popstate",back);},[]);
- if(path==="/host")return <Host onHome={()=>navigate("/")} />;
- if(path==="/join")return <Participant onHome={()=>navigate("/")} />;
+ useEffect(()=>{
+  const back=()=>{
+   if(activeSessionRef.current){
+    const leave=window.confirm("You're currently in a quiz. Leaving this page will take you out of the session. Do you want to leave?");
+    if(!leave){window.history.pushState({}, "", path);return;}
+   }
+   setPath(window.location.pathname);
+  };
+  window.addEventListener("popstate",back);
+  return()=>window.removeEventListener("popstate",back);
+ },[path]);
+ if(path==="/host")return <Host onHome={()=>navigate("/")} onActivityChange={setActiveSession}/>;
+ if(path==="/join")return <Participant onHome={()=>navigate("/")} onActivityChange={setActiveSession}/>;
  return <main className="landing">
   <div className="landing-brand"><span className="brand-mark">CC</span><span>CLOUD CLASH</span></div>
   <section className="landing-copy"><p className="eyebrow">REAL-TIME QUIZ PLATFORM</p><h1>Think fast.<br/><em>Clash harder.</em></h1><p>Create a room, bring your people together, and see who takes the top spot.</p></section>
