@@ -1,14 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
 import "./App.css";
 
-const STORAGE_KEY = "cloud-clash-participant";
-
 function Participant() {
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch { localStorage.removeItem(STORAGE_KEY); }
-  const [name, setName] = useState(saved?.name || "");
-  const [code, setCode] = useState(saved?.code || "");
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const participantRef = useRef(null);
   const [participant, setParticipant] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [question, setQuestion] = useState(null);
@@ -42,27 +39,32 @@ function Participant() {
     socket.on("round_started", onRoundStarted);
     socket.on("round_finished", onRoundFinished);
     socket.on("competition_finished", onFinished);
+    const applyParticipantSnapshot = (response, joinedCode) => {
+      if (!response.success) {
+        participantRef.current = null;
+        setParticipant(null);
+        setError(response.message);
+        return;
+      }
+      const joined = { ...response.participant, code: joinedCode };
+      participantRef.current = joined;
+      setParticipant(joined);
+      setParticipants(response.snapshot?.participants || []);
+      setStatus(response.snapshot?.status || "waiting");
+      setLeaderboard(response.snapshot?.leaderboard || []);
+      setQuestion(response.snapshot?.question || null);
+      setSelected(response.snapshot?.answer?.selectedOption ?? null);
+      setSubmitted(Boolean(response.snapshot?.answer));
+      setResult(response.snapshot?.lastQuestionResult || null);
+      setSecondsLeft(response.snapshot?.question?.endsAt ? Math.max(0, Math.ceil((response.snapshot.question.endsAt - Date.now()) / 1000)) : 0);
+      setError("");
+    };
     const onConnect = () => {
-      let stored = null;
-      try { stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch { localStorage.removeItem(STORAGE_KEY); }
-      if (!stored?.id || !stored?.code || !stored?.name) return;
+      const current = participantRef.current;
+      if (!current?.id || !current?.code || !current?.name) return;
       socket.emit("join_competition", {
-        name: stored.name, code: stored.code, participantId: stored.id,
-      }, (response) => {
-        if (!response.success) {
-          localStorage.removeItem(STORAGE_KEY);
-          setParticipant(null);
-          setError(response.message);
-          return;
-        }
-        setParticipant({ ...response.participant, code: stored.code });
-        setName(stored.name);
-        setCode(stored.code);
-        setParticipants(response.snapshot?.participants || []);
-        setStatus(response.snapshot?.status || "waiting");
-        setLeaderboard(response.snapshot?.leaderboard || []);
-        if (response.snapshot?.question) setQuestion(response.snapshot.question);
-      });
+        name: current.name, code: current.code, participantId: current.id,
+      }, (response) => applyParticipantSnapshot(response, current.code));
     };
     socket.on("connect", onConnect);
     socket.on("connect_error", () => setError("Connection lost. Trying to reconnect..."));
@@ -89,17 +91,24 @@ function Participant() {
 
   const join = () => {
     setError("");
-    socket.emit("join_competition", { name, code, participantId: participant?.id }, (response) => {
+    socket.emit("join_competition", { name, code, participantId: participantRef.current?.id }, (response) => {
       if (!response.success) return setError(response.message);
       const joined = { ...response.participant, name, code };
       setParticipant(joined);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(joined));
+      participantRef.current = joined;
       setParticipants(response.snapshot?.participants || []);
       const snapshot = response.snapshot;
       if (snapshot?.question) {
         setQuestion(snapshot.question);
+        setSelected(snapshot.answer?.selectedOption ?? null);
+        setSubmitted(Boolean(snapshot.answer));
+        setResult(null);
         setStatus("running");
       } else {
+        setQuestion(null);
+        setSelected(null);
+        setSubmitted(false);
+        setResult(snapshot?.lastQuestionResult || null);
         setStatus(snapshot?.status || "waiting");
         setLeaderboard(snapshot?.leaderboard || []);
       }
@@ -146,10 +155,11 @@ function Participant() {
       {submitted && <p className="muted">Locked in. Wait for the next question.</p>}
     </section>}
     {!question && status === "waiting" && <section className="panel"><h2>You're in.</h2><p>Waiting for the host to start Round 1.</p><p className="muted">{participants.length} participants joined</p></section>}
-    {!question && status === "running" && <section className="panel"><h2>Answer locked</h2><p>Question closed. Get ready for the next one.</p></section>}
+    {!question && status === "running" && !result && <section className="panel"><h2>Answer locked</h2><p>Question closed. Get ready for the next one.</p></section>}
+    {!question && status === "running" && result?.correctOption !== undefined && <section className="panel"><h2>Question ended while you were away</h2><p>Correct answer: <strong>{String.fromCharCode(65 + result.correctOption)}</strong></p>{result.explanation && <p>{result.explanation}</p>}<p className="muted">That question is closed. You'll rejoin the live quiz on the next question.</p></section>}
     {!question && status === "round_break" && <section className="panel"><h2>Round complete</h2><p>Take a breath. The host will start the next round.</p></section>}
     {!question && status === "finished" && <section className="panel"><h2>Competition finished!</h2><p>That's a wrap. Here's the final result.</p></section>}
-    {result?.correctOption !== undefined && <p className="feedback">Correct answer: {String.fromCharCode(65 + result.correctOption)}{result.explanation ? ` — ${result.explanation}` : ""}</p>}
+    {result?.correctOption !== undefined && question && <p className="feedback">Correct answer: {String.fromCharCode(65 + result.correctOption)}{result.explanation ? ` — ${result.explanation}` : ""}</p>}
     {error && <p className="error">{error}</p>}
     {(status === "round_break" || status === "finished") && renderLeaderboard()}
   </main>;

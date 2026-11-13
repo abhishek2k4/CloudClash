@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { randomUUID } from "crypto";
 import { Server } from "socket.io";
 import { QUESTIONS as DEMO_QUESTIONS } from "./data/questions.js";
+import { persistenceEnabled, loadCompetitionState, saveCompetitionState } from "./persistence.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -13,7 +14,25 @@ const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
 
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
-app.get("/health", (_req, res) => res.json({ status: "ok", service: "cloud-clash" }));
+
+let lastPersistenceSuccessAt = null;
+let lastPersistenceError = null;
+let isRestored = !persistenceEnabled;
+
+app.get("/health", (_req, res) => {
+  const healthy = isRestored && !lastPersistenceError;
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? "ok" : "degraded",
+    service: "cloud-clash",
+    competition: status,
+    persistence: {
+      mode: persistenceEnabled ? "supabase" : "memory-only",
+      healthy: persistenceEnabled ? !lastPersistenceError && isRestored : false,
+      lastSuccessAt: lastPersistenceSuccessAt,
+      lastError: lastPersistenceError,
+    },
+  });
+});
 
 const io = new Server(httpServer, {
   cors: { origin: allowedOrigins, methods: ["GET", "POST"] },
@@ -46,6 +65,84 @@ const roundStats = new Map(); // participantId -> { correct, timeMs }
 const totalStats = new Map(); // participantId -> { score, correct, timeMs }
 
 const roundQuestions = (round) => activeQuestions[round] || [];
+let persistenceQueue = Promise.resolve();
+
+function createStateSnapshot() {
+  return {
+    version: 1,
+    activeQuestions,
+    participants: [...participants.entries()],
+    status,
+    currentRound,
+    questionIndex,
+    questionEndsAt,
+    questionLocked,
+    roundStartedAt,
+    answers: [...answers.entries()],
+    roundStats: [...roundStats.entries()],
+    totalStats: [...totalStats.entries()],
+  };
+}
+
+function persistState() {
+  if (!persistenceEnabled) return Promise.resolve();
+  const snapshot = createStateSnapshot();
+  const save = persistenceQueue.then(() => saveCompetitionState(snapshot));
+  // Keep the queue usable after a failed write, while returning the rejection
+  // to the caller that needs to know whether its change became durable.
+  persistenceQueue = save.then(() => {
+    lastPersistenceSuccessAt = new Date().toISOString();
+    lastPersistenceError = null;
+  }).catch((error) => {
+    lastPersistenceError = error.message;
+    console.error("Supabase save failed:", error.message);
+  });
+  return save;
+}
+
+function persistStateSafely() {
+  persistState().catch((error) => {
+    console.error("Could not persist competition state:", error.message);
+  });
+}
+
+let answerQueue = Promise.resolve();
+function enqueueAnswer(task) {
+  const result = answerQueue.then(task, task);
+  answerQueue = result.catch(() => {});
+  return result;
+}
+
+async function restoreState() {
+  if (!persistenceEnabled) {
+    console.warn("Supabase is not configured. Running in memory-only mode.");
+    return;
+  }
+  const saved = await loadCompetitionState();
+  isRestored = true;
+  if (!saved) {
+    console.log("No saved competition state found. Starting fresh.");
+    return;
+  }
+  if (saved.version !== 1) throw new Error("Unsupported saved competition state version.");
+  activeQuestions = saved.activeQuestions || activeQuestions;
+  participants.clear();
+  for (const entry of saved.participants || []) participants.set(entry[0], entry[1]);
+  status = saved.status || "waiting";
+  currentRound = saved.currentRound || 0;
+  questionIndex = Number.isInteger(saved.questionIndex) ? saved.questionIndex : -1;
+  questionEndsAt = saved.questionEndsAt ?? null;
+  questionLocked = Boolean(saved.questionLocked);
+  roundStartedAt = saved.roundStartedAt ?? null;
+  answers.clear();
+  for (const entry of saved.answers || []) answers.set(entry[0], entry[1]);
+  roundStats.clear();
+  for (const entry of saved.roundStats || []) roundStats.set(entry[0], entry[1]);
+  totalStats.clear();
+  for (const entry of saved.totalStats || []) totalStats.set(entry[0], entry[1]);
+  console.log(`Restored competition state: ${participants.size} participant(s), status=${status}.`);
+}
+
 
 function parseCsv(source) {
   const rows = [];
@@ -165,12 +262,18 @@ function startQuestion() {
   io.to("competition").emit("question_started", question);
   io.to("host").emit("question_started", question);
   questionTimer = setTimeout(() => endQuestion("time"), CONFIG.roundSeconds[currentRound] * 1000);
+  persistStateSafely();
 }
 
-function endQuestion(reason = "completed") {
+async function endQuestion(reason = "completed") {
+  if (questionLocked || currentRound === 0 || questionIndex < 0) return;
+  clearTimeout(questionTimer);
+  // Let answer events received before the deadline finish their durable save
+  // before locking and revealing the question.
+  await answerQueue;
   if (questionLocked || currentRound === 0 || questionIndex < 0) return;
   questionLocked = true;
-  clearTimeout(questionTimer);
+  persistStateSafely();
   const question = roundQuestions(currentRound)[questionIndex];
   io.to("competition").emit("question_ended", {
     round: currentRound,
@@ -186,6 +289,7 @@ function endQuestion(reason = "completed") {
     reason,
   });
   io.to("host").emit("leaderboard_updated", leaderboard());
+  persistStateSafely();
   questionTimer = setTimeout(startQuestion, 2500);
 }
 
@@ -208,6 +312,7 @@ function finishRound() {
     io.to("competition").emit("competition_finished", { leaderboard: results });
     io.to("host").emit("competition_finished", { leaderboard: results });
   }
+  persistStateSafely();
 }
 
 function startRound(round) {
@@ -224,6 +329,7 @@ function startRound(round) {
   io.to("competition").emit("round_started", { round, totalQuestions: roundQuestions(round).length });
   io.to("host").emit("competition_status_updated", status);
   startQuestion();
+  persistStateSafely();
   return true;
 }
 
@@ -235,7 +341,27 @@ function snapshotForParticipant(id) {
     participants: [...participants.values()].map(publicParticipant),
   };
   if (status === "running" && questionIndex >= 0 && !questionLocked) {
-    return { ...base, question: safeQuestion(roundQuestions(currentRound)[questionIndex], questionIndex, currentRound) };
+    const key = answerKey(currentRound, questionIndex, id);
+    const ownAnswer = answers.get(key);
+    return {
+      ...base,
+      question: safeQuestion(roundQuestions(currentRound)[questionIndex], questionIndex, currentRound),
+      answer: ownAnswer ? { selectedOption: ownAnswer.selectedOption } : null,
+    };
+  }
+  // A participant reconnecting during the short transition between questions
+  // should see the result of the question that just ended, not a blank screen.
+  if (status === "running" && questionIndex >= 0 && questionLocked) {
+    const endedQuestion = roundQuestions(currentRound)[questionIndex];
+    return {
+      ...base,
+      lastQuestionResult: endedQuestion ? {
+        round: currentRound,
+        questionNumber: questionIndex + 1,
+        correctOption: endedQuestion.correctOption,
+        explanation: endedQuestion.explanation || "",
+      } : null,
+    };
   }
   return base;
 }
@@ -255,6 +381,7 @@ io.on("connection", (socket) => {
     } else {
       participant.name = cleanName;
     }
+    persistStateSafely();
 
     socket.data.participantId = participant.id;
     socket.join("competition");
@@ -288,6 +415,7 @@ io.on("connection", (socket) => {
     try {
       const imported = validateQuestionCsv(csv);
       activeQuestions = imported;
+      persistStateSafely();
       callback({ success: true, counts: { 1: imported[1].length, 2: imported[2].length } });
       console.log("Host imported 50 quiz questions.");
     } catch (error) {
@@ -310,31 +438,86 @@ io.on("connection", (socket) => {
     callback({ success: true });
   });
 
-  socket.on("submit_answer", ({ participantId, questionNumber, selectedOption }, callback = () => {}) => {
+  socket.on("submit_answer", (payload = {}, callback = () => {}) => {
+    const receivedAt = Date.now();
+    const receivedRound = currentRound;
+    const receivedQuestionIndex = questionIndex;
+    const receivedDeadline = questionEndsAt;
+    enqueueAnswer(async () => {
+    const { participantId, questionNumber, selectedOption } = payload;
     const id = socket.data.participantId;
-    if (!id || id !== participantId || !participants.has(id)) return callback({ success: false, message: "Join the competition first." });
-    if (status !== "running" || questionLocked || Date.now() > questionEndsAt) return callback({ success: false, message: "Time is up. This answer was not counted." });
-    if (questionNumber !== questionIndex + 1) return callback({ success: false, message: "This question is no longer active." });
+    if (!id || id !== participantId || !participants.has(id)) {
+      return callback({ success: false, message: "Join the competition first." });
+    }
+    // The server deadline is authoritative. Answers arriving at or after it are rejected.
+    if (status !== "running" || !receivedDeadline || receivedAt >= receivedDeadline ||
+        receivedRound !== currentRound || receivedQuestionIndex !== questionIndex) {
+      return callback({ success: false, message: "Time is up. This answer was not counted." });
+    }
+    if (questionNumber !== receivedQuestionIndex + 1) {
+      return callback({ success: false, message: "This question is no longer active." });
+    }
+
     const question = roundQuestions(currentRound)[questionIndex];
-    if (!Number.isInteger(selectedOption) || selectedOption < 0 || selectedOption >= question.options.length) {
+    if (!question || !Number.isInteger(selectedOption) || selectedOption < 0 || selectedOption >= question.options.length) {
       return callback({ success: false, message: "Invalid option." });
     }
-    const key = answerKey(currentRound, questionIndex, id);
-    if (answers.has(key)) return callback({ success: false, message: "You have already submitted an answer." });
 
+    const submittedRound = currentRound;
+    const key = answerKey(submittedRound, receivedQuestionIndex, id);
+    if (answers.has(key)) {
+      return callback({ success: false, message: "You have already submitted an answer." });
+    }
+
+    const questionDuration = CONFIG.roundSeconds[receivedRound] * 1000;
+    const questionStartedAt = receivedDeadline - questionDuration;
+    const elapsed = Math.min(questionDuration, Math.max(0, receivedAt - questionStartedAt));
+    const now = receivedAt;
     const correct = selectedOption === question.correctOption;
-    const elapsed = Math.max(0, Date.now() - (questionEndsAt - CONFIG.roundSeconds[currentRound] * 1000));
-    answers.set(key, { selectedOption, correct, elapsed });
+
+    // Record every accepted attempt, including incorrect answers, to enforce one attempt per question.
+    answers.set(key, { selectedOption, correct, elapsed, submittedAt: now });
+    ensureStats(id);
+    const submittedRoundStats = roundStats.get(id);
+    const submittedTotalStats = totalStats.get(id);
     if (correct) {
-      const round = roundStats.get(id);
-      const total = totalStats.get(id);
+      const round = submittedRoundStats;
+      const total = submittedTotalStats;
       round.correct += 1;
       round.timeMs += elapsed;
       total.correct += 1;
       total.timeMs += elapsed;
-      total.score += CONFIG.marks[currentRound];
+      total.score += CONFIG.marks[submittedRound];
     }
-    callback({ success: true, accepted: true });
+
+    try {
+      await persistState();
+      callback({ success: true, accepted: true });
+    } catch (error) {
+      // The answer was not durably stored, so undo its in-memory score impact.
+      answers.delete(key);
+      if (correct) {
+        submittedRoundStats.correct -= 1;
+        submittedRoundStats.timeMs -= elapsed;
+        submittedTotalStats.correct -= 1;
+        submittedTotalStats.timeMs -= elapsed;
+        submittedTotalStats.score -= CONFIG.marks[submittedRound];
+      }
+      // A timer transition may have queued a snapshot while this save was in
+      // flight. Queue a compensating snapshot after rollback so stale answer
+      // data cannot become the final persisted state.
+      try {
+        await persistState();
+      } catch (rollbackError) {
+        console.error("Could not persist answer rollback:", rollbackError.message);
+      }
+      console.error("Answer was not accepted because persistence failed:", error.message);
+      callback({ success: false, message: "We couldn't save your answer. Please reconnect and try again." });
+    }
+    }).catch((error) => {
+      console.error("Unexpected answer processing error:", error);
+      callback({ success: false, message: "Something went wrong while processing your answer." });
+    });
   });
 
   socket.on("disconnect", () => {
@@ -343,4 +526,29 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT, () => console.log(`CLOUD CLASH server listening on ${PORT}`));
+
+async function boot() {
+  await restoreState();
+  httpServer.listen(PORT, () => {
+    console.log(`CLOUD CLASH server listening on ${PORT}`);
+    if (status === "running") {
+      if (questionLocked) {
+        questionTimer = setTimeout(startQuestion, 2500);
+      } else if (questionEndsAt && questionEndsAt > Date.now()) {
+        const remaining = questionEndsAt - Date.now();
+        const question = roundQuestions(currentRound)[questionIndex];
+        if (!question) throw new Error("Saved active question is missing.");
+        io.to("competition").emit("question_started", safeQuestion(question, questionIndex, currentRound));
+        io.to("host").emit("question_started", safeQuestion(question, questionIndex, currentRound));
+        questionTimer = setTimeout(() => endQuestion("time"), remaining);
+      } else {
+        endQuestion("time");
+      }
+    }
+  });
+}
+
+boot().catch((error) => {
+  console.error("CLOUD CLASH failed to restore persistent state:", error);
+  process.exit(1);
+});
