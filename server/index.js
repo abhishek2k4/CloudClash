@@ -265,10 +265,14 @@ function startQuestion() {
   persistStateSafely();
 }
 
-function endQuestion(reason = "completed") {
+async function endQuestion(reason = "completed") {
+  if (questionLocked || currentRound === 0 || questionIndex < 0) return;
+  clearTimeout(questionTimer);
+  // Let answer events received before the deadline finish their durable save
+  // before locking and revealing the question.
+  await answerQueue;
   if (questionLocked || currentRound === 0 || questionIndex < 0) return;
   questionLocked = true;
-  clearTimeout(questionTimer);
   persistStateSafely();
   const question = roundQuestions(currentRound)[questionIndex];
   io.to("competition").emit("question_ended", {
@@ -421,6 +425,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("submit_answer", (payload = {}, callback = () => {}) => {
+    const receivedAt = Date.now();
+    const receivedRound = currentRound;
+    const receivedQuestionIndex = questionIndex;
+    const receivedDeadline = questionEndsAt;
     enqueueAnswer(async () => {
     const { participantId, questionNumber, selectedOption } = payload;
     const id = socket.data.participantId;
@@ -428,10 +436,11 @@ io.on("connection", (socket) => {
       return callback({ success: false, message: "Join the competition first." });
     }
     // The server deadline is authoritative. Answers arriving at or after it are rejected.
-    if (status !== "running" || questionLocked || !questionEndsAt || Date.now() >= questionEndsAt) {
+    if (status !== "running" || !receivedDeadline || receivedAt >= receivedDeadline ||
+        receivedRound !== currentRound || receivedQuestionIndex !== questionIndex) {
       return callback({ success: false, message: "Time is up. This answer was not counted." });
     }
-    if (questionNumber !== questionIndex + 1) {
+    if (questionNumber !== receivedQuestionIndex + 1) {
       return callback({ success: false, message: "This question is no longer active." });
     }
 
@@ -441,15 +450,15 @@ io.on("connection", (socket) => {
     }
 
     const submittedRound = currentRound;
-    const key = answerKey(submittedRound, questionIndex, id);
+    const key = answerKey(submittedRound, receivedQuestionIndex, id);
     if (answers.has(key)) {
       return callback({ success: false, message: "You have already submitted an answer." });
     }
 
-    const now = Date.now();
-    const questionDuration = CONFIG.roundSeconds[currentRound] * 1000;
-    const questionStartedAt = questionEndsAt - questionDuration;
-    const elapsed = Math.min(questionDuration, Math.max(0, now - questionStartedAt));
+    const questionDuration = CONFIG.roundSeconds[receivedRound] * 1000;
+    const questionStartedAt = receivedDeadline - questionDuration;
+    const elapsed = Math.min(questionDuration, Math.max(0, receivedAt - questionStartedAt));
+    const now = receivedAt;
     const correct = selectedOption === question.correctOption;
 
     // Record every accepted attempt, including incorrect answers, to enforce one attempt per question.
