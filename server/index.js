@@ -349,6 +349,20 @@ function snapshotForParticipant(id) {
       answer: ownAnswer ? { selectedOption: ownAnswer.selectedOption } : null,
     };
   }
+  // A participant reconnecting during the short transition between questions
+  // should see the result of the question that just ended, not a blank screen.
+  if (status === "running" && questionIndex >= 0 && questionLocked) {
+    const endedQuestion = roundQuestions(currentRound)[questionIndex];
+    return {
+      ...base,
+      lastQuestionResult: endedQuestion ? {
+        round: currentRound,
+        questionNumber: questionIndex + 1,
+        correctOption: endedQuestion.correctOption,
+        explanation: endedQuestion.explanation || "",
+      } : null,
+    };
+  }
   return base;
 }
 
