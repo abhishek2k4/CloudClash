@@ -1,167 +1,23 @@
-import { useEffect, useRef, useState } from "react";
-import { socket } from "./socket";
+import {useEffect,useRef,useState} from "react";
+import {socket} from "./socket";
 import "./App.css";
-
-function Participant() {
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const participantRef = useRef(null);
-  const [participant, setParticipant] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  const [question, setQuestion] = useState(null);
-  const [secondsLeft, setSecondsLeft] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
-  const [result, setResult] = useState(null);
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [status, setStatus] = useState("waiting");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const onParticipants = (data) => setParticipants(data);
-    const onQuestion = (data) => {
-      setQuestion(data); setSelected(null); setSubmitted(false); setResult(null);
-      setSecondsLeft(Math.max(0, Math.ceil((data.endsAt - Date.now()) / 1000)));
-      setStatus("running");
-    };
-    const onQuestionEnded = (data) => {
-      setResult(data); setQuestion(null);
-    };
-    const onRoundStarted = ({ round }) => { setStatus("running"); setResult({ message: `Round ${round} is starting...` }); };
-    const onRoundFinished = ({ round, leaderboard: data }) => {
-      setStatus("round_break"); setQuestion(null); setLeaderboard(data);
-      setResult({ message: `Round ${round} complete` });
-    };
-    const onFinished = ({ leaderboard: data }) => { setStatus("finished"); setLeaderboard(data); setQuestion(null); };
-    socket.on("participants_updated", onParticipants);
-    socket.on("question_started", onQuestion);
-    socket.on("question_ended", onQuestionEnded);
-    socket.on("round_started", onRoundStarted);
-    socket.on("round_finished", onRoundFinished);
-    socket.on("competition_finished", onFinished);
-    const applyParticipantSnapshot = (response, joinedCode) => {
-      if (!response.success) {
-        participantRef.current = null;
-        setParticipant(null);
-        setError(response.message);
-        return;
-      }
-      const joined = { ...response.participant, code: joinedCode };
-      participantRef.current = joined;
-      setParticipant(joined);
-      setParticipants(response.snapshot?.participants || []);
-      setStatus(response.snapshot?.status || "waiting");
-      setLeaderboard(response.snapshot?.leaderboard || []);
-      setQuestion(response.snapshot?.question || null);
-      setSelected(response.snapshot?.answer?.selectedOption ?? null);
-      setSubmitted(Boolean(response.snapshot?.answer));
-      setResult(response.snapshot?.lastQuestionResult || null);
-      setSecondsLeft(response.snapshot?.question?.endsAt ? Math.max(0, Math.ceil((response.snapshot.question.endsAt - Date.now()) / 1000)) : 0);
-      setError("");
-    };
-    const onConnect = () => {
-      const current = participantRef.current;
-      if (!current?.id || !current?.code || !current?.name) return;
-      socket.emit("join_competition", {
-        name: current.name, code: current.code, participantId: current.id,
-      }, (response) => applyParticipantSnapshot(response, current.code));
-    };
-    socket.on("connect", onConnect);
-    socket.on("connect_error", () => setError("Connection lost. Trying to reconnect..."));
-    socket.connect();
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("participants_updated", onParticipants);
-      socket.off("question_started", onQuestion);
-      socket.off("question_ended", onQuestionEnded);
-      socket.off("round_started", onRoundStarted);
-      socket.off("round_finished", onRoundFinished);
-      socket.off("competition_finished", onFinished);
-      socket.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!question) return;
-    const tick = () => setSecondsLeft(Math.max(0, Math.ceil((question.endsAt - Date.now()) / 1000)));
-    tick();
-    const timer = setInterval(tick, 200);
-    return () => clearInterval(timer);
-  }, [question]);
-
-  const join = () => {
-    setError("");
-    socket.emit("join_competition", { name, code, participantId: participantRef.current?.id }, (response) => {
-      if (!response.success) return setError(response.message);
-      const joined = { ...response.participant, name, code };
-      setParticipant(joined);
-      participantRef.current = joined;
-      setParticipants(response.snapshot?.participants || []);
-      const snapshot = response.snapshot;
-      if (snapshot?.question) {
-        setQuestion(snapshot.question);
-        setSelected(snapshot.answer?.selectedOption ?? null);
-        setSubmitted(Boolean(snapshot.answer));
-        setResult(null);
-        setStatus("running");
-      } else {
-        setQuestion(null);
-        setSelected(null);
-        setSubmitted(false);
-        setResult(snapshot?.lastQuestionResult || null);
-        setStatus(snapshot?.status || "waiting");
-        setLeaderboard(snapshot?.leaderboard || []);
-      }
-    });
-  };
-
-  const submit = () => {
-    if (selected === null || submitted || !question || !participant) return;
-    socket.emit("submit_answer", {
-      participantId: participant.id,
-      questionNumber: question.questionNumber,
-      selectedOption: selected,
-    }, (response) => {
-      if (!response.success) setError(response.message);
-      else setSubmitted(true);
-    });
-  };
-
-  const renderLeaderboard = () => (
-    <section className="panel">
-      <h2>Leaderboard</h2>
-      {leaderboard.map((entry) => <div className="leader-row" key={entry.id}>
-        <strong>#{entry.rank} {entry.name}</strong><span>{entry.score} pts</span>
-      </div>)}
-    </section>
-  );
-
-  if (!participant) return <main className="container panel">
-    <p className="eyebrow">LIVE QUIZ EVENT</p><h1>CLOUD CLASH</h1>
-    <p>Join the competition</p>
-    <input placeholder="Your display name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} />
-    <input placeholder="Competition code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-    <button onClick={join} disabled={!name.trim() || !code.trim()}>Join competition</button>
-    {error && <p className="error">{error}</p>}
-  </main>;
-
-  return <main className="container wide">
-    <header className="topbar"><div><p className="eyebrow">CLOUD CLASH</p><h1>Hey, {participant.name}</h1></div><span className="live-pill">{status === "running" ? "LIVE" : status.replace("_", " ").toUpperCase()}</span></header>
-    {question && <section className="panel">
-      <div className="question-meta"><span>ROUND {question.round} · QUESTION {question.questionNumber}/{question.totalQuestions} · {question.marks} PTS</span><strong className={secondsLeft <= 5 ? "urgent" : ""}>{secondsLeft}s</strong></div>
-      <h2 className="question-text">{question.text}</h2>
-      <div className="option-grid">{question.options.map((option, index) => <button key={option} className={selected === index ? "option selected" : "option"} disabled={submitted || secondsLeft === 0} onClick={() => setSelected(index)}>{String.fromCharCode(65 + index)}. {option}</button>)}</div>
-      <button className="submit-button" disabled={selected === null || submitted || secondsLeft === 0} onClick={submit}>{submitted ? "Answer submitted" : "Submit answer"}</button>
-      {submitted && <p className="muted">Locked in. Wait for the next question.</p>}
-    </section>}
-    {!question && status === "waiting" && <section className="panel"><h2>You're in.</h2><p>Waiting for the host to start Round 1.</p><p className="muted">{participants.length} participants joined</p></section>}
-    {!question && status === "running" && !result && <section className="panel"><h2>Answer locked</h2><p>Question closed. Get ready for the next one.</p></section>}
-    {!question && status === "running" && result?.correctOption !== undefined && <section className="panel"><h2>Question ended while you were away</h2><p>Correct answer: <strong>{String.fromCharCode(65 + result.correctOption)}</strong></p>{result.explanation && <p>{result.explanation}</p>}<p className="muted">That question is closed. You'll rejoin the live quiz on the next question.</p></section>}
-    {!question && status === "round_break" && <section className="panel"><h2>Round complete</h2><p>Take a breath. The host will start the next round.</p></section>}
-    {!question && status === "finished" && <section className="panel"><h2>Competition finished!</h2><p>That's a wrap. Here's the final result.</p></section>}
-    {result?.correctOption !== undefined && question && <p className="feedback">Correct answer: {String.fromCharCode(65 + result.correctOption)}{result.explanation ? ` — ${result.explanation}` : ""}</p>}
-    {error && <p className="error">{error}</p>}
-    {(status === "round_break" || status === "finished") && renderLeaderboard()}
-  </main>;
+export default function Participant({onHome}){
+ const [name,setName]=useState(""),[code,setCode]=useState(""),participantRef=useRef(null);
+ const [participant,setParticipant]=useState(null),[participants,setParticipants]=useState([]),[question,setQuestion]=useState(null),[seconds,setSeconds]=useState(0),[selected,setSelected]=useState(null),[submitted,setSubmitted]=useState(false),[result,setResult]=useState(null),[leaderboard,setLeaderboard]=useState([]),[status,setStatus]=useState("waiting"),[error,setError]=useState("");
+ useEffect(()=>{const people=setParticipants,onStatus=setStatus,onQuestion=q=>{setQuestion(q);setSelected(null);setSubmitted(false);setResult(null);setSeconds(Math.max(0,Math.ceil((q.endsAt-Date.now())/1000)));setStatus("running");},onResume=d=>setQuestion(q=>q?({...q,endsAt:d.endsAt}):q),onEnd=d=>{setResult(d);setQuestion(null);},onRound=d=>{setStatus("running");setResult({message:"Round "+d.round+" is starting"});},onBreak=d=>{setStatus("round_break");setQuestion(null);setLeaderboard(d.leaderboard||[]);setResult({message:"Round complete"});},onFinish=d=>{setStatus("finished");setLeaderboard(d.leaderboard||[]);setQuestion(null);};socket.on("participants_updated",people);socket.on("competition_status_updated",onStatus);socket.on("question_started",onQuestion);socket.on("question_resumed",onResume);socket.on("question_ended",onEnd);socket.on("round_started",onRound);socket.on("round_finished",onBreak);socket.on("competition_finished",onFinish);const connect=()=>{const p=participantRef.current;if(p)socket.emit("join_competition",{name:p.name,code:p.code,participantId:p.id},r=>apply(r,p.code));};socket.on("connect",connect);socket.connect();return()=>{socket.off("participants_updated",people);socket.off("competition_status_updated",onStatus);socket.off("question_started",onQuestion);socket.off("question_resumed",onResume);socket.off("question_ended",onEnd);socket.off("round_started",onRound);socket.off("round_finished",onBreak);socket.off("competition_finished",onFinish);socket.off("connect",connect);socket.disconnect();};},[]);
+ const apply=(r,joinedCode)=>{if(!r?.success){setError(r?.message||"Could not join.");return;}const p={...r.participant,name:r.participant.name,code:joinedCode};participantRef.current=p;setParticipant(p);setParticipants(r.snapshot?.participants||[]);setStatus(r.snapshot?.status||"waiting");setLeaderboard(r.snapshot?.leaderboard||[]);setQuestion(r.snapshot?.question||null);setSelected(r.snapshot?.answer?.selectedOption??null);setSubmitted(Boolean(r.snapshot?.answer));setSeconds(r.snapshot?.question?.endsAt?Math.max(0,Math.ceil((r.snapshot.question.endsAt-Date.now())/1000)):0);};
+ useEffect(()=>{if(!question||status!=="running")return;const tick=()=>setSeconds(Math.max(0,Math.ceil((question.endsAt-Date.now())/1000)));tick();const t=setInterval(tick,200);return()=>clearInterval(t);},[question,status]);
+ const join=()=>{setError("");socket.emit("join_competition",{name,code:code.trim().toUpperCase()},r=>apply(r,code.trim().toUpperCase()));};
+ const submit=()=>{if(selected===null||submitted||!question||!participant)return;socket.emit("submit_answer",{participantId:participant.id,questionNumber:question.questionNumber,selectedOption:selected},r=>{if(!r.success)setError(r.message);else setSubmitted(true);});};
+ if(!participant)return <main className="app-shell narrow"><button className="back-link" onClick={onHome}>← Home</button><section className="panel"><p className="eyebrow">PLAYER ENTRY</p><h1>Ready to<br/>clash?</h1><p className="muted">Enter the name you want on the leaderboard and the room code shared by your host.</p><input placeholder="Your name" maxLength={40} value={name} onChange={e=>setName(e.target.value)}/><input placeholder="Room code" maxLength={12} value={code} onChange={e=>setCode(e.target.value.toUpperCase())}/><button className="primary full" disabled={!name.trim()||!code.trim()} onClick={join}>Join room →</button>{error&&<p className="error">{error}</p>}</section></main>;
+ return <main className="app-shell"><header className="dashboard-head"><div><p className="eyebrow">PLAYER · {participant.name}</p><h1>Stay sharp.</h1></div><span className={"status-chip "+status}>{status.replace("_"," ")}</span></header>
+ {question&&status==="running"&&<section className="panel"><div className="question-meta"><span>ROUND {question.round} · QUESTION {question.questionNumber}/{question.totalQuestions} · {question.marks} PTS</span><strong className={seconds<=5?"urgent":""}>{seconds}s</strong></div><h2 className="question-text">{question.text}</h2><div className="option-grid">{question.options.map((o,i)=><button key={i} className={selected===i?"option selected":"option"} disabled={submitted||seconds===0} onClick={()=>setSelected(i)}>{String.fromCharCode(65+i)}. {o}</button>)}</div><button className="primary full" disabled={selected===null||submitted||seconds===0} onClick={submit}>{submitted?"Answer submitted":"Lock answer"}</button>{submitted&&<p className="muted">Answer locked. Good luck.</p>}</section>}
+ {!question&&status==="waiting"&&<section className="panel"><h2>You're in.</h2><p>Waiting for the host to start. {participants.length} players in the room.</p></section>}
+ {status==="paused"&&<section className="panel pause-state"><h2>Quiz paused</h2><p>The host has paused the game. Your current question and timer are on hold.</p></section>}
+ {!question&&status==="running"&&<section className="panel"><h2>Question closed</h2><p>Get ready for the next one.</p>{result?.correctOption!==undefined&&<p>Correct answer: {String.fromCharCode(65+result.correctOption)}</p>}</section>}
+ {status==="round_break"&&<section className="panel"><h2>Round complete.</h2><p>Catch your breath. The host will start the next round.</p></section>}
+ {status==="finished"&&<section className="panel"><h2>That's a wrap.</h2><p>The quiz has ended. Here's where you landed.</p></section>}
+ {(status==="round_break"||status==="finished")&&<section className="panel"><p className="eyebrow">SCOREBOARD</p><h2>Leaderboard</h2>{leaderboard.map(p=><div className="leader-row" key={p.id}><strong>#{p.rank} {p.name}</strong><strong>{p.score} pts</strong></div>)}</section>}
+ {error&&<p className="error">{error}</p>}
+ </main>;
 }
-export default Participant;
