@@ -105,6 +105,14 @@ async function reconnectClient(previousSocket, participantIndex) {
   if (result.participant.id !== previousId) {
     throw new Error(`${name} was assigned a new participant ID after reconnect.`);
   }
+  // Reconnects are deliberately performed during the transition after Q1.
+  // Verify the server snapshot includes the result that this participant missed.
+  const recovery = result.snapshot?.lastQuestionResult;
+  if (!recovery || recovery.round !== 1 || recovery.questionNumber !== 1 ||
+      recovery.correctOption !== 0 || recovery.explanation !== "Synthetic load-test question") {
+    throw new Error(`${name} rejoined, but the missed-question result was not restored correctly: ${JSON.stringify(recovery || null)}`);
+  }
+  socket.recoverySnapshotVerified = true;
   socket.participantId = result.participant.id;
   socket.participantName = name;
   attachQuestionSimulation(socket, participantIndex);
@@ -178,6 +186,12 @@ async function main() {
   for (let index = 0; index < reconnectCount; index += 1) {
     clients[index] = await reconnectClient(clients[index], index);
   }
+  const verifiedRecoverySnapshots = clients
+    .slice(0, reconnectCount)
+    .filter((socket) => socket.recoverySnapshotVerified).length;
+  if (verifiedRecoverySnapshots !== reconnectCount) {
+    throw new Error(`Missed-question recovery verified for only ${verifiedRecoverySnapshots}/${reconnectCount} reconnects.`);
+  }
   const roundOneFinishedWait = roundOneFinished;
   await roundOneFinishedWait;
 
@@ -202,7 +216,8 @@ async function main() {
   console.log("\nCLOUD CLASH LOAD TEST RESULTS");
   console.log("-----------------------------");
   console.log(`Participants:       ${clients.length}/${participantCount}`);
-  console.log(`Reconnects:         ${Math.max(1, Math.ceil(participantCount * 0.1))} successful (same participant IDs)`);
+  console.log(`Reconnects:         ${reconnectCount} successful (same participant IDs)`);
+  console.log(`Missed results:     ${verifiedRecoverySnapshots}/${reconnectCount} restored in reconnect snapshots`);
   console.log(`Question events:    ${questionEvents} (expected ${participantCount * 50})`);
   console.log(`Accepted answers:   ${acceptedAnswers}/${expectedAnswers}`);
   console.log(`Rejected answers:   ${rejectedAnswers}`);
