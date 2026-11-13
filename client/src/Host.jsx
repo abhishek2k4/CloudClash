@@ -124,6 +124,16 @@ export default function Host({ onHome, onActivityChange }) {
   }, [apply]);
 
   useEffect(() => {
+    setError("");
+  }, [stage]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timeout = window.setTimeout(() => setError(""), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [error]);
+
+  useEffect(() => {
     onActivityChange?.(["running", "paused", "round_break"].includes(status));
     return () => onActivityChange?.(false);
   }, [status, onActivityChange]);
@@ -146,11 +156,13 @@ export default function Host({ onHome, onActivityChange }) {
     return () => clearInterval(t);
   }, [question, status]);
 
-  const action = (event, payload, done) => {
+  const action = (event, payload, done, failed) => {
     setError("");
     const callback = (r) => {
-      if (!r?.success) setError(r?.message || "Action failed.");
-      else done?.(r);
+      if (!r?.success) {
+        setError(r?.message || "Action failed.");
+        failed?.(r);
+      } else done?.(r);
     };
     if (payload === undefined) socket.emit(event, callback);
     else socket.emit(event, payload, callback);
@@ -257,6 +269,8 @@ export default function Host({ onHome, onActivityChange }) {
           setStatus("waiting");
           setStage("lobby");
         }
+      }, () => {
+        setRoundUploads((s) => ({ ...s, [n]: "Upload failed — check the CSV headers and format" }));
       });
     } catch {
       setError("Could not read the CSV file.");
