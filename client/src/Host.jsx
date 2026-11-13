@@ -103,7 +103,7 @@ function Host() {
           <button className="secondary-button" onClick={downloadTemplate}>Download CSV template</button>
           <label className="upload-button">{importing ? "Importing..." : "Import completed CSV"}<input type="file" accept=".csv,text/csv" onChange={importCsv} disabled={importing} /></label>
         </div>
-        <p className="muted">Required: 25 questions per round, four options per question, and one correct option (A–D). You can import again before starting.</p>
+        <p className="muted">Fill all 50 rows. Use round 1 or 2, provide four options, and set correct_option to A, B, C or D. Explanation is optional. Save/export as CSV UTF-8. You can re-import any time before the quiz starts.</p>
         {importStatus && <p className="success-message">{importStatus}</p>}
       </section>
       <section className="panel"><h2>Lobby ready</h2><p>{participants.length} participants have joined.</p><button disabled={!participants.length} onClick={() => action("start_competition")}>Start Round 1</button></section>
