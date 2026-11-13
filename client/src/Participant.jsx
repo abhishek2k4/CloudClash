@@ -1,14 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
 import "./App.css";
 
-const STORAGE_KEY = "cloud-clash-participant";
-
 function Participant() {
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch { localStorage.removeItem(STORAGE_KEY); }
-  const [name, setName] = useState(saved?.name || "");
-  const [code, setCode] = useState(saved?.code || "");
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const participantRef = useRef(null);
   const [participant, setParticipant] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [question, setQuestion] = useState(null);
@@ -42,31 +39,31 @@ function Participant() {
     socket.on("round_started", onRoundStarted);
     socket.on("round_finished", onRoundFinished);
     socket.on("competition_finished", onFinished);
+    const applyParticipantSnapshot = (response, joinedCode) => {
+      if (!response.success) {
+        participantRef.current = null;
+        setParticipant(null);
+        setError(response.message);
+        return;
+      }
+      const joined = { ...response.participant, code: joinedCode };
+      participantRef.current = joined;
+      setParticipant(joined);
+      setParticipants(response.snapshot?.participants || []);
+      setStatus(response.snapshot?.status || "waiting");
+      setLeaderboard(response.snapshot?.leaderboard || []);
+      setQuestion(response.snapshot?.question || null);
+      setSelected(response.snapshot?.answer?.selectedOption ?? null);
+      setSubmitted(Boolean(response.snapshot?.answer));
+      setResult(null);
+      setSecondsLeft(response.snapshot?.question?.endsAt ? Math.max(0, Math.ceil((response.snapshot.question.endsAt - Date.now()) / 1000)) : 0);
+    };
     const onConnect = () => {
-      let stored = null;
-      try { stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch { localStorage.removeItem(STORAGE_KEY); }
-      if (!stored?.id || !stored?.code || !stored?.name) return;
+      const current = participantRef.current;
+      if (!current?.id || !current?.code || !current?.name) return;
       socket.emit("join_competition", {
-        name: stored.name, code: stored.code, participantId: stored.id,
-      }, (response) => {
-        if (!response.success) {
-          localStorage.removeItem(STORAGE_KEY);
-          setParticipant(null);
-          setError(response.message);
-          return;
-        }
-        setParticipant({ ...response.participant, code: stored.code });
-        setName(stored.name);
-        setCode(stored.code);
-        setParticipants(response.snapshot?.participants || []);
-        setStatus(response.snapshot?.status || "waiting");
-        setLeaderboard(response.snapshot?.leaderboard || []);
-        setQuestion(response.snapshot?.question || null);
-        setSelected(response.snapshot?.answer?.selectedOption ?? null);
-        setSubmitted(Boolean(response.snapshot?.answer));
-        setResult(null);
-        setSecondsLeft(response.snapshot?.question?.endsAt ? Math.max(0, Math.ceil((response.snapshot.question.endsAt - Date.now()) / 1000)) : 0);
-      });
+        name: current.name, code: current.code, participantId: current.id,
+      }, (response) => applyParticipantSnapshot(response, current.code));
     };
     socket.on("connect", onConnect);
     socket.on("connect_error", () => setError("Connection lost. Trying to reconnect..."));
@@ -93,11 +90,11 @@ function Participant() {
 
   const join = () => {
     setError("");
-    socket.emit("join_competition", { name, code, participantId: participant?.id }, (response) => {
+    socket.emit("join_competition", { name, code, participantId: participantRef.current?.id }, (response) => {
       if (!response.success) return setError(response.message);
       const joined = { ...response.participant, name, code };
       setParticipant(joined);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(joined));
+      participantRef.current = joined;
       setParticipants(response.snapshot?.participants || []);
       const snapshot = response.snapshot;
       if (snapshot?.question) {
