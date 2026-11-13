@@ -411,7 +411,8 @@ io.on("connection", (socket) => {
       return callback({ success: false, message: "Invalid option." });
     }
 
-    const key = answerKey(currentRound, questionIndex, id);
+    const submittedRound = currentRound;
+    const key = answerKey(submittedRound, questionIndex, id);
     if (answers.has(key)) {
       return callback({ success: false, message: "You have already submitted an answer." });
     }
@@ -425,14 +426,16 @@ io.on("connection", (socket) => {
     // Record every accepted attempt, including incorrect answers, to enforce one attempt per question.
     answers.set(key, { selectedOption, correct, elapsed, submittedAt: now });
     ensureStats(id);
+    const submittedRoundStats = roundStats.get(id);
+    const submittedTotalStats = totalStats.get(id);
     if (correct) {
-      const round = roundStats.get(id);
-      const total = totalStats.get(id);
+      const round = submittedRoundStats;
+      const total = submittedTotalStats;
       round.correct += 1;
       round.timeMs += elapsed;
       total.correct += 1;
       total.timeMs += elapsed;
-      total.score += CONFIG.marks[currentRound];
+      total.score += CONFIG.marks[submittedRound];
     }
 
     try {
@@ -442,13 +445,11 @@ io.on("connection", (socket) => {
       // The answer was not durably stored, so undo its in-memory score impact.
       answers.delete(key);
       if (correct) {
-        const round = roundStats.get(id);
-        const total = totalStats.get(id);
-        round.correct -= 1;
-        round.timeMs -= elapsed;
-        total.correct -= 1;
-        total.timeMs -= elapsed;
-        total.score -= CONFIG.marks[currentRound];
+        submittedRoundStats.correct -= 1;
+        submittedRoundStats.timeMs -= elapsed;
+        submittedTotalStats.correct -= 1;
+        submittedTotalStats.timeMs -= elapsed;
+        submittedTotalStats.score -= CONFIG.marks[submittedRound];
       }
       console.error("Answer was not accepted because persistence failed:", error.message);
       callback({ success: false, message: "We couldn't save your answer. Please reconnect and try again." });
