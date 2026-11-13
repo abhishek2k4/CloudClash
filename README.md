@@ -74,7 +74,7 @@ Open the Vite URL for participants and append `/host` for the host dashboard.
 
 ## Competition rules
 
-- 25 questions per round; 50 total
+- Each round supports its own question count; the two rounds do not need to be equal
 - Round 1: 5 points per correct answer; Round 2: 10 points
 - No negative marking; incorrect or unanswered questions score zero
 - Timers are server-controlled and configured with `ROUND_1_SECONDS` and `ROUND_2_SECONDS`
@@ -84,9 +84,9 @@ Open the Vite URL for participants and append `/host` for the host dashboard.
 
 ## Question import
 
-From the host dashboard (`/host`), download the CSV template, fill all 50 rows in Excel or Google Sheets, and upload it before starting Round 1.
+From the host dashboard (`/host`), download the CSV header template, add one row per question, and upload it before starting Round 1. Each row is assigned to Round 1 or Round 2, and either round may contain any number of questions. An empty round is allowed in the imported bank, but it cannot be started until it has at least one question.
 
-Required columns: `round,question,option_a,option_b,option_c,option_d,correct_option,explanation`.
+Required columns: `round,question,option_a,option_b,option_c,option_d,correct_option`. The `explanation` column is optional.
 
 Use round `1` or `2`; correct option can be `A`, `B`, `C`, or `D`. Explanation is optional. Export as CSV UTF-8. The importer validates the full file before replacing the question bank.
 
@@ -116,7 +116,7 @@ The server health endpoint reports `503 degraded` when configured persistence ca
 - Set `VITE_SERVER_URL` to the deployed backend URL (no trailing slash)
 
 ### Before opening the event
-1. Import and verify the actual 50 questions.
+1. Import and verify the question counts and content for both rounds.
 2. Test with at least 30 simulated or real participant browsers.
 3. Test one correct answer, one wrong answer, an unanswered timeout, and duplicate submission.
 4. Restart the backend during a test question and verify the remaining deadline and participant answer state.
