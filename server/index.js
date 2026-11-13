@@ -35,18 +35,6 @@ async function endQuestion(reason="time"){if(questionLocked||status!=="running")
 function startRound(n){if(n<1||n>rounds||!roundQuestions(n).length)return false;currentRound=n;questionIndex=-1;questionLocked=true;status="running";for(const p of participants.values()){if(!roundStats.has(p.id))roundStats.set(p.id,{correct:0,timeMs:0});if(!totalStats.has(p.id))totalStats.set(p.id,{score:0,correct:0,timeMs:0});}io.to("host").emit("round_started",{round:n,totalQuestions:roundQuestions(n).length});io.to("competition").emit("round_started",{round:n,totalQuestions:roundQuestions(n).length});emitStatus();startQuestion();return true;}
 function parseCsv(src){
  const input=String(src||"").replace(/^\uFEFF/,"");
- const firstLine=input.split(/\r?\n/,1)[0]||"";
- let delimiter=",",best=-1;
- for(const candidate of [",",";","\t"]){
-  let count=0,quoted=false;
-  for(let i=0;i<firstLine.length;i++){
-   const ch=firstLine[i];
-   if(ch==='"'&&firstLine[i+1]==='"'&&quoted){i++;continue;}
-   if(ch==='"')quoted=!quoted;
-   else if(ch===candidate&&!quoted)count++;
-  }
-  if(count>best){best=count;delimiter=candidate;}
- }
  const rows=[];let row=[],field="",quoted=false;
  for(let i=0;i<input.length;i++){
   const ch=input[i];
@@ -55,7 +43,7 @@ function parseCsv(src){
    else if(ch==='"')quoted=false;
    else field+=ch;
   }else if(ch==='"')quoted=true;
-  else if(ch===delimiter){row.push(field);field="";}
+  else if(ch===","){row.push(field);field="";}
   else if(ch==="\n"){row.push(field);rows.push(row);row=[];field="";}
   else if(ch!=="\r")field+=ch;
  }
@@ -63,26 +51,18 @@ function parseCsv(src){
  if(field.length||row.length){row.push(field);rows.push(row);}
  return rows;
 }
-function normalizeCsvHeader(value){
- return String(value||"").replace(/^\uFEFF/,"").trim().toLowerCase()
-  .replace(/[\s-]+/g,"_").replace(/[()]/g,"")
-  .replace(/^option([a-d])$/,"option_$1");
-}
 function validateRoundCsv(csv,roundNumber){
  const rows=parseCsv(csv);
  if(rows.length<2)throw Error("Add questions below the CSV header.");
- const h=rows[0].map(normalizeCsvHeader);
+ const h=rows[0].map(x=>String(x||"").replace(/^\uFEFF/,"").trim().toLowerCase());
  const required=["question","option_a","option_b","option_c","option_d","correct_option"];
  for(const k of required)if(!h.includes(k))throw Error("Missing column: "+k);
+ if(h.includes("round"))throw Error("This uploader only accepts the round-specific template. Remove the round column and upload one round at a time.");
+ if(h.some(k=>!required.includes(k)&&k!=="explanation"))throw Error("Unexpected column in CSV. Download and use the provided round-specific template.");
  const idx=k=>h.indexOf(k),out=[];
  rows.slice(1).forEach((r,i)=>{
   if(r.every(x=>!String(x||"").trim()))return;
   const val=k=>(r[idx(k)]||"").trim();
-  if(idx("round")>=0){
-   const rowRound=Number(val("round"));
-   if(!Number.isInteger(rowRound)||rowRound<1||rowRound>rounds)throw Error("Row "+(i+2)+": round must be between 1 and "+rounds+".");
-   if(rowRound!==Number(roundNumber))return;
-  }
   const opts=["option_a","option_b","option_c","option_d"].map(val);
   const raw=val("correct_option").toUpperCase();
   const letters=["A","B","C","D"];
@@ -90,7 +70,7 @@ function validateRoundCsv(csv,roundNumber){
   if(!val("question")||opts.some(x=>!x)||!Number.isInteger(correct)||correct<0||correct>3)throw Error("Row "+(i+2)+": question, four options and correct_option A-D are required.");
   out.push({text:val("question"),options:opts,correctOption:correct,explanation:idx("explanation")>=0?val("explanation"):""});
  });
- if(!out.length)throw Error(idx("round")>=0?"No questions found for Round "+roundNumber+" in this CSV.":"No valid questions found in this round.");
+ if(!out.length)throw Error("No valid questions found in this round.");
  return out;
 }
 function validateCsv(csv){const rows=parseCsv(csv.replace(/^\uFEFF/,""));if(rows.length<2)throw Error("Add questions below the CSV header.");const h=rows[0].map(normalizeCsvHeader),required=["round","question","option_a","option_b","option_c","option_d","correct_option"];for(const k of required)if(!h.includes(k))throw Error(`Missing column: ${k}`);const idx=k=>h.indexOf(k),out=Object.fromEntries(Array.from({length:rounds},(_,i)=>[i+1,[]]));rows.slice(1).forEach((r,i)=>{if(r.every(x=>!x.trim()))return;const val=k=>(r[idx(k)]||"").trim(),n=Number(val("round"));if(!Number.isInteger(n)||n<1||n>rounds)throw Error(`Row ${i+2}: round must be between 1 and ${rounds}.`);const opts=["option_a","option_b","option_c","option_d"].map(val),raw=val("correct_option").toUpperCase(),correct=["A","B","C","D"].indexOf(raw)>=0?["A","B","C","D"].indexOf(raw):Number(raw)-1;if(!val("question")||opts.some(x=>!x)||!Number.isInteger(correct)||correct<0||correct>3)throw Error(`Row ${i+2}: question, four options and correct_option A-D are required.`);out[n].push({text:val("question"),options:opts,correctOption:correct,explanation:idx("explanation")>=0?val("explanation"):""});});if(!Object.values(out).some(a=>a.length))throw Error("No valid questions found.");return out;}
