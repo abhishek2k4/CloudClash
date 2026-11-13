@@ -50,7 +50,8 @@ if (!CONFIG.hostPassword) {
   console.warn("HOST_PASSWORD is not set. Host login is disabled until configured.");
 }
 
-let activeQuestions = { 1: [...DEMO_QUESTIONS[1]], 2: [...DEMO_QUESTIONS[2]] };\nlet quizSettings = structuredClone(CONFIG.defaults);
+let activeQuestions = { 1: [...DEMO_QUESTIONS[1]], 2: [...DEMO_QUESTIONS[2]] };
+let quizSettings = structuredClone(CONFIG.defaults);
 const participants = new Map();
 let status = "waiting";
 let currentRound = 0;
@@ -124,7 +125,8 @@ async function restoreState() {
     return;
   }
   if (saved.version !== 1) throw new Error("Unsupported saved competition state version.");
-  activeQuestions = saved.activeQuestions || activeQuestions;\n  quizSettings = { roundSeconds: { ...CONFIG.defaults.roundSeconds, ...(saved.quizSettings?.roundSeconds || {}) }, marks: { ...CONFIG.defaults.marks, ...(saved.quizSettings?.marks || {}) } };
+  activeQuestions = saved.activeQuestions || activeQuestions;
+  quizSettings = { roundSeconds: { ...CONFIG.defaults.roundSeconds, ...(saved.quizSettings?.roundSeconds || {}) }, marks: { ...CONFIG.defaults.marks, ...(saved.quizSettings?.marks || {}) } };
   participants.clear();
   for (const entry of saved.participants || []) participants.set(entry[0], entry[1]);
   status = saved.status || "waiting";
