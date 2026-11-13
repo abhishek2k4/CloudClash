@@ -195,11 +195,8 @@ function validateQuestionCsv(csvText) {
   });
 
   if (errors.length) throw new Error(errors.slice(0, 8).join("\n") + (errors.length > 8 ? `\nAnd ${errors.length - 8} more issue(s).` : ""));
-  for (const round of [1, 2]) {
-    if (imported[round].length !== 25) {
-      throw new Error(`Round ${round} must contain exactly 25 questions. Found ${imported[round].length}.`);
-    }
-  }
+  const total = imported[1].length + imported[2].length;
+  if (total === 0) throw new Error("No questions found. Add at least one valid question to Round 1 or Round 2.");
   return imported;
 }
 const answerKey = (round, index, id) => `${round}:${index}:${id}`;
