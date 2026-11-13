@@ -1,0 +1,28 @@
+name: Cloud Clash CI
+on:
+  push:
+    branches: [main, feat/event-ready-quiz-platform]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+      - name: Check backend syntax
+        run: |
+          cd server
+          node --check index.js
+          node --check load-test/simulate.js
+      - name: Build frontend
+        run: |
+          cd client
+          npm ci
+          npm run build
