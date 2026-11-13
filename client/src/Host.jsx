@@ -58,7 +58,7 @@ function Host() {
     for (const roundNumber of [1, 2]) {
       for (let i = 0; i < 25; i += 1) rows.push([roundNumber, "", "", "", "", "", "", ""].join(","));
     }
-    const csv = "\\uFEFF" + rows.join("\\r\\n");
+    const csv = "\uFEFF" + rows.join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url; link.download = "cloud-clash-question-template.csv"; link.click();
