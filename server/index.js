@@ -376,21 +376,39 @@ io.on("connection", (socket) => {
     callback({ success: true });
   });
 
-  socket.on("submit_answer", ({ participantId, questionNumber, selectedOption }, callback = () => {}) => {
+  socket.on("submit_answer", (payload = {}, callback = () => {}) => {
+    const { participantId, questionNumber, selectedOption } = payload;
     const id = socket.data.participantId;
-    if (!id || id !== participantId || !participants.has(id)) return callback({ success: false, message: "Join the competition first." });
-    if (status !== "running" || questionLocked || Date.now() > questionEndsAt) return callback({ success: false, message: "Time is up. This answer was not counted." });
-    if (questionNumber !== questionIndex + 1) return callback({ success: false, message: "This question is no longer active." });
+    if (!id || id !== participantId || !participants.has(id)) {
+      return callback({ success: false, message: "Join the competition first." });
+    }
+    // The server deadline is authoritative. Answers arriving at or after it are rejected.
+    if (status !== "running" || questionLocked || !questionEndsAt || Date.now() >= questionEndsAt) {
+      return callback({ success: false, message: "Time is up. This answer was not counted." });
+    }
+    if (questionNumber !== questionIndex + 1) {
+      return callback({ success: false, message: "This question is no longer active." });
+    }
+
     const question = roundQuestions(currentRound)[questionIndex];
-    if (!Number.isInteger(selectedOption) || selectedOption < 0 || selectedOption >= question.options.length) {
+    if (!question || !Number.isInteger(selectedOption) || selectedOption < 0 || selectedOption >= question.options.length) {
       return callback({ success: false, message: "Invalid option." });
     }
-    const key = answerKey(currentRound, questionIndex, id);
-    if (answers.has(key)) return callback({ success: false, message: "You have already submitted an answer." });
 
+    const key = answerKey(currentRound, questionIndex, id);
+    if (answers.has(key)) {
+      return callback({ success: false, message: "You have already submitted an answer." });
+    }
+
+    const now = Date.now();
+    const questionDuration = CONFIG.roundSeconds[currentRound] * 1000;
+    const questionStartedAt = questionEndsAt - questionDuration;
+    const elapsed = Math.min(questionDuration, Math.max(0, now - questionStartedAt));
     const correct = selectedOption === question.correctOption;
-    const elapsed = Math.max(0, Date.now() - (questionEndsAt - CONFIG.roundSeconds[currentRound] * 1000));
-    answers.set(key, { selectedOption, correct, elapsed });
+
+    // Record every accepted attempt, including incorrect answers, to enforce one attempt per question.
+    answers.set(key, { selectedOption, correct, elapsed, submittedAt: now });
+    ensureStats(id);
     if (correct) {
       const round = roundStats.get(id);
       const total = totalStats.get(id);
@@ -400,8 +418,9 @@ io.on("connection", (socket) => {
       total.timeMs += elapsed;
       total.score += CONFIG.marks[currentRound];
     }
+
     persistState();
-    callback({ success: true, accepted: true });
+    callback({ success: true, accepted: true, correct });
   });
 
   socket.on("disconnect", () => {
