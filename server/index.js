@@ -167,7 +167,8 @@ function validateQuestionCsv(csvText) {
   const rows = parseCsv(csvText.replace(/^\uFEFF/, ""));
   if (rows.length < 2) throw new Error("The CSV is empty. Add your questions below the header row.");
   const headers = rows[0].map((header) => header.trim().toLowerCase());
-  const required = ["round", "question", "option_a", "option_b", "option_c", "option_d", "correct_option"];\n  const optional = ["explanation"];
+  const required = ["round", "question", "option_a", "option_b", "option_c", "option_d", "correct_option"];
+  const optional = ["explanation"];
   const missing = required.filter((header) => !headers.includes(header));
   if (missing.length) throw new Error(`Missing column(s): ${missing.join(", ")}.`);
   const index = Object.fromEntries([...required, ...optional].map((header) => [header, headers.indexOf(header)]));
@@ -399,7 +400,8 @@ io.on("connection", (socket) => {
       question: status === "running" && questionIndex >= 0 && !questionLocked
         ? safeQuestion(roundQuestions(currentRound)[questionIndex], questionIndex, currentRound) : null,
       leaderboard: leaderboard(),
-      roundSeconds: CONFIG.roundSeconds,\n      questionCounts: { 1: roundQuestions(1).length, 2: roundQuestions(2).length },
+      roundSeconds: CONFIG.roundSeconds,
+      questionCounts: { 1: roundQuestions(1).length, 2: roundQuestions(2).length },
     });
   });
 
