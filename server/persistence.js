@@ -2,7 +2,19 @@ const SUPABASE_URL = process.env.SUPABASE_URL?.replace(/\/$/, "");
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const COMPETITION_CODE = process.env.COMPETITION_CODE || "CLOUD26";
 
-const isConfigured = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+const hasCredentials = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+const explicitPersistenceSetting = process.env.PERSISTENCE_ENABLED;
+const persistenceRequested = explicitPersistenceSetting === undefined
+  ? process.env.NODE_ENV === "production"
+  : explicitPersistenceSetting.toLowerCase() === "true";
+const isConfigured = hasCredentials && persistenceRequested;
+
+if (hasCredentials && !persistenceRequested) {
+  console.log("Supabase credentials found, but persistence is disabled for this environment.");
+}
+if (persistenceRequested && !hasCredentials) {
+  console.warn("Persistence is enabled but Supabase credentials are missing. Running in memory-only mode.");
+}
 
 function headers(extra = {}) {
   return {
