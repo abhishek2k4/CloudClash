@@ -480,6 +480,14 @@ io.on("connection", (socket) => {
         submittedTotalStats.timeMs -= elapsed;
         submittedTotalStats.score -= CONFIG.marks[submittedRound];
       }
+      // A timer transition may have queued a snapshot while this save was in
+      // flight. Queue a compensating snapshot after rollback so stale answer
+      // data cannot become the final persisted state.
+      try {
+        await persistState();
+      } catch (rollbackError) {
+        console.error("Could not persist answer rollback:", rollbackError.message);
+      }
       console.error("Answer was not accepted because persistence failed:", error.message);
       callback({ success: false, message: "We couldn't save your answer. Please reconnect and try again." });
     }
