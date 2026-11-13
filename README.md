@@ -21,7 +21,6 @@ npm install
 ```
 
 Create `server/.env` from `server/.env.example` and set:
-- `HOST_PASSWORD`: private host password
 - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`: server-side Supabase credentials when persistence is required
 - `CLIENT_ORIGIN`: frontend origin
 
@@ -42,7 +41,7 @@ Open the frontend root URL. The landing page provides **Create quiz** and **Join
 
 ## User flow
 
-1. Host chooses **Create quiz** and authenticates with the host password.
+1. Anyone can choose **Create quiz** and open the host controls without an account or password.
 2. Host chooses 1–10 rounds and sets points per correct answer (1–100) and question timer (5–300 seconds) for each round.
 3. The server creates a room and returns a generated room code.
 4. Host imports a CSV question bank and shares the room code.
@@ -76,11 +75,11 @@ Use round numbers from 1 through the number configured during quiz creation. Cor
 
 The backend stores a JSON snapshot in Supabase when persistence is enabled. Use one backend instance only; this is a single-room event application, not a horizontally scaled multi-room service. During a live event, confirm Supabase health and run a complete rehearsal.
 
-Local memory-only mode resets the room when the backend restarts. Production persistence restores the saved room and active timer state. Treat the host password and Supabase Secret key as server-only secrets.
+Local memory-only mode resets the room when the backend restarts. Production persistence restores the saved room and active timer state. There is no host authentication: anyone who opens the host page can create and control the active quiz. Share the host page only with trusted organizers. Keep the Supabase Secret key server-side only.
 
 ## Load test
 
-With the backend running locally and `HOST_PASSWORD` set in `server/.env`:
+With the backend running locally:
 
 ```powershell
 cd server
@@ -95,7 +94,7 @@ The simulator creates a fresh two-round room, imports synthetic questions, joins
 - Root directory: `server`
 - Build: `npm install`
 - Start: `npm start`
-- Configure `HOST_PASSWORD`, `CLIENT_ORIGIN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `NODE_ENV=production`
+- Configure `CLIENT_ORIGIN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `NODE_ENV=production`
 - Keep a single backend instance
 
 ### Frontend (Vercel)
