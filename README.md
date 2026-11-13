@@ -28,6 +28,12 @@ alter table public.competition_state enable row level security;
 
 Use the project's server-side Secret key in the backend environment only. Never put it in a Vite variable or commit it.
 
+### Local state behavior
+
+Local development is memory-only by default, even if Supabase credentials exist in `server/.env`. This means restarting the local backend starts a fresh event and does not restore old participants or scores. Set `PERSISTENCE_ENABLED=true` in `server/.env` only when you intentionally want local testing to read/write the shared Supabase competition state.
+
+Production enables persistence by default when Supabase credentials are configured (`NODE_ENV=production`). You can explicitly override this with `PERSISTENCE_ENABLED=true` or `false`.
+
 ### 2. Backend
 
 ```powershell
