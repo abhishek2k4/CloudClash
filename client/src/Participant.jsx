@@ -5,10 +5,11 @@ import "./App.css";
 const STORAGE_KEY = "cloud-clash-participant";
 
 function Participant() {
-  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch { localStorage.removeItem(STORAGE_KEY); }
   const [name, setName] = useState(saved?.name || "");
-  const [code, setCode] = useState("");
-  const [participant, setParticipant] = useState(saved || null);
+  const [code, setCode] = useState(saved?.code || "");
+  const [participant, setParticipant] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [question, setQuestion] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
@@ -41,9 +42,30 @@ function Participant() {
     socket.on("round_started", onRoundStarted);
     socket.on("round_finished", onRoundFinished);
     socket.on("competition_finished", onFinished);
+    const onConnect = () => {
+      if (!saved?.id || !saved?.code || !saved?.name) return;
+      socket.emit("join_competition", {
+        name: saved.name, code: saved.code, participantId: saved.id,
+      }, (response) => {
+        if (!response.success) {
+          localStorage.removeItem(STORAGE_KEY);
+          setError(response.message);
+          return;
+        }
+        setParticipant({ ...response.participant, code: saved.code });
+        setName(saved.name);
+        setCode(saved.code);
+        setParticipants(response.snapshot?.participants || []);
+        setStatus(response.snapshot?.status || "waiting");
+        setLeaderboard(response.snapshot?.leaderboard || []);
+        if (response.snapshot?.question) setQuestion(response.snapshot.question);
+      });
+    };
+    socket.on("connect", onConnect);
     socket.on("connect_error", () => setError("Connection lost. Trying to reconnect..."));
     socket.connect();
     return () => {
+      socket.off("connect", onConnect);
       socket.off("participants_updated", onParticipants);
       socket.off("question_started", onQuestion);
       socket.off("question_ended", onQuestionEnded);
@@ -66,10 +88,10 @@ function Participant() {
     setError("");
     socket.emit("join_competition", { name, code, participantId: participant?.id }, (response) => {
       if (!response.success) return setError(response.message);
-      const joined = { ...response.participant, name };
+      const joined = { ...response.participant, name, code };
       setParticipant(joined);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(joined));
-      setParticipants((response.snapshot?.participants || []));
+      setParticipants(response.snapshot?.participants || []);
       const snapshot = response.snapshot;
       if (snapshot?.question) {
         setQuestion(snapshot.question);
@@ -121,6 +143,7 @@ function Participant() {
       {submitted && <p className="muted">Locked in. Wait for the next question.</p>}
     </section>}
     {!question && status === "waiting" && <section className="panel"><h2>You're in.</h2><p>Waiting for the host to start Round 1.</p><p className="muted">{participants.length} participants joined</p></section>}
+    {!question && status === "running" && <section className="panel"><h2>Answer locked</h2><p>Question closed. Get ready for the next one.</p></section>}
     {!question && status === "round_break" && <section className="panel"><h2>Round complete</h2><p>Take a breath. The host will start the next round.</p></section>}
     {!question && status === "finished" && <section className="panel"><h2>Competition finished!</h2><p>That's a wrap. Here's the final result.</p></section>}
     {result?.correctOption !== undefined && <p className="feedback">Correct answer: {String.fromCharCode(65 + result.correctOption)}{result.explanation ? ` — ${result.explanation}` : ""}</p>}
