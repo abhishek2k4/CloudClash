@@ -37,3 +37,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .stats-grid h2{font-size:2rem;margin:0}
 .feedback{padding:14px 18px;border-radius:10px;background:#102b29;border:1px solid #24544e;color:#a5e6d2}
 @media(max-width:600px){.option-grid{grid-template-columns:1fr}.panel{padding:20px}.stats-grid{gap:10px}}
+
+.import-actions{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}
+.import-actions button,.upload-button{width:auto;display:inline-flex;align-items:center;justify-content:center;min-height:48px}
+.secondary-button{background:#1c2d46;border:1px solid #3b5577;color:#dce9fb}
+.secondary-button:hover:not(:disabled){background:#263e5e}
+.upload-button{position:relative;overflow:hidden;border-radius:10px;background:#347ff0;color:#fff;padding:14px 18px;font-weight:700;cursor:pointer}
+.upload-button:hover{background:#5595ff}
+.upload-button input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.success-message{color:#8ce0bc;background:#102b29;border:1px solid #24544e;padding:12px 14px;border-radius:9px}
