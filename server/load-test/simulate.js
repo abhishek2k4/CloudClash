@@ -151,7 +151,7 @@ async function main() {
   const expectedAnswers = participantCount * 50;
   const expectedScore = 375;
   const simulatedEntries = finalResults.leaderboard.filter((entry) =>
-    /^Load Tester \\d{3}$/.test(entry.name)
+    entry.name.startsWith("Load Tester ")
   );
   const simulatedScoresCorrect = simulatedEntries.length === participantCount &&
     simulatedEntries.every((entry) => entry.score === expectedScore && entry.correct === 50);
