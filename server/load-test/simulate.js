@@ -73,6 +73,7 @@ async function connectClient(name) {
   });
   const result = await ack(socket, "join_competition", { name, code: competitionCode });
   if (!result?.success) throw new Error(`${name} could not join: ${result?.message || "unknown error"}`);
+  socket.data.participantId = result.participant.id;
   return socket;
 }
 
@@ -127,15 +128,7 @@ async function main() {
     )
   );
   clients.push(...connected);
-  clients.forEach((socket, index) => {
-    // The server sends participantId in the join acknowledgement; retain it for answer events.
-    // Store it on socket.data for the simulation callback.
-    socket.data.participantId = socket.id;
-    attachQuestionSimulation(socket, index);
-  });
-
-  // Retrieve the server-issued participant IDs through a second join using the
-  // same socket identity. The server associates the ID with socket.data.
+  clients.forEach((socket, index) => attachQuestionSimulation(socket, index));
   // The load-test script keeps the ID returned by the join callback below.
   console.log(`Connected ${clients.length}/${participantCount} participants.`);
 
