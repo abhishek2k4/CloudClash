@@ -1,40 +1,19 @@
 # CLOUD CLASH
 
-A two-round, real-time quiz platform for a single hosted event.
+A real-time quiz platform for a single live room, with host-configurable rounds and server-authoritative gameplay.
 
 ## Stack
 
-- React + Vite participant and host interfaces
-- Node.js + Express + Socket.IO authoritative quiz server
-- Supabase Postgres for competition-state snapshots
-- Render (server) and Vercel (client) are the intended deployment targets
+- React + Vite
+- Node.js + Express + Socket.IO
+- Supabase Postgres for optional persisted competition snapshots
+- Render (backend) and Vercel (frontend) deployment targets
 
 ## Local setup
 
-Requirements: Node.js 20.19+ (or 22.12+), npm, and a Supabase project.
+Requirements: Node.js 20.19+ (or 22.12+), npm.
 
-### 1. Database
-
-In the Supabase SQL Editor, run:
-
-```sql
-create table if not exists public.competition_state (
-  id text primary key,
-  state jsonb not null,
-  updated_at timestamptz not null default now()
-);
-alter table public.competition_state enable row level security;
-```
-
-Use the project's server-side Secret key in the backend environment only. Never put it in a Vite variable or commit it.
-
-### Local state behavior
-
-Local development is memory-only by default, even if Supabase credentials exist in `server/.env`. This means restarting the local backend starts a fresh event and does not restore old participants or scores. Set `PERSISTENCE_ENABLED=true` in `server/.env` only when you intentionally want local testing to read/write the shared Supabase competition state.
-
-Production enables persistence by default when Supabase credentials are configured (`NODE_ENV=production`). You can explicitly override this with `PERSISTENCE_ENABLED=true` or `false`.
-
-### 2. Backend
+### Backend
 
 ```powershell
 cd server
@@ -42,87 +21,87 @@ npm install
 ```
 
 Create `server/.env` from `server/.env.example` and set:
-- `HOST_PASSWORD`: a strong private host password
-- `COMPETITION_CODE`: the code participants enter
-- `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`: your Supabase project URL and Secret key
-- `CLIENT_ORIGIN`: the exact frontend origin; multiple origins can be comma-separated
+- `HOST_PASSWORD`: private host password
+- `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`: server-side Supabase credentials when persistence is required
+- `CLIENT_ORIGIN`: frontend origin
 
-Then run:
+Local development is memory-only by default. Set `PERSISTENCE_ENABLED=true` only when intentionally testing persisted state. Production enables persistence by default when credentials exist.
 
-```powershell
-npm run dev
-```
+Run `npm run dev`. Backend health: `http://localhost:5000/health`.
 
-Backend health endpoint: `http://localhost:5000/health`.
-
-### 3. Frontend
-
-In a second terminal:
+### Frontend
 
 ```powershell
 cd client
 npm install
 ```
 
-Create `client/.env` from `client/.env.example`. Set `VITE_SERVER_URL=http://localhost:5000`, then:
+Create `client/.env` from `client/.env.example` and set `VITE_SERVER_URL=http://localhost:5000`. Run `npm run dev`.
 
-```powershell
-npm run dev
-```
+Open the frontend root URL. The landing page provides **Create quiz** and **Join quiz**.
 
-Open the Vite URL for participants and append `/host` for the host dashboard.
+## User flow
 
-## Competition rules
+1. Host chooses **Create quiz** and authenticates with the host password.
+2. Host chooses 1–10 rounds and sets points per correct answer (1–100) and question timer (5–300 seconds) for each round.
+3. The server creates a room and returns a generated room code.
+4. Host imports a CSV question bank and shares the room code.
+5. Players join from the landing page using a display name and room code.
+6. Host starts the quiz. Questions advance automatically when their server timer expires.
+7. Host can pause and resume the active question. Pause freezes the remaining time and blocks answer submissions; resume continues the same question with the remaining time.
+8. At each round break, the host starts the next round. The final round ends the quiz and shows the leaderboard.
 
-- Each round supports its own question count; the two rounds do not need to be equal
-- Host-configurable time limit (5–300 seconds) and points per correct answer (1–100) for each round
-- No negative marking; incorrect or unanswered questions score zero
-- Timers and scoring are configured in the host dashboard before the competition; the server enforces and persists the selected settings
-- Questions advance automatically; the host starts Round 2 after reviewing Round 1
-- One attempt per participant per question
-- Tie-break order: total score, number of correct answers, lower total response time, then name
+Only one active room is supported at a time. A host can create a new room after the previous quiz has finished.
 
 ## Question import
 
-From the host dashboard (`/host`), download the CSV header template, add one row per question, and upload it before starting Round 1. Each row is assigned to Round 1 or Round 2, and either round may contain any number of questions. An empty round is allowed in the imported bank, but it cannot be started until it has at least one question.
+Download the CSV template from the host dashboard. Required columns:
 
-Required columns: `round,question,option_a,option_b,option_c,option_d,correct_option`. The `explanation` column is optional.
+`round,question,option_a,option_b,option_c,option_d,correct_option`
 
-Use round `1` or `2`; correct option can be `A`, `B`, `C`, or `D`. Explanation is optional. Export as CSV UTF-8. The importer validates the full file before replacing the question bank.
+Optional column: `explanation`.
 
-## Persistence and recovery
+Use round numbers from 1 through the number configured during quiz creation. Correct option accepts A, B, C or D (also 1–4). Every configured round must contain at least one question before the host can start. Importing replaces the full question bank.
 
-The backend stores the competition as a JSON snapshot in Supabase. It restores participants, imported questions, quiz settings, scores, accepted answers, round status, and the active question deadline on startup. A participant reconnecting during a live question receives their own submitted-answer state, so they cannot accidentally submit twice after refreshing.
+## Scoring and controls
 
-The server health endpoint reports `503 degraded` when configured persistence cannot be restored or a save has failed. In memory-only mode, health is available but explicitly reports that persistence is not enabled; do not use that mode for the live event.
+- Correct answers earn the points configured for that round.
+- Incorrect and unanswered questions score zero; no negative marking.
+- One answer per player per question.
+- Leaderboard tie-break order: total score, correct answers, lower total response time, then name.
+- Start, pause, resume and end actions are validated by the server.
+- The server owns question deadlines; clients cannot extend the timer or submit while paused/closed.
 
-**Operational limitation:** this is a single-server, single-event design. Do not run multiple backend instances against the same competition row. A database outage can prevent answer acceptance. Take a controlled test run before the event and verify Supabase connectivity, host access, question import, reconnects, and a full two-round finish.
+## Persistence and operational notes
 
-## Deployment checklist
+The backend stores a JSON snapshot in Supabase when persistence is enabled. Use one backend instance only; this is a single-room event application, not a horizontally scaled multi-room service. During a live event, confirm Supabase health and run a complete rehearsal.
+
+Local memory-only mode resets the room when the backend restarts. Production persistence restores the saved room and active timer state. Treat the host password and Supabase Secret key as server-only secrets.
+
+## Load test
+
+With the backend running locally and `HOST_PASSWORD` set in `server/.env`:
+
+```powershell
+cd server
+npm run test:load
+```
+
+The simulator creates a fresh two-round room, imports synthetic questions, joins up to 50 virtual players, plays both rounds, and checks accepted answers and final scoring. It uses 5-second questions to keep the run manageable. Run it against a fresh local backend; it is not a production test.
+
+## Deployment
 
 ### Backend (Render)
 - Root directory: `server`
-- Build command: `npm install`
-- Start command: `npm start`
-- Set `PORT` via the platform (do not hardcode it)
-- Set `CLIENT_ORIGIN` to the deployed Vercel URL
-- Add `COMPETITION_CODE`, `HOST_PASSWORD`, both round timer values, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`
-- Use one instance; enable WebSocket support (Render supports Socket.IO over WebSockets)
+- Build: `npm install`
+- Start: `npm start`
+- Configure `HOST_PASSWORD`, `CLIENT_ORIGIN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `NODE_ENV=production`
+- Keep a single backend instance
 
 ### Frontend (Vercel)
 - Root directory: `client`
-- Build command: `npm run build`
-- Output directory: `dist`
-- Set `VITE_SERVER_URL` to the deployed backend URL (no trailing slash)
+- Build: `npm run build`
+- Output: `dist`
+- Set `VITE_SERVER_URL` to the deployed backend URL
 
-### Before opening the event
-1. Import and verify the question counts and content for both rounds.
-2. Test with at least 30 simulated or real participant browsers.
-3. Test one correct answer, one wrong answer, an unanswered timeout, and duplicate submission.
-4. Restart the backend during a test question and verify the remaining deadline and participant answer state.
-5. Verify Round 1 leaderboard, manual Round 2 start, and final leaderboard.
-6. Keep the host laptop and network stable; do not restart or redeploy during the live event.
-
-## Demo content
-
-The included questions in `server/data/questions.js` are placeholders for local development only. Replace them by importing the approved event CSV before the competition.
+Before the event, rehearse player joining, question import, start/pause/resume, each round transition, ending the quiz, reconnects, and final leaderboard.
