@@ -541,3 +541,6 @@ p {
 .builder-footer .primary{min-width:230px}
 .full.upload-control{width:100%;margin-top:14px}
 @media(max-width:680px){.builder-heading{align-items:flex-start;flex-direction:column}.builder-field-row{grid-template-columns:1fr}.builder-question-top{gap:7px;flex-wrap:wrap}.question-top-spacer{display:none}.builder-footer{align-items:stretch;flex-direction:column}.builder-footer .primary{width:100%}.builder-toolbar .secondary{font-size:.75rem;padding:9px}.builder-count{font-size:.8rem}}
+
+.header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+@media(max-width:520px){.header-actions{align-items:flex-end;flex-direction:column}.header-actions .secondary{padding:8px 10px;font-size:.8rem}}
