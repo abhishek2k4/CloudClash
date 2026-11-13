@@ -28,10 +28,15 @@ let completed = false;
 function ack(socket, event, payload, timeout = 10000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Timed out waiting for ${event} acknowledgement`)), timeout);
-    socket.emit(event, payload, (result) => {
+    const callback = (result) => {
       clearTimeout(timer);
       resolve(result);
-    });
+    };
+    // Socket.IO treats the last function argument as the acknowledgement.
+    // Do not insert an undefined payload for events whose server handler only
+    // accepts the acknowledgement callback.
+    if (payload === undefined) socket.emit(event, callback);
+    else socket.emit(event, payload, callback);
   });
 }
 
