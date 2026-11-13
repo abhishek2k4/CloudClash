@@ -163,7 +163,7 @@ async function main() {
     throw new Error(`Load test requires a fresh waiting competition; current status is "${healthBody.competition}". Restart the local backend first.`);
   }
 
-  const host = io(serverUrl, { transports: ["websocket"], reconnection: false, timeout: 10000 });
+  let host = io(serverUrl, { transports: ["websocket"], reconnection: false, timeout: 10000 });
   await new Promise((resolve, reject) => {
     host.once("connect", resolve);
     host.once("connect_error", reject);
