@@ -1,27 +1,435 @@
-import {useCallback,useEffect,useRef,useState} from "react";
-import {socket} from "./socket";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { socket } from "./socket";
 import "./App.css";
-export default function Participant({onHome,onActivityChange}){
- const [name,setName]=useState(""),[code,setCode]=useState(""),participantRef=useRef(null);
- const [participant,setParticipant]=useState(null),[participants,setParticipants]=useState([]),[question,setQuestion]=useState(null),[seconds,setSeconds]=useState(0),[selected,setSelected]=useState(null),[submitted,setSubmitted]=useState(false),[result,setResult]=useState(null),[leaderboard,setLeaderboard]=useState([]),[status,setStatus]=useState("waiting"),[error,setError]=useState("");
- const apply=useCallback((r,joinedCode)=>{if(!r?.success){setError(r?.message||"Could not join.");return;}const p={...r.participant,name:r.participant.name,code:joinedCode};participantRef.current=p;setParticipant(p);setParticipants(r.snapshot?.participants||[]);setStatus(r.snapshot?.status||"waiting");setLeaderboard(r.snapshot?.leaderboard||[]);setQuestion(r.snapshot?.question||null);setSelected(r.snapshot?.answer?.selectedOption??null);setSubmitted(Boolean(r.snapshot?.answer));setResult(r.snapshot?.lastQuestionResult||null);setSeconds(r.snapshot?.question?.endsAt?Math.max(0,Math.ceil((r.snapshot.question.endsAt-Date.now())/1000)):0);},[]);
- useEffect(()=>{const people=setParticipants,onStatus=setStatus,onQuestion=q=>{setQuestion(q);setSelected(null);setSubmitted(false);setResult(null);setSeconds(Math.max(0,Math.ceil((q.endsAt-Date.now())/1000)));setStatus("running");},onResume=d=>setQuestion(q=>q?({...q,endsAt:d.endsAt}):q),onEnd=d=>{setResult(d);setQuestion(null);},onRound=d=>{setStatus("running");setResult({message:"Round "+d.round+" is starting"});},onBreak=d=>{setStatus("round_break");setQuestion(null);setLeaderboard(d.leaderboard||[]);setResult({message:"Round complete"});},onFinish=d=>{setStatus("finished");setLeaderboard(d.leaderboard||[]);setQuestion(null);};socket.on("participants_updated",people);socket.on("competition_status_updated",onStatus);socket.on("question_started",onQuestion);socket.on("question_resumed",onResume);socket.on("question_ended",onEnd);socket.on("round_started",onRound);socket.on("round_finished",onBreak);socket.on("competition_finished",onFinish);const connect=()=>{const p=participantRef.current;if(p)socket.emit("join_competition",{name:p.name,code:p.code,participantId:p.id},r=>apply(r,p.code));};socket.on("connect",connect);socket.connect();return()=>{socket.off("participants_updated",people);socket.off("competition_status_updated",onStatus);socket.off("question_started",onQuestion);socket.off("question_resumed",onResume);socket.off("question_ended",onEnd);socket.off("round_started",onRound);socket.off("round_finished",onBreak);socket.off("competition_finished",onFinish);socket.off("connect",connect);socket.disconnect();};},[apply]);
 
- useEffect(()=>{if(!question||status!=="running")return;const tick=()=>setSeconds(Math.max(0,Math.ceil((question.endsAt-Date.now())/1000)));tick();const t=setInterval(tick,200);return()=>clearInterval(t);},[question,status]);
- const join=()=>{setError("");socket.emit("join_competition",{name,code:code.trim().toUpperCase()},r=>apply(r,code.trim().toUpperCase()));};
- useEffect(()=>{onActivityChange?.(Boolean(participant)&&status!=="finished");return()=>onActivityChange?.(false);},[participant,status,onActivityChange]);
- const requestHome=()=>{if(participant&&status!=="finished"){const leave=window.confirm("You're in a live quiz. If you leave, you'll stop participating and may lose your place in the game. Do you really want to leave?");if(!leave)return;}onHome();};
+const getInitials = (name = "") =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("") || "PL";
 
- const submit=()=>{if(selected===null||submitted||!question||!participant)return;socket.emit("submit_answer",{participantId:participant.id,questionNumber:question.questionNumber,selectedOption:selected},r=>{if(!r.success)setError(r.message);else setSubmitted(true);});};
- if(!participant)return <main className="app-shell narrow"><button className="back-link" onClick={requestHome}>← Home</button><section className="panel"><p className="eyebrow">PLAYER ENTRY</p><h1>Ready to<br/>clash?</h1><p className="muted">Enter the name you want on the leaderboard and the room code shared by your host.</p><input placeholder="Your name" maxLength={40} value={name} onChange={e=>setName(e.target.value)}/><input placeholder="Room code" maxLength={12} value={code} onChange={e=>setCode(e.target.value.toUpperCase())}/><button className="primary full" disabled={!name.trim()||!code.trim()} onClick={join}>Join room →</button>{error&&<p className="error">{error}</p>}</section></main>;
- return <main className="app-shell"><header className="dashboard-head"><div><p className="eyebrow">PLAYER · {participant.name}</p><h1>Stay sharp.</h1></div><div className="header-actions"><span className={"status-chip "+status}>{status.replace("_"," ")}</span><button className="secondary" onClick={requestHome}>Leave quiz</button></div></header>
- {question&&status==="running"&&<section className="panel"><div className="question-meta"><span>ROUND {question.round} · QUESTION {question.questionNumber}/{question.totalQuestions} · {question.marks} PTS</span><strong className={seconds<=5?"urgent":""}>{seconds}s</strong></div><h2 className="question-text">{question.text}</h2><div className="option-grid">{question.options.map((o,i)=><button key={i} className={selected===i?"option selected":"option"} disabled={submitted||seconds===0} onClick={()=>setSelected(i)}>{String.fromCharCode(65+i)}. {o}</button>)}</div><button className="primary full" disabled={selected===null||submitted||seconds===0} onClick={submit}>{submitted?"Answer submitted":"Lock answer"}</button>{submitted&&<p className="muted">Answer locked. Good luck.</p>}</section>}
- {!question&&status==="waiting"&&<section className="panel"><h2>You're in.</h2><p>Waiting for the host to start. {participants.length} players in the room.</p></section>}
- {status==="paused"&&<section className="panel pause-state"><h2>Quiz paused</h2><p>The host has paused the game. Your current question and timer are on hold.</p></section>}
- {!question&&status==="running"&&<section className="panel"><h2>Question closed</h2><p>Get ready for the next one.</p>{result?.correctOption!==undefined&&<p>Correct answer: {String.fromCharCode(65+result.correctOption)}</p>}</section>}
- {status==="round_break"&&<section className="panel"><h2>Round complete.</h2><p>Catch your breath. The host will start the next round.</p></section>}
- {status==="finished"&&<section className="panel"><h2>That's a wrap.</h2><p>The quiz has ended. Here's where you landed.</p></section>}
- {(status==="round_break"||status==="finished")&&<section className="panel"><p className="eyebrow">SCOREBOARD</p><h2>Leaderboard</h2>{leaderboard.map(p=><div className="leader-row" key={p.id}><strong>#{p.rank} {p.name}</strong><strong>{p.score} pts</strong></div>)}</section>}
- {error&&<p className="error">{error}</p>}
- </main>;
+export default function Participant({
+  onHome,
+  onActivityChange,
+  initialName = "",
+  initialCode = ""
+}) {
+  const [name, setName] = useState(initialName);
+  const [code, setCode] = useState(initialCode);
+  const participantRef = useRef(null);
+
+  const [participant, setParticipant] = useState(null);
+  const [participants, setParticipants] = useState([]);
+  const [question, setQuestion] = useState(null);
+  const [seconds, setSeconds] = useState(0);
+  const [totalSeconds, setTotalSeconds] = useState(20);
+  const [selected, setSelected] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [result, setResult] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [status, setStatus] = useState("waiting");
+  const [error, setError] = useState("");
+
+  const apply = useCallback((r, joinedCode) => {
+    if (!r?.success) {
+      setError(r?.message || "Could not join.");
+      return;
+    }
+    const p = { ...r.participant, name: r.participant.name, code: joinedCode };
+    participantRef.current = p;
+    setParticipant(p);
+    setParticipants(r.snapshot?.participants || []);
+    setStatus(r.snapshot?.status || "waiting");
+    setLeaderboard(r.snapshot?.leaderboard || []);
+    const snapQ = r.snapshot?.question || null;
+    setQuestion(snapQ);
+    setSelected(r.snapshot?.answer?.selectedOption ?? null);
+    setSubmitted(Boolean(r.snapshot?.answer));
+    setResult(r.snapshot?.lastQuestionResult || null);
+    if (snapQ?.endsAt) {
+      const rem = Math.max(0, Math.ceil((snapQ.endsAt - Date.now()) / 1000));
+      setSeconds(rem);
+      setTotalSeconds(snapQ.duration || rem || 20);
+    } else {
+      setSeconds(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    const people = setParticipants;
+    const onStatus = setStatus;
+    const onQuestion = (q) => {
+      setQuestion(q);
+      setSelected(null);
+      setSubmitted(false);
+      setResult(null);
+      const rem = Math.max(0, Math.ceil((q.endsAt - Date.now()) / 1000));
+      setSeconds(rem);
+      setTotalSeconds(q.duration || rem || 20);
+      setStatus("running");
+    };
+    const onResume = (d) => setQuestion((q) => (q ? { ...q, endsAt: d.endsAt } : q));
+    const onEnd = (d) => {
+      setResult(d);
+      setQuestion(null);
+    };
+    const onRound = (d) => {
+      setStatus("running");
+      setResult({ message: "Round " + d.round + " is starting" });
+    };
+    const onBreak = (d) => {
+      setStatus("round_break");
+      setQuestion(null);
+      setLeaderboard(d.leaderboard || []);
+      setResult({ message: "Round complete" });
+    };
+    const onFinish = (d) => {
+      setStatus("finished");
+      setLeaderboard(d.leaderboard || []);
+      setQuestion(null);
+    };
+
+    socket.on("participants_updated", people);
+    socket.on("competition_status_updated", onStatus);
+    socket.on("question_started", onQuestion);
+    socket.on("question_resumed", onResume);
+    socket.on("question_ended", onEnd);
+    socket.on("round_started", onRound);
+    socket.on("round_finished", onBreak);
+    socket.on("competition_finished", onFinish);
+
+    const connect = () => {
+      const p = participantRef.current;
+      if (p) {
+        socket.emit(
+          "join_competition",
+          { name: p.name, code: p.code, participantId: p.id },
+          (r) => apply(r, p.code)
+        );
+      }
+    };
+
+    socket.on("connect", connect);
+    socket.connect();
+
+    return () => {
+      socket.off("participants_updated", people);
+      socket.off("competition_status_updated", onStatus);
+      socket.off("question_started", onQuestion);
+      socket.off("question_resumed", onResume);
+      socket.off("question_ended", onEnd);
+      socket.off("round_started", onRound);
+      socket.off("round_finished", onBreak);
+      socket.off("competition_finished", onFinish);
+      socket.off("connect", connect);
+      socket.disconnect();
+    };
+  }, [apply]);
+
+  useEffect(() => {
+    if (!question || status !== "running") return;
+    const tick = () =>
+      setSeconds(Math.max(0, Math.ceil((question.endsAt - Date.now()) / 1000)));
+    tick();
+    const t = setInterval(tick, 200);
+    return () => clearInterval(t);
+  }, [question, status]);
+
+  const join = (e) => {
+    e?.preventDefault();
+    if (!name.trim() || !code.trim()) return;
+    setError("");
+    const cleanCode = code.trim().toUpperCase();
+    socket.emit("join_competition", { name: name.trim(), code: cleanCode }, (r) =>
+      apply(r, cleanCode)
+    );
+  };
+
+  useEffect(() => {
+    onActivityChange?.(Boolean(participant) && status !== "finished");
+    return () => onActivityChange?.(false);
+  }, [participant, status, onActivityChange]);
+
+  const requestHome = () => {
+    if (participant && status !== "finished") {
+      const leave = window.confirm(
+        "You're in a live quiz. If you leave, you'll stop participating and may lose your place in the game. Do you really want to leave?"
+      );
+      if (!leave) return;
+    }
+    onHome();
+  };
+
+  const submit = () => {
+    if (selected === null || submitted || !question || !participant) return;
+    socket.emit(
+      "submit_answer",
+      {
+        participantId: participant.id,
+        questionNumber: question.questionNumber,
+        selectedOption: selected
+      },
+      (r) => {
+        if (!r.success) setError(r.message);
+        else setSubmitted(true);
+      }
+    );
+  };
+
+  /* ENTRY VIEW */
+  if (!participant) {
+    return (
+      <main className="app-shell narrow">
+        <button className="back-link" onClick={requestHome}>
+          ← Back to Home
+        </button>
+
+        <section className="surface-card">
+          <p className="eyebrow">PLAYER ENTRY</p>
+          <h1>Enter the Arena.</h1>
+          <p className="muted" style={{ marginTop: 6, marginBottom: 20 }}>
+            Confirm your display name and the room access code shared by your host.
+          </p>
+
+          <form onSubmit={join} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className="field-group">
+              <label className="field-label" htmlFor="join-code">Room Code</label>
+              <input
+                id="join-code"
+                className="input-control input-code"
+                placeholder="CODE"
+                maxLength={12}
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+              />
+            </div>
+
+            <div className="field-group">
+              <label className="field-label" htmlFor="join-name">Display Name</label>
+              <input
+                id="join-name"
+                className="input-control"
+                placeholder="Your name on the leaderboard"
+                maxLength={40}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary btn-full"
+              style={{ marginTop: 6 }}
+              disabled={!name.trim() || !code.trim()}
+            >
+              Join Room →
+            </button>
+          </form>
+
+          {error && <div className="error-banner">{error}</div>}
+        </section>
+      </main>
+    );
+  }
+
+  const progressPct = question
+    ? Math.min(100, Math.max(0, (seconds / Math.max(1, totalSeconds)) * 100))
+    : 0;
+  const timerState = seconds <= 5 ? "urgent" : seconds <= 10 ? "warning" : "";
+
+  /* ACTIVE MATCH & LOBBY VIEW */
+  return (
+    <main className="app-shell">
+      <header className="dashboard-head">
+        <div>
+          <p className="eyebrow">
+            PLAYER · {participant.name} · ROOM {participant.code}
+          </p>
+          <h1>
+            {status === "waiting"
+              ? "Ready in Lobby"
+              : status === "finished"
+              ? "Match Concluded"
+              : "Stay Sharp."}
+          </h1>
+        </div>
+
+        <div className="header-actions">
+          <span className={`status-chip ${status}`}>{status.replace("_", " ")}</span>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={requestHome}>
+            Leave
+          </button>
+        </div>
+      </header>
+
+      {question && status === "running" && (
+        <section className="arena-card">
+          <div className="timer-track">
+            <div className={`timer-fill ${timerState}`} style={{ width: `${progressPct}%` }} />
+          </div>
+
+          <div className="question-hud">
+            <span className="hud-badge">
+              ROUND {String(question.round).padStart(2, "0")} · Q{question.questionNumber}/
+              {question.totalQuestions} · {question.marks} PTS
+            </span>
+            <span className={`timer-readout ${timerState}`}>{seconds}s</span>
+          </div>
+
+          <h2 className="question-prompt">{question.text}</h2>
+
+          <div className="options-grid">
+            {question.options.map((o, i) => {
+              const isSelected = selected === i;
+              const tileClass = `option-tile ${
+                submitted && isSelected ? "locked" : isSelected ? "selected" : ""
+              }`;
+              return (
+                <button
+                  type="button"
+                  key={i}
+                  className={tileClass}
+                  disabled={submitted || seconds === 0}
+                  onClick={() => setSelected(i)}
+                >
+                  <span className="option-key">{String.fromCharCode(65 + i)}</span>
+                  <span>{o}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-primary btn-full"
+            disabled={selected === null || submitted || seconds === 0}
+            onClick={submit}
+          >
+            {submitted ? "Answer Locked In" : "Lock Answer"}
+          </button>
+
+          {submitted && (
+            <div className="success-banner">
+              Selection locked. Waiting for the round timer to conclude.
+            </div>
+          )}
+        </section>
+      )}
+
+      {!question && status === "waiting" && (
+        <section className="surface-card">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow" style={{ marginBottom: 2 }}>WAITING FOR HOST</p>
+              <h2>You're on the roster.</h2>
+            </div>
+            <span className="status-chip">{participants.length} Connected</span>
+          </div>
+          <p className="muted">
+            The match will begin automatically as soon as the host launches Round 01.
+          </p>
+
+          {participants.length > 0 && (
+            <div className="roster-grid">
+              {participants.map((p) => (
+                <div className="player-chip" key={p.id}>
+                  <span className="avatar-monogram">{getInitials(p.name)}</span>
+                  <span className="player-chip-name">
+                    {p.name} {p.id === participant.id ? "(You)" : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {status === "paused" && (
+        <section className="surface-card" style={{ borderColor: "rgba(245, 158, 11, 0.35)" }}>
+          <p className="eyebrow" style={{ color: "#fcd34d" }}>MATCH PAUSED</p>
+          <h2>Session on hold.</h2>
+          <p className="muted" style={{ marginTop: 6 }}>
+            The host has paused the match. Your current question and timer are frozen.
+          </p>
+        </section>
+      )}
+
+      {!question && status === "running" && (
+        <section className="surface-card">
+          <p className="eyebrow">TELEMETRY SYNC</p>
+          <h2>Question Closed</h2>
+          <p className="muted" style={{ marginTop: 6 }}>
+            Stand by for the next prompt.
+          </p>
+          {result?.correctOption !== undefined && (
+            <div className="success-banner">
+              Verified Answer: Option {String.fromCharCode(65 + result.correctOption)}
+            </div>
+          )}
+        </section>
+      )}
+
+      {status === "round_break" && (
+        <section className="surface-card">
+          <p className="eyebrow">INTERMISSION</p>
+          <h2>Round Complete</h2>
+          <p className="muted" style={{ marginTop: 6 }}>
+            Standings updated. The host will initiate the next round shortly.
+          </p>
+        </section>
+      )}
+
+      {status === "finished" && (
+        <section className="surface-card">
+          <p className="eyebrow">FINAL TELEMETRY</p>
+          <h2>Match Complete</h2>
+          <p className="muted" style={{ marginTop: 6 }}>
+            Final scores have been recorded. Check your placement below.
+          </p>
+        </section>
+      )}
+
+      {(status === "round_break" || status === "finished") && (
+        <section className="surface-card">
+          <p className="eyebrow">SCOREBOARD</p>
+          <h2>{status === "finished" ? "Final Standings" : "Current Standings"}</h2>
+
+          {leaderboard.length >= 3 && (
+            <div className="podium-grid">
+              {[leaderboard[1], leaderboard[0], leaderboard[2]].map((p, idx) => {
+                const actualRank = idx === 0 ? 2 : idx === 1 ? 1 : 3;
+                return (
+                  <div className={`podium-slot rank-${actualRank}`} key={p.id}>
+                    <span className="podium-rank">#{String(actualRank).padStart(2, "0")}</span>
+                    <span className="avatar-monogram">{getInitials(p.name)}</span>
+                    <span className="podium-name">{p.name}</span>
+                    <span className="podium-score">{p.score} pts</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="standings-list">
+            {leaderboard.map((p) => (
+              <div className="standing-row" key={p.id}>
+                <div className="standing-left">
+                  <span className="standing-rank">#{String(p.rank).padStart(2, "0")}</span>
+                  <span className="avatar-monogram">{getInitials(p.name)}</span>
+                  <strong>
+                    {p.name} {p.id === participant.id ? "(You)" : ""}
+                  </strong>
+                </div>
+                <span className="standing-score">{p.score} pts</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {error && <div className="error-banner">{error}</div>}
+    </main>
+  );
 }
