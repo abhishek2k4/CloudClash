@@ -1,197 +1,36 @@
-import { useEffect, useRef, useState } from "react";
-import { socket } from "./socket";
+import {useEffect,useRef,useState} from "react";
+import {socket} from "./socket";
 import "./App.css";
 
-function Host() {
-  const [password, setPassword] = useState("");
-  const passwordRef = useRef("");
-  const [authenticated, setAuthenticated] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [participants, setParticipants] = useState([]);
-  const [status, setStatus] = useState("waiting");
-  const [round, setRound] = useState(0);
-  const [question, setQuestion] = useState(null);
-  const [secondsLeft, setSecondsLeft] = useState(0);
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [error, setError] = useState("");
-  const [importStatus, setImportStatus] = useState("");
-  const [importing, setImporting] = useState(false);
-  const [questionCounts, setQuestionCounts] = useState({ 1: 0, 2: 0 });
-  const [settings, setSettings] = useState({ roundSeconds: { 1: 20, 2: 30 }, marks: { 1: 5, 2: 10 } });
-  const [settingsSaved, setSettingsSaved] = useState(false);
-  const [savingSettings, setSavingSettings] = useState(false);
-
-  useEffect(() => {
-    const applyHostSnapshot = (response) => {
-      if (!response?.success) {
-        setAuthenticated(false);
-        setError(response?.message || "Host authentication failed.");
-        return;
-      }
-      setAuthenticated(true);
-      setParticipants(response.participants || []);
-      setStatus(response.status || "waiting");
-      setRound(response.round || 0);
-      setLeaderboard(response.leaderboard || []);
-      setQuestionCounts(response.questionCounts || { 1: 0, 2: 0 });
-      if (response.settings) setSettings(response.settings);
-      setQuestion(response.question || null);
-      setSecondsLeft(response.question?.endsAt ? Math.max(0, Math.ceil((response.question.endsAt - Date.now()) / 1000)) : 0);
-    };
-    const onConnect = () => {
-      setConnected(true);
-      setError("");
-      if (passwordRef.current) socket.emit("host_login", passwordRef.current, applyHostSnapshot);
-    };
-    const onDisconnect = () => { setConnected(false); setError("Disconnected. Reconnecting..."); };
-    const onParticipants = setParticipants;
-    const onStatus = setStatus;
-    const onQuestion = (data) => { setQuestion(data); setRound(data.round); setSecondsLeft(Math.max(0, Math.ceil((data.endsAt - Date.now()) / 1000))); };
-    const onQuestionEnded = () => setQuestion(null);
-    const onRoundStarted = ({ round: next }) => { setRound(next); setStatus("running"); setQuestion(null); };
-    const onRoundFinished = ({ leaderboard: data }) => { setLeaderboard(data); setStatus("round_break"); setQuestion(null); };
-    const onFinished = ({ leaderboard: data }) => { setLeaderboard(data); setStatus("finished"); setQuestion(null); };
-    socket.on("connect", onConnect); socket.on("disconnect", onDisconnect);
-    socket.on("participants_updated", onParticipants); socket.on("competition_status_updated", onStatus);
-    socket.on("question_started", onQuestion); socket.on("question_ended", onQuestionEnded);
-    socket.on("round_started", onRoundStarted); socket.on("round_finished", onRoundFinished);
-    socket.on("competition_finished", onFinished); socket.connect();
-    return () => {
-      passwordRef.current = "";
-      socket.off("connect", onConnect); socket.off("disconnect", onDisconnect);
-      socket.off("participants_updated", onParticipants); socket.off("competition_status_updated", onStatus);
-      socket.off("question_started", onQuestion); socket.off("question_ended", onQuestionEnded);
-      socket.off("round_started", onRoundStarted); socket.off("round_finished", onRoundFinished);
-      socket.off("competition_finished", onFinished); socket.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!question) return;
-    const tick = () => setSecondsLeft(Math.max(0, Math.ceil((question.endsAt - Date.now()) / 1000)));
-    tick(); const timer = setInterval(tick, 200); return () => clearInterval(timer);
-  }, [question]);
-
-  const login = () => {
-    passwordRef.current = password;
-    socket.emit("host_login", password, (response) => {
-      if (!response.success) {
-        passwordRef.current = "";
-        return setError(response.message);
-      }
-      setAuthenticated(true);
-      setParticipants(response.participants || []);
-      setStatus(response.status || "waiting");
-      setRound(response.round || 0);
-      setLeaderboard(response.leaderboard || []);
-      setQuestionCounts(response.questionCounts || { 1: 0, 2: 0 });
-      if (response.settings) setSettings(response.settings);
-      setQuestion(response.question || null);
-      setSecondsLeft(response.question?.endsAt ? Math.max(0, Math.ceil((response.question.endsAt - Date.now()) / 1000)) : 0);
-      setError("");
-    });
-  };
-  const action = (event) => socket.emit(event, (response) => { if (!response.success) setError(response.message); });
-  const updateSetting = (group, roundNumber, value) => {
-    setSettings((current) => ({ ...current, [group]: { ...current[group], [roundNumber]: Number(value) } }));
-    setSettingsSaved(false);
-  };
-  const saveSettings = () => {
-    setSavingSettings(true); setError("");
-    socket.emit("update_quiz_settings", settings, (response) => {
-      setSavingSettings(false);
-      if (!response?.success) return setError(response?.message || "Could not save quiz settings.");
-      setSettings(response.settings);
-      setSettingsSaved(true);
-    });
-  };
-
-  const downloadTemplate = () => {
-    const headers = ["round", "question", "option_a", "option_b", "option_c", "option_d", "correct_option", "explanation"];
-    const rows = [headers.join(",")];
-    const csv = "\uFEFF" + rows.join("\r\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url; link.download = "cloud-clash-question-template.csv"; link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const importCsv = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setError(""); setImportStatus(""); setImporting(true);
-    try {
-      if (!file.name.toLowerCase().endsWith(".csv")) throw new Error("Please choose a .csv file.");
-      if (file.size > 1_000_000) throw new Error("CSV must be smaller than 1 MB.");
-      const csv = await file.text();
-      socket.emit("import_questions", { csv }, (response) => {
-        setImporting(false);
-        if (!response.success) setError(response.message);
-        else {
-          setQuestionCounts(response.counts);
-          setImportStatus(`Question bank updated: ${response.counts[1]} questions in Round 1 and ${response.counts[2]} in Round 2.`);
-        }
-      });
-    } catch (uploadError) {
-      setImporting(false); setError(uploadError.message);
-    }
-    event.target.value = "";
-  };
-
-  if (!authenticated) return <main className="container panel">
-    <p className="eyebrow">CONTROL ROOM</p><h1>CLOUD CLASH</h1><h2>Host login</h2>
-    <p className="muted">Server: {connected ? "Connected" : "Connecting..."}</p>
-    <input type="password" placeholder="Host password" value={password} onChange={(e) => setPassword(e.target.value)} />
-    <button onClick={login} disabled={!connected || !password}>Login</button>
-    {error && <p className="error">{error}</p>}
-  </main>;
-
-  return <main className="container wide">
-    <header className="topbar"><div><p className="eyebrow">CONTROL ROOM</p><h1>CLOUD CLASH</h1></div><span className="live-pill">{status.toUpperCase().replace("_", " ")}</span></header>
-    <div className="stats-grid"><section className="panel"><p className="muted">Participants</p><h2>{participants.length}</h2></section><section className="panel"><p className="muted">Current round</p><h2>{round || "—"}</h2></section></div>
-    {status === "waiting" && <>
-      <section className="panel settings-panel">
-        <div className="section-heading"><div><p className="eyebrow">EVENT CONFIGURATION</p><h2>Quiz settings</h2></div><span className="settings-lock">Locked after start</span></div>
-        <p>Set the rules for each round. These values are enforced by the quiz server.</p>
-        <div className="settings-round-grid">
-          {[1, 2].map((roundNumber) => <div className="settings-round" key={roundNumber}>
-            <div className="settings-round-title"><span>ROUND 0{roundNumber}</span><small>{questionCounts[roundNumber]} questions loaded</small></div>
-            <label>Time per question <span className="unit-label">seconds</span>
-              <input type="number" min="5" max="300" step="5" value={settings.roundSeconds[roundNumber]} onChange={(e) => updateSetting("roundSeconds", roundNumber, e.target.value)} />
-            </label>
-            <label>Points per correct answer <span className="unit-label">points</span>
-              <input type="number" min="1" max="100" step="1" value={settings.marks[roundNumber]} onChange={(e) => updateSetting("marks", roundNumber, e.target.value)} />
-            </label>
-            <div className="settings-hint">Maximum available: {questionCounts[roundNumber] * settings.marks[roundNumber]} points</div>
-          </div>)}
-        </div>
-        <div className="settings-footer"><p className="muted">Timing: 5–300 seconds · Points: 1–100 · No negative marking</p><button onClick={saveSettings} disabled={savingSettings}>{savingSettings ? "Saving..." : "Save quiz settings"}</button></div>
-        {settingsSaved && <p className="success-message">Quiz settings saved and ready for the event.</p>}
-      </section>
-      <section className="panel">
-        <h2>Question bank</h2>
-        <p>Build your question bank in a spreadsheet and import it here. Each round can have a different number of questions.</p>
-        <div className="question-bank-counts">
-          <div className="bank-count"><span>ROUND 01</span><strong>{questionCounts[1]}</strong><small>questions</small></div>
-          <div className="bank-count"><span>ROUND 02</span><strong>{questionCounts[2]}</strong><small>questions</small></div>
-          <div className="bank-count bank-total"><span>TOTAL BANK</span><strong>{questionCounts[1] + questionCounts[2]}</strong><small>questions</small></div>
-        </div>
-        <div className="import-actions">
-          <button className="secondary-button" onClick={downloadTemplate}>Download CSV template</button>
-          <label className="upload-button">{importing ? "Importing..." : "Import completed CSV"}<input type="file" accept=".csv,text/csv" onChange={importCsv} disabled={importing} /></label>
-        </div>
-        <p className="muted">Add one row per question. Set round to 1 or 2, provide four options, and set correct_option to A, B, C or D. Explanation is optional. Empty rounds are allowed during import, but a round must contain at least one question before it can start. Importing replaces the entire question bank.</p>
-        {importStatus && <p className="success-message">{importStatus}</p>}
-      </section>
-      <section className="panel"><h2>Lobby ready</h2><p>{participants.length} participants have joined.</p><button disabled={!participants.length || questionCounts[1] === 0} onClick={() => action("start_competition")}>Start Round 1</button>
-        {questionCounts[1] === 0 && <p className="muted">Add at least one Round 1 question to enable the start control.</p>}</section>
-    </>}
-    {status === "running" && <section className="panel"><div className="question-meta"><span>ROUND {round} · QUESTION {question?.questionNumber || "—"}/{question?.totalQuestions || "—"}</span><strong>{secondsLeft}s</strong></div><h2>{question?.text || "Preparing next question..."}</h2><div className="option-grid">{question?.options.map((option, i) => <div className="option host-option" key={option}>{String.fromCharCode(65+i)}. {option}</div>)}</div><p className="muted">Each question is worth {question?.marks ?? "—"} points. Questions advance automatically when the timer expires.</p></section>}
-    {status === "round_break" && <section className="panel"><h2>Round 1 complete</h2><p>Review the standings, then start Round 2 when ready.</p><button onClick={() => action("start_round_two")}>Start Round 2</button></section>}
-    {(status === "round_break" || status === "finished") && <section className="panel"><h2>{status === "finished" ? "Final leaderboard" : "Round 1 leaderboard"}</h2>{leaderboard.map((p) => <div className="leader-row" key={p.id}><strong>#{p.rank} {p.name}</strong><span>{p.score} pts</span></div>)}</section>}
-    {status === "finished" && <section className="panel"><h2>Competition finished</h2><p>Final scores are displayed above.</p></section>}
-    <section className="panel"><h2>Participants ({participants.length})</h2>{participants.map((p) => <div className="leader-row" key={p.id}><span>{p.name}</span><span className="muted">Joined</span></div>)}</section>
-    {error && <p className="error">{error}</p>}
-  </main>;
+export default function Host({onHome}){
+ const [password,setPassword]=useState(""),passwordRef=useRef("");
+ const [connected,setConnected]=useState(false),[authenticated,setAuthenticated]=useState(false);
+ const [status,setStatus]=useState("idle"),[roomCode,setRoomCode]=useState("");
+ const [rounds,setRounds]=useState(2),[settings,setSettings]=useState({roundSeconds:{1:20,2:20},marks:{1:5,2:10}});
+ const [participants,setParticipants]=useState([]),[counts,setCounts]=useState({});
+ const [round,setRound]=useState(0),[question,setQuestion]=useState(null),[seconds,setSeconds]=useState(0),[leaderboard,setLeaderboard]=useState([]);
+ const [error,setError]=useState(""),[importStatus,setImportStatus]=useState("");
+ const apply=response=>{if(!response?.success){setError(response?.message||"Host login failed.");return;}setAuthenticated(true);setRoomCode(response.roomCode||"");setStatus(response.status||"idle");setRounds(response.rounds||2);setSettings(response.quizSettings||settings);setParticipants(response.participants||[]);setCounts(response.questionCounts||{});setRound(response.round||0);setQuestion(response.question||null);setLeaderboard(response.leaderboard||[]);if(response.question?.endsAt)setSeconds(Math.max(0,Math.ceil((response.question.endsAt-Date.now())/1000)));};
+ useEffect(()=>{const connect=()=>{setConnected(true);if(passwordRef.current)socket.emit("host_login",passwordRef.current,apply);};const disconnect=()=>setConnected(false);
+ const onPeople=setParticipants,onStatus=setStatus,onQuestion=q=>{setQuestion(q);setRound(q.round);setSeconds(Math.max(0,Math.ceil((q.endsAt-Date.now())/1000)));},onResume=d=>setQuestion(q=>q?({...q,endsAt:d.endsAt}):q),onEnded=()=>setQuestion(null),onRound=d=>{setRound(d.round);setStatus("running");setQuestion(null);},onBreak=d=>{setLeaderboard(d.leaderboard||[]);setStatus("round_break");setQuestion(null);},onFinish=d=>{setLeaderboard(d.leaderboard||[]);setStatus("finished");setQuestion(null);};
+ socket.on("connect",connect);socket.on("disconnect",disconnect);socket.on("participants_updated",onPeople);socket.on("competition_status_updated",onStatus);socket.on("question_started",onQuestion);socket.on("question_resumed",onResume);socket.on("question_ended",onEnded);socket.on("round_started",onRound);socket.on("round_finished",onBreak);socket.on("competition_finished",onFinish);socket.connect();
+ return()=>{passwordRef.current="";socket.off("connect",connect);socket.off("disconnect",disconnect);socket.off("participants_updated",onPeople);socket.off("competition_status_updated",onStatus);socket.off("question_started",onQuestion);socket.off("question_resumed",onResume);socket.off("question_ended",onEnded);socket.off("round_started",onRound);socket.off("round_finished",onBreak);socket.off("competition_finished",onFinish);socket.disconnect();};},[]);
+ useEffect(()=>{if(!question||status!=="running")return;const tick=()=>setSeconds(Math.max(0,Math.ceil((question.endsAt-Date.now())/1000)));tick();const t=setInterval(tick,200);return()=>clearInterval(t);},[question,status]);
+ const login=()=>{passwordRef.current=password;socket.emit("host_login",password,apply);};
+ const action=(event,payload,done)=>{setError("");socket.emit(event,payload||{},r=>{if(!r?.success)setError(r?.message||"Action failed.");else done?.(r);});};
+ const create=()=>action("create_quiz",{rounds,roundSeconds:settings.roundSeconds,marks:settings.marks},r=>{setRoomCode(r.roomCode);setCounts(r.questionCounts);setStatus("waiting");});
+ const setValue=(group,n,v)=>setSettings(s=>({...s,[group]:{...s[group],[n]:Number(v)}}));
+ const download=()=>{const csv="round,question,option_a,option_b,option_c,option_d,correct_option,explanation\r\n";const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv"}));a.download="cloud-clash-questions.csv";a.click();URL.revokeObjectURL(a.href);};
+ const upload=async e=>{const file=e.target.files?.[0];if(!file)return;try{const csv=await file.text();action("import_questions",{csv},r=>{setCounts(r.counts);setImportStatus("Question bank imported successfully.");});}catch{setError("Could not read the CSV file.");}e.target.value="";};
+ if(!authenticated)return <main className="app-shell narrow"><button className="back-link" onClick={onHome}>← Home</button><section className="panel"><p className="eyebrow">HOST ACCESS</p><h1>Let's create<br/>something live.</h1><p className="muted">Authenticate to open the host control room.</p><input type="password" placeholder="Host password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/><button className="primary full" disabled={!connected||!password} onClick={login}>{connected?"Continue":"Connecting..."}</button>{error&&<p className="error">{error}</p>}</section></main>;
+ if(status==="idle"||status==="finished"&&!roomCode)return <main className="app-shell"><button className="back-link" onClick={onHome}>← Home</button><header className="page-heading"><p className="eyebrow">QUIZ SETUP</p><h1>Build your quiz.</h1><p>Choose your format first. You can import questions after creating the room.</p></header><section className="panel setup-panel"><label>Number of rounds<input type="number" min="1" max="10" value={rounds} onChange={e=>{const n=Math.min(10,Math.max(1,Number(e.target.value)||1));setRounds(n);setSettings(s=>{const rs={...s.roundSeconds},mk={...s.marks};for(let i=1;i<=n;i++){rs[i]??=20;mk[i]??=5;}return{roundSeconds:rs,marks:mk};});}}/></label><div className="round-config">{Array.from({length:rounds},(_,i)=>i+1).map(n=><div className="round-config-card" key={n}><div className="round-title">ROUND {String(n).padStart(2,"0")}</div><label>Points per correct answer<input type="number" min="1" max="100" value={settings.marks[n]??5} onChange={e=>setValue("marks",n,e.target.value)}/></label><label>Question timer (seconds)<input type="number" min="5" max="300" value={settings.roundSeconds[n]??20} onChange={e=>setValue("roundSeconds",n,e.target.value)}/></label></div>)}</div><button className="primary full" onClick={create}>Create room <span>→</span></button>{error&&<p className="error">{error}</p>}</section></main>;
+ return <main className="app-shell"><header className="dashboard-head"><div><p className="eyebrow">HOST CONTROL ROOM</p><h1>Your quiz is ready.</h1></div><span className={"status-chip "+status}>{status.replace("_"," ")}</span></header>
+ <section className="room-banner"><div><span className="eyebrow">ROOM CODE · SHARE WITH PLAYERS</span><div className="room-code">{roomCode}</div></div><button className="secondary" onClick={()=>navigator.clipboard?.writeText(roomCode)}>Copy code</button></section>
+ {status==="waiting"&&<><section className="panel"><div className="section-title"><div><p className="eyebrow">QUESTION BANK</p><h2>Load your questions</h2></div><span className="muted">{rounds} rounds</span></div><p className="muted">CSV columns: round, question, option_a, option_b, option_c, option_d, correct_option, explanation. Round numbers must match your setup.</p><div className="button-row"><button className="secondary" onClick={download}>Download CSV template</button><label className="upload-control">Import CSV<input type="file" accept=".csv,text/csv" onChange={upload}/></label></div>{Array.from({length:rounds},(_,i)=>i+1).map(n=><div className="leader-row" key={n}><span>Round {n}</span><strong>{counts[n]||0} questions</strong></div>)}{importStatus&&<p className="success-message">{importStatus}</p>}</section><section className="panel"><div className="section-title"><div><p className="eyebrow">LOBBY</p><h2>Players joining</h2></div><strong>{participants.length}</strong></div>{participants.map(p=><div className="leader-row" key={p.id}>{p.name}<span>Joined</span></div>)}{!participants.length&&<p className="muted">Waiting for players to enter the room code.</p>}<button className="primary full" disabled={!participants.length||Array.from({length:rounds},(_,i)=>i+1).some(n=>!counts[n])} onClick={()=>action("start_quiz")}>Start quiz</button></section></>}
+ {status==="running"||status==="paused"?<section className="panel"><div className="section-title"><div><p className="eyebrow">ROUND {round} · QUESTION {question?.questionNumber||"—"}/{question?.totalQuestions||"—"}</p><h2>{status==="paused"?"Quiz paused":question?.text||"Preparing question..."}</h2></div><strong className="timer">{status==="paused"?"Ⅱ":seconds+"s"}</strong></div>{question&&<div className="option-grid">{question.options.map((o,i)=><div className="option host-option" key={i}>{String.fromCharCode(65+i)}. {o}</div>)}</div>}<p className="muted">{question?.marks||settings.marks[round]} points for a correct answer. {status==="paused"?"The timer is frozen.":"Question advances automatically when its timer expires."}</p><div className="button-row">{status==="running"?<button className="warning" onClick={()=>action("pause_quiz")}>Ⅱ Pause quiz</button>:<button className="primary" onClick={()=>action("resume_quiz")}>▶ Resume quiz</button>}<button className="danger" onClick={()=>{if(window.confirm("End this quiz for everyone?"))action("end_quiz");}}>End quiz</button></div></section>:null}
+ {status==="round_break"&&<section className="panel"><p className="eyebrow">ROUND {round} COMPLETE</p><h2>Standings are in.</h2><button className="primary full" onClick={()=>action("start_next_round")}>{round<rounds?"Start round "+(round+1):"Finish quiz"}</button></section>}
+ {(status==="round_break"||status==="finished")&&<section className="panel"><p className="eyebrow">SCOREBOARD</p><h2>{status==="finished"?"Final leaderboard":"Current leaderboard"}</h2>{leaderboard.map(p=><div className="leader-row" key={p.id}><strong>#{p.rank} {p.name}</strong><strong>{p.score} pts</strong></div>)}</section>}
+ {status==="finished"&&<button className="secondary" onClick={()=>{setRoomCode("");setStatus("idle");setAuthenticated(true);}}>Create another quiz</button>}
+ {error&&<p className="error">{error}</p>}
+ </main>;
 }
-export default Host;
