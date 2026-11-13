@@ -1,8 +1,7 @@
 import "dotenv/config";
 import {io} from "socket.io-client";
 import {performance} from "node:perf_hooks";
-const url=process.env.LOAD_TEST_URL||"http://localhost:5000",count=Number(process.env.LOAD_TEST_PARTICIPANTS||50),password=process.env.HOST_PASSWORD;
-if(!password)throw Error("Set HOST_PASSWORD in server/.env.");
+const url=process.env.LOAD_TEST_URL||"http://localhost:5000",count=Number(process.env.LOAD_TEST_PARTICIPANTS||50);
 const ack=(s,event,payload,timeout=15000)=>new Promise((resolve,reject)=>{const t=setTimeout(()=>reject(Error(event+" acknowledgement timed out")),timeout);const cb=r=>{clearTimeout(t);resolve(r);};payload===undefined?s.emit(event,cb):s.emit(event,payload,cb);});
 const wait=(s,event,pred=()=>true)=>new Promise((resolve,reject)=>{const t=setTimeout(()=>{s.off(event,h);reject(Error("Timed out waiting for "+event));},600000);const h=d=>{if(!pred(d))return;clearTimeout(t);s.off(event,h);resolve(d);};s.on(event,h);});
 const connect=async()=>{const s=io(url,{transports:["websocket"],reconnection:false,timeout:10000});await new Promise((r,j)=>{s.once("connect",r);s.once("connect_error",j);});return s;};
@@ -10,7 +9,7 @@ const rows=["round,question,option_a,option_b,option_c,option_d,correct_option,e
 const clients=[];let accepted=0,rejected=0,events=0;const latencies=[];
 try{
  const health=await fetch(url+"/health");if(!health.ok)throw Error("Backend health check failed: "+health.status);
- const host=await connect();const login=await ack(host,"host_login",password);if(!login.success)throw Error(login.message);
+ const host=await connect();const login=await ack(host,"host_login");if(!login.success)throw Error(login.message);
  const created=await ack(host,"create_quiz",{rounds:2,roundSeconds:{1:5,2:5},marks:{1:5,2:10}});if(!created.success)throw Error(created.message);
  const imported=await ack(host,"import_questions",{csv:rows.join("\n")});if(!imported.success)throw Error(imported.message);
  for(let i=0;i<count;i++){const s=await connect();const joined=await ack(s,"join_competition",{name:"Load Tester "+String(i+1).padStart(3,"0"),code:created.roomCode});if(!joined.success)throw Error(joined.message);s.pid=joined.participant.id;s.on("question_started",q=>{events++;const delay=100+(i*37)%500;setTimeout(async()=>{const start=performance.now();try{const a=await ack(s,"submit_answer",{participantId:s.pid,questionNumber:q.questionNumber,selectedOption:0});latencies.push(performance.now()-start);if(a.success&&a.accepted)accepted++;else rejected++;}catch{rejected++;}},delay);});clients.push(s);}
