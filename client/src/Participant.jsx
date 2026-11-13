@@ -62,8 +62,8 @@ function Participant() {
         setStatus(response.snapshot?.status || "waiting");
         setLeaderboard(response.snapshot?.leaderboard || []);
         setQuestion(response.snapshot?.question || null);
-        setSelected(null);
-        setSubmitted(false);
+        setSelected(response.snapshot?.answer?.selectedOption ?? null);
+        setSubmitted(Boolean(response.snapshot?.answer));
         setResult(null);
         setSecondsLeft(response.snapshot?.question?.endsAt ? Math.max(0, Math.ceil((response.snapshot.question.endsAt - Date.now()) / 1000)) : 0);
       });
@@ -102,6 +102,8 @@ function Participant() {
       const snapshot = response.snapshot;
       if (snapshot?.question) {
         setQuestion(snapshot.question);
+        setSelected(snapshot.answer?.selectedOption ?? null);
+        setSubmitted(Boolean(snapshot.answer));
         setStatus("running");
       } else {
         setQuestion(null);
