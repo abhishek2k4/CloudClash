@@ -12,7 +12,7 @@ function Host() {
   const [question, setQuestion] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
-  const [error, setError] = useState("");
+  const [error, setError] = useState("");\n  const [importStatus, setImportStatus] = useState("");\n  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     const onConnect = () => { setConnected(true); setError(""); };
@@ -52,6 +52,38 @@ function Host() {
   });
   const action = (event) => socket.emit(event, (response) => { if (!response.success) setError(response.message); });
 
+  const downloadTemplate = () => {
+    const headers = ["round", "question", "option_a", "option_b", "option_c", "option_d", "correct_option", "explanation"];
+    const rows = [headers.join(",")];
+    for (const roundNumber of [1, 2]) {
+      for (let i = 0; i < 25; i += 1) rows.push([roundNumber, "", "", "", "", "", "", ""].join(","));
+    }
+    const csv = "\\uFEFF" + rows.join("\\r\\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url; link.download = "cloud-clash-question-template.csv"; link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importCsv = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setError(""); setImportStatus(""); setImporting(true);
+    try {
+      if (!file.name.toLowerCase().endsWith(".csv")) throw new Error("Please choose a .csv file.");
+      if (file.size > 1_000_000) throw new Error("CSV must be smaller than 1 MB.");
+      const csv = await file.text();
+      socket.emit("import_questions", { csv }, (response) => {
+        setImporting(false);
+        if (!response.success) setError(response.message);
+        else setImportStatus(`Successfully imported ${response.counts[1]} questions for Round 1 and ${response.counts[2]} for Round 2.`);
+      });
+    } catch (uploadError) {
+      setImporting(false); setError(uploadError.message);
+    }
+    event.target.value = "";
+  };
+
   if (!authenticated) return <main className="container panel">
     <p className="eyebrow">CONTROL ROOM</p><h1>CLOUD CLASH</h1><h2>Host login</h2>
     <p className="muted">Server: {connected ? "Connected" : "Connecting..."}</p>
@@ -63,7 +95,19 @@ function Host() {
   return <main className="container wide">
     <header className="topbar"><div><p className="eyebrow">CONTROL ROOM</p><h1>CLOUD CLASH</h1></div><span className="live-pill">{status.toUpperCase().replace("_", " ")}</span></header>
     <div className="stats-grid"><section className="panel"><p className="muted">Participants</p><h2>{participants.length}</h2></section><section className="panel"><p className="muted">Current round</p><h2>{round || "—"}</h2></section></div>
-    {status === "waiting" && <section className="panel"><h2>Lobby ready</h2><p>{participants.length} participants have joined.</p><button disabled={!participants.length} onClick={() => action("start_competition")}>Start Round 1</button></section>}
+    {status === "waiting" && <>
+      <section className="panel">
+        <h2>Question bank</h2>
+        <p>Download the CSV template, fill in all 50 questions in Excel or Google Sheets, then upload it here. Importing replaces the demo questions.</p>
+        <div className="import-actions">
+          <button className="secondary-button" onClick={downloadTemplate}>Download CSV template</button>
+          <label className="upload-button">{importing ? "Importing..." : "Import completed CSV"}<input type="file" accept=".csv,text/csv" onChange={importCsv} disabled={importing} /></label>
+        </div>
+        <p className="muted">Required: 25 questions per round, four options per question, and one correct option (A–D). You can import again before starting.</p>
+        {importStatus && <p className="success-message">{importStatus}</p>}
+      </section>
+      <section className="panel"><h2>Lobby ready</h2><p>{participants.length} participants have joined.</p><button disabled={!participants.length} onClick={() => action("start_competition")}>Start Round 1</button></section>
+    </>}
     {status === "running" && <section className="panel"><div className="question-meta"><span>ROUND {round} · QUESTION {question?.questionNumber || "—"}/{question?.totalQuestions || "—"}</span><strong>{secondsLeft}s</strong></div><h2>{question?.text || "Preparing next question..."}</h2><div className="option-grid">{question?.options.map((option, i) => <div className="option host-option" key={option}>{String.fromCharCode(65+i)}. {option}</div>)}</div><p className="muted">Questions advance automatically when the timer expires.</p></section>}
     {status === "round_break" && <section className="panel"><h2>Round 1 complete</h2><p>Review the standings, then start Round 2 when ready.</p><button onClick={() => action("start_round_two")}>Start Round 2</button></section>}
     {(status === "round_break" || status === "finished") && <section className="panel"><h2>{status === "finished" ? "Final leaderboard" : "Round 1 leaderboard"}</h2>{leaderboard.map((p) => <div className="leader-row" key={p.id}><strong>#{p.rank} {p.name}</strong><span>{p.score} pts</span></div>)}</section>}
