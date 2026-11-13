@@ -67,13 +67,28 @@ function createStateSnapshot() {
 }
 
 function persistState() {
-  if (!persistenceEnabled) return persistenceQueue;
+  if (!persistenceEnabled) return Promise.resolve();
   const snapshot = createStateSnapshot();
-  persistenceQueue = persistenceQueue
-    .catch((error) => console.error("Previous Supabase save failed:", error.message))
-    .then(() => saveCompetitionState(snapshot))
-    .catch((error) => console.error("Supabase save failed:", error.message));
-  return persistenceQueue;
+  const save = persistenceQueue.then(() => saveCompetitionState(snapshot));
+  // Keep the queue usable after a failed write, while returning the rejection
+  // to the caller that needs to know whether its change became durable.
+  persistenceQueue = save.catch((error) => {
+    console.error("Supabase save failed:", error.message);
+  });
+  return save;
+}
+
+function persistStateSafely() {
+  persistState().catch((error) => {
+    console.error("Could not persist competition state:", error.message);
+  });
+}
+
+let answerQueue = Promise.resolve();
+function enqueueAnswer(task) {
+  const result = answerQueue.then(task, task);
+  answerQueue = result.catch(() => {});
+  return result;
 }
 
 async function restoreState() {
@@ -224,14 +239,14 @@ function startQuestion() {
   io.to("competition").emit("question_started", question);
   io.to("host").emit("question_started", question);
   questionTimer = setTimeout(() => endQuestion("time"), CONFIG.roundSeconds[currentRound] * 1000);
-  persistState();
+  persistStateSafely();
 }
 
 function endQuestion(reason = "completed") {
   if (questionLocked || currentRound === 0 || questionIndex < 0) return;
   questionLocked = true;
   clearTimeout(questionTimer);
-  persistState();
+  persistStateSafely();
   const question = roundQuestions(currentRound)[questionIndex];
   io.to("competition").emit("question_ended", {
     round: currentRound,
@@ -247,7 +262,7 @@ function endQuestion(reason = "completed") {
     reason,
   });
   io.to("host").emit("leaderboard_updated", leaderboard());
-  persistState();
+  persistStateSafely();
   questionTimer = setTimeout(startQuestion, 2500);
 }
 
@@ -270,7 +285,7 @@ function finishRound() {
     io.to("competition").emit("competition_finished", { leaderboard: results });
     io.to("host").emit("competition_finished", { leaderboard: results });
   }
-  persistState();
+  persistStateSafely();
 }
 
 function startRound(round) {
@@ -287,7 +302,7 @@ function startRound(round) {
   io.to("competition").emit("round_started", { round, totalQuestions: roundQuestions(round).length });
   io.to("host").emit("competition_status_updated", status);
   startQuestion();
-  persistState();
+  persistStateSafely();
   return true;
 }
 
@@ -319,7 +334,7 @@ io.on("connection", (socket) => {
     } else {
       participant.name = cleanName;
     }
-    persistState();
+    persistStateSafely();
 
     socket.data.participantId = participant.id;
     socket.join("competition");
@@ -353,7 +368,7 @@ io.on("connection", (socket) => {
     try {
       const imported = validateQuestionCsv(csv);
       activeQuestions = imported;
-      persistState();
+      persistStateSafely();
       callback({ success: true, counts: { 1: imported[1].length, 2: imported[2].length } });
       console.log("Host imported 50 quiz questions.");
     } catch (error) {
@@ -377,6 +392,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("submit_answer", (payload = {}, callback = () => {}) => {
+    enqueueAnswer(async () => {
     const { participantId, questionNumber, selectedOption } = payload;
     const id = socket.data.participantId;
     if (!id || id !== participantId || !participants.has(id)) {
@@ -419,8 +435,28 @@ io.on("connection", (socket) => {
       total.score += CONFIG.marks[currentRound];
     }
 
-    persistState();
-    callback({ success: true, accepted: true });
+    try {
+      await persistState();
+      callback({ success: true, accepted: true });
+    } catch (error) {
+      // The answer was not durably stored, so undo its in-memory score impact.
+      answers.delete(key);
+      if (correct) {
+        const round = roundStats.get(id);
+        const total = totalStats.get(id);
+        round.correct -= 1;
+        round.timeMs -= elapsed;
+        total.correct -= 1;
+        total.timeMs -= elapsed;
+        total.score -= CONFIG.marks[currentRound];
+      }
+      console.error("Answer was not accepted because persistence failed:", error.message);
+      callback({ success: false, message: "We couldn't save your answer. Please reconnect and try again." });
+    }
+    }).catch((error) => {
+      console.error("Unexpected answer processing error:", error);
+      callback({ success: false, message: "Something went wrong while processing your answer." });
+    });
   });
 
   socket.on("disconnect", () => {
