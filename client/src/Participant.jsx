@@ -148,7 +148,7 @@ function Participant() {
   return <main className="container wide">
     <header className="topbar"><div><p className="eyebrow">CLOUD CLASH</p><h1>Hey, {participant.name}</h1></div><span className="live-pill">{status === "running" ? "LIVE" : status.replace("_", " ").toUpperCase()}</span></header>
     {question && <section className="panel">
-      <div className="question-meta"><span>ROUND {question.round} · QUESTION {question.questionNumber}/{question.totalQuestions}</span><strong className={secondsLeft <= 5 ? "urgent" : ""}>{secondsLeft}s</strong></div>
+      <div className="question-meta"><span>ROUND {question.round} · QUESTION {question.questionNumber}/{question.totalQuestions} · {question.marks} PTS</span><strong className={secondsLeft <= 5 ? "urgent" : ""}>{secondsLeft}s</strong></div>
       <h2 className="question-text">{question.text}</h2>
       <div className="option-grid">{question.options.map((option, index) => <button key={option} className={selected === index ? "option selected" : "option"} disabled={submitted || secondsLeft === 0} onClick={() => setSelected(index)}>{String.fromCharCode(65 + index)}. {option}</button>)}</div>
       <button className="submit-button" disabled={selected === null || submitted || secondsLeft === 0} onClick={submit}>{submitted ? "Answer submitted" : "Submit answer"}</button>
