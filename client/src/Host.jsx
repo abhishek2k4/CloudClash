@@ -16,6 +16,7 @@ function Host() {
   const [error, setError] = useState("");
   const [importStatus, setImportStatus] = useState("");
   const [importing, setImporting] = useState(false);
+  const [questionCounts, setQuestionCounts] = useState({ 1: 0, 2: 0 });
 
   useEffect(() => {
     const applyHostSnapshot = (response) => {
@@ -29,6 +30,7 @@ function Host() {
       setStatus(response.status || "waiting");
       setRound(response.round || 0);
       setLeaderboard(response.leaderboard || []);
+      setQuestionCounts(response.questionCounts || { 1: 0, 2: 0 });
       setQuestion(response.question || null);
       setSecondsLeft(response.question?.endsAt ? Math.max(0, Math.ceil((response.question.endsAt - Date.now()) / 1000)) : 0);
     };
@@ -88,9 +90,6 @@ function Host() {
   const downloadTemplate = () => {
     const headers = ["round", "question", "option_a", "option_b", "option_c", "option_d", "correct_option", "explanation"];
     const rows = [headers.join(",")];
-    for (const roundNumber of [1, 2]) {
-      for (let i = 0; i < 25; i += 1) rows.push([roundNumber, "", "", "", "", "", "", ""].join(","));
-    }
     const csv = "\uFEFF" + rows.join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
@@ -109,7 +108,10 @@ function Host() {
       socket.emit("import_questions", { csv }, (response) => {
         setImporting(false);
         if (!response.success) setError(response.message);
-        else setImportStatus(`Successfully imported ${response.counts[1]} questions for Round 1 and ${response.counts[2]} for Round 2.`);
+        else {
+          setQuestionCounts(response.counts);
+          setImportStatus(`Question bank updated: ${response.counts[1]} questions in Round 1 and ${response.counts[2]} in Round 2.`);
+        }
       });
     } catch (uploadError) {
       setImporting(false); setError(uploadError.message);
@@ -131,15 +133,21 @@ function Host() {
     {status === "waiting" && <>
       <section className="panel">
         <h2>Question bank</h2>
-        <p>Download the CSV template, fill in all 50 questions in Excel or Google Sheets, then upload it here. Importing replaces the demo questions.</p>
+        <p>Build your question bank in a spreadsheet and import it here. Each round can have a different number of questions.</p>
+        <div className="question-bank-counts">
+          <div className="bank-count"><span>ROUND 01</span><strong>{questionCounts[1]}</strong><small>questions</small></div>
+          <div className="bank-count"><span>ROUND 02</span><strong>{questionCounts[2]}</strong><small>questions</small></div>
+          <div className="bank-count bank-total"><span>TOTAL BANK</span><strong>{questionCounts[1] + questionCounts[2]}</strong><small>questions</small></div>
+        </div>
         <div className="import-actions">
           <button className="secondary-button" onClick={downloadTemplate}>Download CSV template</button>
           <label className="upload-button">{importing ? "Importing..." : "Import completed CSV"}<input type="file" accept=".csv,text/csv" onChange={importCsv} disabled={importing} /></label>
         </div>
-        <p className="muted">Fill all 50 rows. Use round 1 or 2, provide four options, and set correct_option to A, B, C or D. Explanation is optional. Save/export as CSV UTF-8. You can re-import any time before the quiz starts.</p>
+        <p className="muted">Add one row per question. Set round to 1 or 2, provide four options, and set correct_option to A, B, C or D. Explanation is optional. Empty rounds are allowed during import, but a round must contain at least one question before it can start. Importing replaces the entire question bank.</p>
         {importStatus && <p className="success-message">{importStatus}</p>}
       </section>
-      <section className="panel"><h2>Lobby ready</h2><p>{participants.length} participants have joined.</p><button disabled={!participants.length} onClick={() => action("start_competition")}>Start Round 1</button></section>
+      <section className="panel"><h2>Lobby ready</h2><p>{participants.length} participants have joined.</p><button disabled={!participants.length || questionCounts[1] === 0} onClick={() => action("start_competition")}>Start Round 1</button>
+        {questionCounts[1] === 0 && <p className="muted">Add at least one Round 1 question to enable the start control.</p>}</section>
     </>}
     {status === "running" && <section className="panel"><div className="question-meta"><span>ROUND {round} · QUESTION {question?.questionNumber || "—"}/{question?.totalQuestions || "—"}</span><strong>{secondsLeft}s</strong></div><h2>{question?.text || "Preparing next question..."}</h2><div className="option-grid">{question?.options.map((option, i) => <div className="option host-option" key={option}>{String.fromCharCode(65+i)}. {option}</div>)}</div><p className="muted">Questions advance automatically when the timer expires.</p></section>}
     {status === "round_break" && <section className="panel"><h2>Round 1 complete</h2><p>Review the standings, then start Round 2 when ready.</p><button onClick={() => action("start_round_two")}>Start Round 2</button></section>}
