@@ -79,6 +79,35 @@ async function connectClient(name) {
   const result = await ack(socket, "join_competition", { name, code: competitionCode });
   if (!result?.success) throw new Error(`${name} could not join: ${result?.message || "unknown error"}`);
   socket.participantId = result.participant.id;
+  socket.participantName = name;
+  return socket;
+}
+
+async function reconnectClient(previousSocket, participantIndex) {
+  const previousId = previousSocket.participantId;
+  const name = previousSocket.participantName;
+  previousSocket.disconnect();
+  const socket = io(serverUrl, {
+    transports: ["websocket"],
+    reconnection: false,
+    timeout: 10000,
+  });
+  await new Promise((resolve, reject) => {
+    socket.once("connect", resolve);
+    socket.once("connect_error", reject);
+  });
+  const result = await ack(socket, "join_competition", {
+    name,
+    code: competitionCode,
+    participantId: previousId,
+  });
+  if (!result?.success) throw new Error(`${name} could not reconnect: ${result?.message || "unknown error"}`);
+  if (result.participant.id !== previousId) {
+    throw new Error(`${name} was assigned a new participant ID after reconnect.`);
+  }
+  socket.participantId = result.participant.id;
+  socket.participantName = name;
+  attachQuestionSimulation(socket, participantIndex);
   return socket;
 }
 
@@ -138,9 +167,19 @@ async function main() {
   console.log(`Connected ${clients.length}/${participantCount} participants.`);
 
   const roundOneFinished = waitFor(host, "round_finished", (event) => event.round === 1);
+  const firstQuestionEnded = waitFor(host, "question_ended", (event) => event.round === 1 && event.questionNumber === 1);
   const start = await ack(host, "start_competition");
   if (!start?.success) throw new Error(`Could not start Round 1: ${start?.message || "unknown error"}`);
-  await roundOneFinished;
+
+  // Exercise recovery during the first question transition. Reconnect 10% of
+  // clients using their existing participant IDs and verify identity retention.
+  await firstQuestionEnded;
+  const reconnectCount = Math.max(1, Math.ceil(participantCount * 0.1));
+  for (let index = 0; index < reconnectCount; index += 1) {
+    clients[index] = await reconnectClient(clients[index], index);
+  }
+  const roundOneFinishedWait = roundOneFinished;
+  await roundOneFinishedWait;
 
   const roundTwoFinished = waitFor(host, "round_finished", (event) => event.round === 2);
   const roundTwoStarted = await ack(host, "start_round_two");
@@ -163,6 +202,7 @@ async function main() {
   console.log("\nCLOUD CLASH LOAD TEST RESULTS");
   console.log("-----------------------------");
   console.log(`Participants:       ${clients.length}/${participantCount}`);
+  console.log(`Reconnects:         ${Math.max(1, Math.ceil(participantCount * 0.1))} successful (same participant IDs)`);
   console.log(`Question events:    ${questionEvents} (expected ${participantCount * 50})`);
   console.log(`Accepted answers:   ${acceptedAnswers}/${expectedAnswers}`);
   console.log(`Rejected answers:   ${rejectedAnswers}`);
