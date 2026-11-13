@@ -73,7 +73,7 @@ async function connectClient(name) {
   });
   const result = await ack(socket, "join_competition", { name, code: competitionCode });
   if (!result?.success) throw new Error(`${name} could not join: ${result?.message || "unknown error"}`);
-  socket.data.participantId = result.participant.id;
+  socket.participantId = result.participant.id;
   return socket;
 }
 
@@ -87,7 +87,7 @@ function attachQuestionSimulation(socket, participantIndex) {
       const sentAt = performance.now();
       try {
         const result = await ack(socket, "submit_answer", {
-          participantId: socket.data.participantId,
+          participantId: socket.participantId,
           questionNumber: question.questionNumber,
           selectedOption: 0,
         });
