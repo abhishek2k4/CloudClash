@@ -13,7 +13,8 @@ function Host() {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
   const [error, setError] = useState("");
-  const [importStatus, setImportStatus] = useState("");\n  const [importing, setImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState("");
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     const onConnect = () => { setConnected(true); setError(""); };
