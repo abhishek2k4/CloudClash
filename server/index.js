@@ -4,7 +4,7 @@ import cors from "cors";
 import { createServer } from "http";
 import { randomUUID } from "crypto";
 import { Server } from "socket.io";
-import { QUESTIONS } from "./data/questions.js";
+import { QUESTIONS as DEMO_QUESTIONS } from "./data/questions.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -32,7 +32,7 @@ if (!CONFIG.hostPassword) {
   console.warn("HOST_PASSWORD is not set. Host login is disabled until configured.");
 }
 
-const participants = new Map();
+let activeQuestions = { 1: [...DEMO_QUESTIONS[1]], 2: [...DEMO_QUESTIONS[2]] };\nconst participants = new Map();
 let status = "waiting";
 let currentRound = 0;
 let questionIndex = -1;
@@ -44,7 +44,66 @@ const answers = new Map(); // key: round:questionIndex:participantId
 const roundStats = new Map(); // participantId -> { correct, timeMs }
 const totalStats = new Map(); // participantId -> { score, correct, timeMs }
 
-const roundQuestions = (round) => QUESTIONS[round] || [];
+const roundQuestions = (round) => activeQuestions[round] || [];
+
+function parseCsv(source) {
+  const rows = [];
+  let row = [], field = "", quoted = false;
+  for (let i = 0; i < source.length; i += 1) {
+    const char = source[i];
+    if (quoted) {
+      if (char === '"' && source[i + 1] === '"') { field += '"'; i += 1; }
+      else if (char === '"') quoted = false;
+      else field += char;
+    } else if (char === '"') quoted = true;
+    else if (char === ",") { row.push(field); field = ""; }
+    else if (char === "\\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else if (char !== "\\r") field += char;
+  }
+  if (quoted) throw new Error("CSV contains an unclosed quotation mark.");
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function validateQuestionCsv(csvText) {
+  const rows = parseCsv(csvText.replace(/^\\uFEFF/, ""));
+  if (rows.length < 2) throw new Error("The CSV is empty. Add your questions below the header row.");
+  const headers = rows[0].map((header) => header.trim().toLowerCase());
+  const required = ["round", "question", "option_a", "option_b", "option_c", "option_d", "correct_option", "explanation"];
+  const missing = required.filter((header) => !headers.includes(header));
+  if (missing.length) throw new Error(`Missing column(s): ${missing.join(", ")}.`);
+  const index = Object.fromEntries(required.map((header) => [header, headers.indexOf(header)]));
+  const imported = { 1: [], 2: [] };
+  const errors = [];
+
+  rows.slice(1).forEach((row, offset) => {
+    if (row.every((cell) => !cell.trim())) return;
+    const line = offset + 2;
+    const value = (key) => (row[index[key]] || "").trim();
+    const round = Number(value("round"));
+    if (![1, 2].includes(round)) { errors.push(`Row ${line}: round must be 1 or 2.`); return; }
+    const text = value("question");
+    const options = ["option_a", "option_b", "option_c", "option_d"].map(value);
+    const correctRaw = value("correct_option").toUpperCase();
+    const correctOption = ["A", "B", "C", "D"].indexOf(correctRaw) >= 0
+      ? ["A", "B", "C", "D"].indexOf(correctRaw)
+      : Number(correctRaw) - 1;
+    if (!text) errors.push(`Row ${line}: question text is required.`);
+    if (options.some((option) => !option)) errors.push(`Row ${line}: all four options are required.`);
+    if (!Number.isInteger(correctOption) || correctOption < 0 || correctOption > 3) errors.push(`Row ${line}: correct_option must be A, B, C, D (or 1, 2, 3, 4).`);
+    if (text && options.every(Boolean) && Number.isInteger(correctOption) && correctOption >= 0 && correctOption <= 3) {
+      imported[round].push({ text, options, correctOption, explanation: value("explanation") });
+    }
+  });
+
+  if (errors.length) throw new Error(errors.slice(0, 8).join("\\n") + (errors.length > 8 ? `\\nAnd ${errors.length - 8} more issue(s).` : ""));
+  for (const round of [1, 2]) {
+    if (imported[round].length !== 25) {
+      throw new Error(`Round ${round} must contain exactly 25 questions. Found ${imported[round].length}.`);
+    }
+  }
+  return imported;
+}
 const answerKey = (round, index, id) => `${round}:${index}:${id}`;
 const publicParticipant = ({ id, name }) => ({ id, name });
 
@@ -217,6 +276,22 @@ io.on("connection", (socket) => {
       leaderboard: leaderboard(),
       roundSeconds: CONFIG.roundSeconds,
     });
+  });
+
+  socket.on("import_questions", ({ csv }, callback = () => {}) => {
+    if (!socket.rooms.has("host")) return callback({ success: false, message: "Unauthorized." });
+    if (status !== "waiting") return callback({ success: false, message: "Questions can only be imported before the competition starts." });
+    if (typeof csv !== "string" || csv.length > 1_000_000) {
+      return callback({ success: false, message: "Upload a CSV file smaller than 1 MB." });
+    }
+    try {
+      const imported = validateQuestionCsv(csv);
+      activeQuestions = imported;
+      callback({ success: true, counts: { 1: imported[1].length, 2: imported[2].length } });
+      console.log("Host imported 50 quiz questions.");
+    } catch (error) {
+      callback({ success: false, message: error.message });
+    }
   });
 
   socket.on("start_competition", (callback = () => {}) => {
