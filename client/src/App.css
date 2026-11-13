@@ -544,3 +544,5 @@ p {
 
 .header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 @media(max-width:520px){.header-actions{align-items:flex-end;flex-direction:column}.header-actions .secondary{padding:8px 10px;font-size:.8rem}}
+
+.round-upload-list{display:grid;gap:16px}.round-upload-card{display:grid;gap:12px}.round-upload-card .section-title{margin-bottom:0}.round-upload-card .section-title h2{margin-bottom:0}
