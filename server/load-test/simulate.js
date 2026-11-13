@@ -150,8 +150,12 @@ async function main() {
 
   const expectedAnswers = participantCount * 50;
   const expectedScore = 375;
-  const allScoresCorrect = finalResults.leaderboard.length === participantCount &&
-    finalResults.leaderboard.every((entry) => entry.score === expectedScore && entry.correct === 50);
+  const simulatedEntries = finalResults.leaderboard.filter((entry) =>
+    /^Load Tester \\d{3}$/.test(entry.name)
+  );
+  const simulatedScoresCorrect = simulatedEntries.length === participantCount &&
+    simulatedEntries.every((entry) => entry.score === expectedScore && entry.correct === 50);
+  const extraParticipants = finalResults.leaderboard.length - simulatedEntries.length;
   const sorted = [...latencies].sort((a, b) => a - b);
   const percentile = (p) => sorted.length ? sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * p) - 1)] : 0;
   const durationSeconds = ((performance.now() - startedAt) / 1000).toFixed(1);
@@ -165,11 +169,17 @@ async function main() {
   console.log(`Answer latency p50: ${percentile(0.50).toFixed(1)} ms`);
   console.log(`Answer latency p95: ${percentile(0.95).toFixed(1)} ms`);
   console.log(`Answer latency p99: ${percentile(0.99).toFixed(1)} ms`);
-  console.log(`Final scores:       ${allScoresCorrect ? "PASS" : "FAIL"} (expected ${expectedScore} points and 50 correct each)`);
+  console.log(`Final scores:       ${simulatedScoresCorrect ? "PASS" : "FAIL"} (each simulated participant: ${expectedScore} points, 50 correct)`);
+  console.log(`Other participants: ${extraParticipants} (excluded from simulator score assertion)`);
+  if (!simulatedScoresCorrect) {
+    const incorrect = simulatedEntries.filter((entry) => entry.score !== expectedScore || entry.correct !== 50);
+    console.log("Score mismatches:", JSON.stringify(incorrect.map(({ name, score, correct }) => ({ name, score, correct }))));
+    console.log(`Simulated leaderboard entries: ${simulatedEntries.length}/${participantCount}`);
+  }
   console.log(`Duration:           ${durationSeconds}s`);
 
   if (acceptedAnswers !== expectedAnswers || rejectedAnswers !== 0 ||
-      questionEvents !== participantCount * 50 || !allScoresCorrect) {
+      questionEvents !== participantCount * 50 || !simulatedScoresCorrect) {
     process.exitCode = 1;
   }
 }
