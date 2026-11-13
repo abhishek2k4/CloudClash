@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
 import "./App.css";
 
 function Host() {
   const [password, setPassword] = useState("");
+  const passwordRef = useRef("");
   const [authenticated, setAuthenticated] = useState(false);
   const [connected, setConnected] = useState(false);
   const [participants, setParticipants] = useState([]);
@@ -17,7 +18,25 @@ function Host() {
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
-    const onConnect = () => { setConnected(true); setError(""); };
+    const applyHostSnapshot = (response) => {
+      if (!response?.success) {
+        setAuthenticated(false);
+        setError(response?.message || "Host authentication failed.");
+        return;
+      }
+      setAuthenticated(true);
+      setParticipants(response.participants || []);
+      setStatus(response.status || "waiting");
+      setRound(response.round || 0);
+      setLeaderboard(response.leaderboard || []);
+      setQuestion(response.question || null);
+      setSecondsLeft(response.question?.endsAt ? Math.max(0, Math.ceil((response.question.endsAt - Date.now()) / 1000)) : 0);
+    };
+    const onConnect = () => {
+      setConnected(true);
+      setError("");
+      if (passwordRef.current) socket.emit("host_login", passwordRef.current, applyHostSnapshot);
+    };
     const onDisconnect = () => { setConnected(false); setError("Disconnected. Reconnecting..."); };
     const onParticipants = setParticipants;
     const onStatus = setStatus;
@@ -32,6 +51,7 @@ function Host() {
     socket.on("round_started", onRoundStarted); socket.on("round_finished", onRoundFinished);
     socket.on("competition_finished", onFinished); socket.connect();
     return () => {
+      passwordRef.current = "";
       socket.off("connect", onConnect); socket.off("disconnect", onDisconnect);
       socket.off("participants_updated", onParticipants); socket.off("competition_status_updated", onStatus);
       socket.off("question_started", onQuestion); socket.off("question_ended", onQuestionEnded);
@@ -46,12 +66,23 @@ function Host() {
     tick(); const timer = setInterval(tick, 200); return () => clearInterval(timer);
   }, [question]);
 
-  const login = () => socket.emit("host_login", password, (response) => {
-    if (!response.success) return setError(response.message);
-    setAuthenticated(true); setParticipants(response.participants); setStatus(response.status);
-    setRound(response.round || 0); setLeaderboard(response.leaderboard || []);
-    if (response.question) setQuestion(response.question);
-  });
+  const login = () => {
+    passwordRef.current = password;
+    socket.emit("host_login", password, (response) => {
+      if (!response.success) {
+        passwordRef.current = "";
+        return setError(response.message);
+      }
+      setAuthenticated(true);
+      setParticipants(response.participants || []);
+      setStatus(response.status || "waiting");
+      setRound(response.round || 0);
+      setLeaderboard(response.leaderboard || []);
+      setQuestion(response.question || null);
+      setSecondsLeft(response.question?.endsAt ? Math.max(0, Math.ceil((response.question.endsAt - Date.now()) / 1000)) : 0);
+      setError("");
+    });
+  };
   const action = (event) => socket.emit(event, (response) => { if (!response.success) setError(response.message); });
 
   const downloadTemplate = () => {
