@@ -41,10 +41,9 @@ Open the frontend root URL. The landing page provides **Create quiz** and **Join
 
 ## User flow
 
-1. Anyone can choose **Create quiz** and open the host controls without an account or password.
-2. Host chooses 1–10 rounds and sets points per correct answer (1–100) and question timer (5–300 seconds) for each round.
-3. The server creates a room and returns a generated room code.
-4. Host imports a CSV question bank and shares the room code.
+1. Anyone can choose **Create quiz**, enter a room name, configure rounds, points and timers, then create the room without an account or password.
+2. The host chooses to import a CSV question bank or add questions manually in the free question builder.
+3. The server creates a room and returns a generated room code. The host shares it with players.
 5. Players join from the landing page using a display name and room code.
 6. Host starts the quiz. Questions advance automatically when their server timer expires.
 7. Host can pause and resume the active question. Pause freezes the remaining time and blocks answer submissions; resume continues the same question with the remaining time.
@@ -52,9 +51,11 @@ Open the frontend root URL. The landing page provides **Create quiz** and **Join
 
 Only one active room is supported at a time. A host can create a new room after the previous quiz has finished.
 
-## Question import
+## Question creation
 
-Download the CSV template from the host dashboard. Required columns:
+Hosts can import a CSV or build questions manually. The manual builder supports four answer options, choosing the correct answer, an optional explanation, round assignment, editing, duplication, deletion and reordering. All builder features are free.
+
+For CSV import, download the template from the host dashboard. Required columns:
 
 `round,question,option_a,option_b,option_c,option_d,correct_option`
 
