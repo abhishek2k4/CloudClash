@@ -167,10 +167,10 @@ function validateQuestionCsv(csvText) {
   const rows = parseCsv(csvText.replace(/^\uFEFF/, ""));
   if (rows.length < 2) throw new Error("The CSV is empty. Add your questions below the header row.");
   const headers = rows[0].map((header) => header.trim().toLowerCase());
-  const required = ["round", "question", "option_a", "option_b", "option_c", "option_d", "correct_option", "explanation"];
+  const required = ["round", "question", "option_a", "option_b", "option_c", "option_d", "correct_option"];\n  const optional = ["explanation"];
   const missing = required.filter((header) => !headers.includes(header));
   if (missing.length) throw new Error(`Missing column(s): ${missing.join(", ")}.`);
-  const index = Object.fromEntries(required.map((header) => [header, headers.indexOf(header)]));
+  const index = Object.fromEntries([...required, ...optional].map((header) => [header, headers.indexOf(header)]));
   const imported = { 1: [], 2: [] };
   const errors = [];
 
@@ -190,7 +190,7 @@ function validateQuestionCsv(csvText) {
     if (options.some((option) => !option)) errors.push(`Row ${line}: all four options are required.`);
     if (!Number.isInteger(correctOption) || correctOption < 0 || correctOption > 3) errors.push(`Row ${line}: correct_option must be A, B, C, D (or 1, 2, 3, 4).`);
     if (text && options.every(Boolean) && Number.isInteger(correctOption) && correctOption >= 0 && correctOption <= 3) {
-      imported[round].push({ text, options, correctOption, explanation: value("explanation") });
+      imported[round].push({ text, options, correctOption, explanation: index.explanation >= 0 ? value("explanation") : "" });
     }
   });
 
@@ -402,7 +402,7 @@ io.on("connection", (socket) => {
       question: status === "running" && questionIndex >= 0 && !questionLocked
         ? safeQuestion(roundQuestions(currentRound)[questionIndex], questionIndex, currentRound) : null,
       leaderboard: leaderboard(),
-      roundSeconds: CONFIG.roundSeconds,
+      roundSeconds: CONFIG.roundSeconds,\n      questionCounts: { 1: roundQuestions(1).length, 2: roundQuestions(2).length },
     });
   });
 
@@ -417,7 +417,7 @@ io.on("connection", (socket) => {
       activeQuestions = imported;
       persistStateSafely();
       callback({ success: true, counts: { 1: imported[1].length, 2: imported[2].length } });
-      console.log("Host imported 50 quiz questions.");
+      console.log(`Host imported ${imported[1].length + imported[2].length} quiz question(s).`);
     } catch (error) {
       callback({ success: false, message: error.message });
     }
