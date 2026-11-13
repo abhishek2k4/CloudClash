@@ -10,7 +10,7 @@ const clients=[];let accepted=0,rejected=0,events=0;const latencies=[];
 try{
  const health=await fetch(url+"/health");if(!health.ok)throw Error("Backend health check failed: "+health.status);
  const host=await connect();const login=await ack(host,"host_login");if(!login.success)throw Error(login.message);
- const created=await ack(host,"create_quiz",{rounds:2,roundSeconds:{1:5,2:5},marks:{1:5,2:10}});if(!created.success)throw Error(created.message);
+ const created=await ack(host,"create_quiz",{roomName:"Automated Load Test",rounds:2,roundSeconds:{1:5,2:5},marks:{1:5,2:10}});if(!created.success)throw Error(created.message);
  const imported=await ack(host,"import_questions",{csv:rows.join("\n")});if(!imported.success)throw Error(imported.message);
  for(let i=0;i<count;i++){const s=await connect();const joined=await ack(s,"join_competition",{name:"Load Tester "+String(i+1).padStart(3,"0"),code:created.roomCode});if(!joined.success)throw Error(joined.message);s.pid=joined.participant.id;s.on("question_started",q=>{events++;const delay=100+(i*37)%500;setTimeout(async()=>{const start=performance.now();try{const a=await ack(s,"submit_answer",{participantId:s.pid,questionNumber:q.questionNumber,selectedOption:0});latencies.push(performance.now()-start);if(a.success&&a.accepted)accepted++;else rejected++;}catch{rejected++;}},delay);});clients.push(s);}
  console.log(`Connected ${clients.length}/${count} simulated players to room ${created.roomCode}.`);
