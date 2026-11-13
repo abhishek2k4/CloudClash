@@ -43,18 +43,21 @@ function Participant() {
     socket.on("round_finished", onRoundFinished);
     socket.on("competition_finished", onFinished);
     const onConnect = () => {
-      if (!saved?.id || !saved?.code || !saved?.name) return;
+      let stored = null;
+      try { stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch { localStorage.removeItem(STORAGE_KEY); }
+      if (!stored?.id || !stored?.code || !stored?.name) return;
       socket.emit("join_competition", {
-        name: saved.name, code: saved.code, participantId: saved.id,
+        name: stored.name, code: stored.code, participantId: stored.id,
       }, (response) => {
         if (!response.success) {
           localStorage.removeItem(STORAGE_KEY);
+          setParticipant(null);
           setError(response.message);
           return;
         }
-        setParticipant({ ...response.participant, code: saved.code });
-        setName(saved.name);
-        setCode(saved.code);
+        setParticipant({ ...response.participant, code: stored.code });
+        setName(stored.name);
+        setCode(stored.code);
         setParticipants(response.snapshot?.participants || []);
         setStatus(response.snapshot?.status || "waiting");
         setLeaderboard(response.snapshot?.leaderboard || []);
