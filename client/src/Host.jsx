@@ -60,7 +60,9 @@ export default function Host({ onHome, onActivityChange }) {
     setRound(response.round || 0);
     setQuestion(response.question || null);
     setLeaderboard(response.leaderboard || []);
-    if (response.roomCode && response.status === "waiting") setStage("lobby");
+    // Restore the control dashboard for any existing room, including a live quiz.
+    // Only a fresh/idle host session should remain on the room setup screen.
+    setStage(response.roomCode ? "control" : "room");
   }, []);
 
   useEffect(() => {
@@ -155,6 +157,7 @@ export default function Host({ onHome, onActivityChange }) {
   };
 
   const addRound = () => {
+    if (rounds >= 10) return;
     const next = rounds + 1;
     setRounds(next);
     setSettings((s) => ({
@@ -183,11 +186,14 @@ export default function Host({ onHome, onActivityChange }) {
     setActiveConfigRound((prev) => Math.min(prev, nextTotal));
   };
 
-  const setValue = (group, n, v) =>
+  const setValue = (group, n, v) => {
+    const limits = group === "roundSeconds" ? { min: 5, max: 300 } : { min: 1, max: 100 };
+    const value = Math.min(limits.max, Math.max(limits.min, Number(v) || limits.min));
     setSettings((s) => ({
       ...s,
-      [group]: { ...s[group], [n]: Math.max(1, Number(v) || 1) }
+      [group]: { ...s[group], [n]: value }
     }));
+  };
 
   const create = () =>
     action(
@@ -298,7 +304,7 @@ export default function Host({ onHome, onActivityChange }) {
           <p className="eyebrow">STEP 01 · MATCH ARCHITECT</p>
           <h1>Configure your quiz.</h1>
           <p className="muted" style={{ marginTop: 6 }}>
-            Add as many rounds as needed and customize time limits and point values per round.
+            Configure up to 10 rounds with custom time limits and point values.
           </p>
         </header>
 
@@ -342,8 +348,14 @@ export default function Host({ onHome, onActivityChange }) {
                 R{String(n).padStart(2, "0")}
               </button>
             ))}
-            <button type="button" className="round-tab-add" onClick={addRound}>
-              + Add Round
+            <button
+              type="button"
+              className="round-tab-add"
+              onClick={addRound}
+              disabled={rounds >= 10}
+              title={rounds >= 10 ? "Maximum of 10 rounds" : "Add a round"}
+            >
+              {rounds >= 10 ? "10 Rounds Max" : "+ Add Round"}
             </button>
           </div>
 
@@ -427,7 +439,7 @@ export default function Host({ onHome, onActivityChange }) {
                   <input
                     type="number"
                     min="1"
-                    max="1000"
+                    max="100"
                     className="input-control mono"
                     style={{ textAlign: "center" }}
                     value={currentMarks}
@@ -437,7 +449,7 @@ export default function Host({ onHome, onActivityChange }) {
                     type="button"
                     className="stepper-btn"
                     onClick={() =>
-                      setValue("marks", activeConfigRound, Math.min(1000, currentMarks + 5))
+                      setValue("marks", activeConfigRound, Math.min(100, currentMarks + 5))
                     }
                   >
                     +5
