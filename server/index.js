@@ -168,7 +168,12 @@ function startRound(round) {
 }
 
 function snapshotForParticipant(id) {
-  const base = { status, round: currentRound, leaderboard: leaderboard() };
+  const base = {
+    status,
+    round: currentRound,
+    leaderboard: leaderboard(),
+    participants: [...participants.values()].map(publicParticipant),
+  };
   if (status === "running" && questionIndex >= 0 && !questionLocked) {
     return { ...base, question: safeQuestion(roundQuestions(currentRound)[questionIndex], questionIndex, currentRound) };
   }
