@@ -144,6 +144,17 @@ function attachQuestionSimulation(socket, participantIndex) {
   });
 }
 
+async function connectHost() {
+  const socket = io(serverUrl, { transports: ["websocket"], reconnection: false, timeout: 10000 });
+  await new Promise((resolve, reject) => {
+    socket.once("connect", resolve);
+    socket.once("connect_error", reject);
+  });
+  const login = await ack(socket, "host_login", hostPassword);
+  if (!login?.success) throw new Error(`Host re-login failed: ${login?.message || "unknown error"}`);
+  return { socket, login };
+}
+
 async function main() {
   const health = await fetch(`${serverUrl}/health`);
   if (!health.ok) throw new Error(`Backend health check failed: HTTP ${health.status}`);
@@ -174,8 +185,10 @@ async function main() {
   // The load-test script keeps the ID returned by the join callback below.
   console.log(`Connected ${clients.length}/${participantCount} participants.`);
 
-  const roundOneFinished = waitFor(host, "round_finished", (event) => event.round === 1);
   const firstQuestionEnded = waitFor(host, "question_ended", (event) => event.round === 1 && event.questionNumber === 1);
+  const secondQuestionStarted = waitFor(clients[0], "question_started", (event) =>
+    event.round === 1 && event.questionNumber === 2
+  );
   const start = await ack(host, "start_competition");
   if (!start?.success) throw new Error(`Could not start Round 1: ${start?.message || "unknown error"}`);
 
@@ -192,8 +205,21 @@ async function main() {
   if (verifiedRecoverySnapshots !== reconnectCount) {
     throw new Error(`Missed-question recovery verified for only ${verifiedRecoverySnapshots}/${reconnectCount} reconnects.`);
   }
-  const roundOneFinishedWait = roundOneFinished;
-  await roundOneFinishedWait;
+  // Drop the host connection during an active question and verify that a
+  // fresh authenticated host socket receives the exact live question/deadline.
+  const liveQuestion = await secondQuestionStarted;
+  host.disconnect();
+  const recoveredHost = await connectHost();
+  host = recoveredHost.socket;
+  const hostSnapshot = recoveredHost.login;
+  if (hostSnapshot.status !== "running" ||
+      hostSnapshot.round !== 1 ||
+      hostSnapshot.question?.questionNumber !== liveQuestion.questionNumber ||
+      hostSnapshot.question?.endsAt !== liveQuestion.endsAt) {
+    throw new Error("Host reconnect did not restore the active round, question and deadline.");
+  }
+  const roundOneFinished = waitFor(host, "round_finished", (event) => event.round === 1);
+  await roundOneFinished;
 
   const roundTwoFinished = waitFor(host, "round_finished", (event) => event.round === 2);
   const roundTwoStarted = await ack(host, "start_round_two");
@@ -218,6 +244,7 @@ async function main() {
   console.log(`Participants:       ${clients.length}/${participantCount}`);
   console.log(`Reconnects:         ${reconnectCount} successful (same participant IDs)`);
   console.log(`Missed results:     ${verifiedRecoverySnapshots}/${reconnectCount} restored in reconnect snapshots`);
+  console.log("Host recovery:      PASS (active round, question and deadline restored)");
   console.log(`Question events:    ${questionEvents} (expected ${participantCount * 50})`);
   console.log(`Accepted answers:   ${acceptedAnswers}/${expectedAnswers}`);
   console.log(`Rejected answers:   ${rejectedAnswers}`);
