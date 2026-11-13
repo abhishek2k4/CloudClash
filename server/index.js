@@ -32,7 +32,8 @@ if (!CONFIG.hostPassword) {
   console.warn("HOST_PASSWORD is not set. Host login is disabled until configured.");
 }
 
-let activeQuestions = { 1: [...DEMO_QUESTIONS[1]], 2: [...DEMO_QUESTIONS[2]] };\nconst participants = new Map();
+let activeQuestions = { 1: [...DEMO_QUESTIONS[1]], 2: [...DEMO_QUESTIONS[2]] };
+const participants = new Map();
 let status = "waiting";
 let currentRound = 0;
 let questionIndex = -1;
