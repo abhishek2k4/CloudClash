@@ -75,9 +75,9 @@ Open the Vite URL for participants and append `/host` for the host dashboard.
 ## Competition rules
 
 - Each round supports its own question count; the two rounds do not need to be equal
-- Round 1: 5 points per correct answer; Round 2: 10 points
+- Host-configurable time limit (5–300 seconds) and points per correct answer (1–100) for each round
 - No negative marking; incorrect or unanswered questions score zero
-- Timers are server-controlled and configured with `ROUND_1_SECONDS` and `ROUND_2_SECONDS`
+- Timers and scoring are configured in the host dashboard before the competition; the server enforces and persists the selected settings
 - Questions advance automatically; the host starts Round 2 after reviewing Round 1
 - One attempt per participant per question
 - Tie-break order: total score, number of correct answers, lower total response time, then name
@@ -92,7 +92,7 @@ Use round `1` or `2`; correct option can be `A`, `B`, `C`, or `D`. Explanation i
 
 ## Persistence and recovery
 
-The backend stores the competition as a JSON snapshot in Supabase. It restores participants, imported questions, scores, accepted answers, round status, and the active question deadline on startup. A participant reconnecting during a live question receives their own submitted-answer state, so they cannot accidentally submit twice after refreshing.
+The backend stores the competition as a JSON snapshot in Supabase. It restores participants, imported questions, quiz settings, scores, accepted answers, round status, and the active question deadline on startup. A participant reconnecting during a live question receives their own submitted-answer state, so they cannot accidentally submit twice after refreshing.
 
 The server health endpoint reports `503 degraded` when configured persistence cannot be restored or a save has failed. In memory-only mode, health is available but explicitly reports that persistence is not enabled; do not use that mode for the live event.
 
