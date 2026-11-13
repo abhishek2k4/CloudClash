@@ -61,7 +61,11 @@ function Participant() {
         setParticipants(response.snapshot?.participants || []);
         setStatus(response.snapshot?.status || "waiting");
         setLeaderboard(response.snapshot?.leaderboard || []);
-        if (response.snapshot?.question) setQuestion(response.snapshot.question);
+        setQuestion(response.snapshot?.question || null);
+        setSelected(null);
+        setSubmitted(false);
+        setResult(null);
+        setSecondsLeft(response.snapshot?.question?.endsAt ? Math.max(0, Math.ceil((response.snapshot.question.endsAt - Date.now()) / 1000)) : 0);
       });
     };
     socket.on("connect", onConnect);
@@ -100,6 +104,10 @@ function Participant() {
         setQuestion(snapshot.question);
         setStatus("running");
       } else {
+        setQuestion(null);
+        setSelected(null);
+        setSubmitted(false);
+        setResult(null);
         setStatus(snapshot?.status || "waiting");
         setLeaderboard(snapshot?.leaderboard || []);
       }
