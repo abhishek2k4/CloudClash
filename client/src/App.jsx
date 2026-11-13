@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Host from "./Host";
 import Participant from "./Participant";
 import "./App.css";
@@ -6,7 +6,7 @@ import "./App.css";
 export default function App(){
  const [path,setPath]=useState(window.location.pathname);
  const navigate=next=>{window.history.pushState({}, "", next);setPath(next);};
- window.onpopstate=()=>setPath(window.location.pathname);
+ useEffect(()=>{const back=()=>setPath(window.location.pathname);window.addEventListener("popstate",back);return()=>window.removeEventListener("popstate",back);},[]);
  if(path==="/host")return <Host onHome={()=>navigate("/")} />;
  if(path==="/join")return <Participant onHome={()=>navigate("/")} />;
  return <main className="landing">
