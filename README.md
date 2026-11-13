@@ -47,3 +47,19 @@ Round marks are fixed at 5 for Round 1 and 10 for Round 2. Configure per-questio
 - Participant records survive temporary socket disconnects while the server process remains alive
 
 **Important:** this first engine version stores event state in memory. A server restart clears participants and scores. Use a persistent database before relying on this for the live event.
+
+## Importing questions from CSV
+
+From the host dashboard (`/host`), download `cloud-clash-question-template.csv`, fill it in Excel or Google Sheets, then upload it before starting Round 1.
+
+The CSV must contain exactly 25 valid questions for each round. Required columns:
+
+| Column | What to enter |
+|---|---|
+| `round` | `1` or `2` |
+| `question` | The question text |
+| `option_a` to `option_d` | Four answer choices |
+| `correct_option` | `A`, `B`, `C`, or `D` |
+| `explanation` | Optional explanation shown after the answer |
+
+Keep the header names unchanged. Export as CSV (UTF-8). The importer checks the file and reports validation errors before replacing the active question bank. Questions can only be imported while the competition is waiting. A successful import replaces the demo question set in memory; it is not retained if the server restarts.
