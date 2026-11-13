@@ -420,7 +420,7 @@ io.on("connection", (socket) => {
     }
 
     persistState();
-    callback({ success: true, accepted: true, correct });
+    callback({ success: true, accepted: true });
   });
 
   socket.on("disconnect", () => {
