@@ -27,6 +27,7 @@ export default function Participant({
   const [totalSeconds, setTotalSeconds] = useState(20);
   const [selected, setSelected] = useState(null);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [status, setStatus] = useState("waiting");
@@ -47,6 +48,7 @@ export default function Participant({
     setQuestion(snapQ);
     setSelected(r.snapshot?.answer?.selectedOption ?? null);
     setSubmitted(Boolean(r.snapshot?.answer));
+    setSubmitting(false);
     setResult(r.snapshot?.lastQuestionResult || null);
     if (snapQ?.endsAt) {
       const rem = Math.max(0, Math.ceil((snapQ.endsAt - Date.now()) / 1000));
@@ -64,6 +66,7 @@ export default function Participant({
       setQuestion(q);
       setSelected(null);
       setSubmitted(false);
+      setSubmitting(false);
       setResult(null);
       const rem = Math.max(0, Math.ceil((q.endsAt - Date.now()) / 1000));
       setSeconds(rem);
@@ -73,7 +76,6 @@ export default function Participant({
     const onResume = (d) => setQuestion((q) => (q ? { ...q, endsAt: d.endsAt } : q));
     const onEnd = (d) => {
       setResult(d);
-      setQuestion(null);
     };
     const onRound = (d) => {
       setStatus("running");
@@ -162,18 +164,26 @@ export default function Participant({
     onHome();
   };
 
-  const submit = () => {
-    if (selected === null || submitted || !question || !participant) return;
+  const submit = (optionIndex) => {
+    if (submitted || submitting || !question || !participant || result) return;
+    setSelected(optionIndex);
+    setSubmitting(true);
+    setError("");
     socket.emit(
       "submit_answer",
       {
         participantId: participant.id,
         questionNumber: question.questionNumber,
-        selectedOption: selected
+        selectedOption: optionIndex
       },
       (r) => {
-        if (!r.success) setError(r.message);
-        else setSubmitted(true);
+        setSubmitting(false);
+        if (!r?.success) {
+          setError(r?.message || "Your answer could not be submitted. Please try again.");
+          setSelected(null);
+        } else {
+          setSubmitted(true);
+        }
       }
     );
   };
@@ -283,36 +293,41 @@ export default function Participant({
           <div className="options-grid">
             {question.options.map((o, i) => {
               const isSelected = selected === i;
-              const tileClass = `option-tile ${
-                submitted && isSelected ? "locked" : isSelected ? "selected" : ""
-              }`;
+              const isRevealed = result?.correctOption !== undefined;
+              const isCorrect = isRevealed && result.correctOption === i;
+              const isIncorrectSelection = isRevealed && isSelected && !isCorrect;
+              const tileClass = [
+                "option-tile",
+                !isRevealed && isSelected ? "selected" : "",
+                isRevealed && isSelected ? "locked" : "",
+                isCorrect ? "correct-answer" : "",
+                isIncorrectSelection ? "incorrect-answer" : ""
+              ].filter(Boolean).join(" ");
               return (
                 <button
                   type="button"
                   key={i}
                   className={tileClass}
-                  disabled={submitted || seconds === 0}
-                  onClick={() => setSelected(i)}
+                  disabled={submitted || submitting || seconds === 0 || isRevealed}
+                  onClick={() => submit(i)}
                 >
                   <span className="option-key">{String.fromCharCode(65 + i)}</span>
-                  <span>{o}</span>
+                  <span className="option-text">{o}</span>
+                  {isRevealed && isCorrect && <span className="option-feedback" aria-label="Correct answer">✓</span>}
+                  {isRevealed && isIncorrectSelection && <span className="option-feedback" aria-label="Your answer was incorrect">✕</span>}
                 </button>
               );
             })}
           </div>
 
-          <button
-            type="button"
-            className="btn btn-primary btn-full"
-            disabled={selected === null || submitted || seconds === 0}
-            onClick={submit}
-          >
-            {submitted ? "Answer Locked In" : "Lock Answer"}
-          </button>
-
-          {submitted && (
-            <div className="success-banner">
-              Selection locked. Waiting for the round timer to conclude.
+          {submitting && <div className="success-banner">Submitting your answer…</div>}
+          {submitted && !result && (
+            <div className="success-banner">Answer submitted. Waiting for the timer to end.</div>
+          )}
+          {result?.correctOption !== undefined && result.explanation && (
+            <div className="surface-card" style={{ marginTop: 14 }}>
+              <p className="eyebrow">EXPLANATION</p>
+              <p className="muted">{result.explanation}</p>
             </div>
           )}
         </section>
