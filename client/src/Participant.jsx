@@ -438,7 +438,7 @@ export default function Participant({
                     <span className="podium-rank">#{String(actualRank).padStart(2, "0")}</span>
                     <span className="avatar-monogram">{getInitials(p.name)}</span>
                     <span className="podium-name">{p.name}</span>
-                    <span className="podium-score">{p.score} pts</span>
+                    <span className="podium-score">{Number(p.score).toFixed(2)} pts</span>
                   </div>
                 );
               })}
@@ -455,7 +455,7 @@ export default function Participant({
                     {p.name} {p.id === participant.id ? "(You)" : ""}
                   </strong>
                 </div>
-                <span className="standing-score">{p.score} pts</span>
+                <span className="standing-score">{Number(p.score).toFixed(2)} pts</span>
               </div>
             ))}
           </div>
