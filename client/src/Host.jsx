@@ -1209,7 +1209,7 @@ export default function Host({ onHome, onActivityChange }) {
                 <div className="standing-left">
                   <span className="standing-rank">#{String(p.rank).padStart(2, "0")}</span>
                   <span className="avatar-monogram">{getInitials(p.name)}</span>
-                  <strong>{p.name}</strong>
+                  <strong>{p.name} {p.eliminated ? "(Eliminated)" : ""}</strong>
                 </div>
                 <span className="standing-score">{Number(p.score).toFixed(2)} pts</span>
               </div>
