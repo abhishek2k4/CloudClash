@@ -1,152 +1,1098 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { socket } from "./socket";
 import "./App.css";
 
-function Host() {
-  const [password, setPassword] = useState("");
-  const passwordRef = useRef("");
-  const [authenticated, setAuthenticated] = useState(false);
+const blankQuestion = (round = 1) => ({
+  id: crypto.randomUUID(),
+  round,
+  text: "",
+  options: ["", "", "", ""],
+  correctOption: 0,
+  explanation: ""
+});
+
+const getInitials = (name = "") =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("") || "PL";
+
+export default function Host({ onHome, onActivityChange }) {
   const [connected, setConnected] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [stage, setStage] = useState("room");
+  const [roomName, setRoomName] = useState("");
+  const [roomCode, setRoomCode] = useState("");
+  const [status, setStatus] = useState("idle");
+  const [rounds, setRounds] = useState(2);
+  const [activeConfigRound, setActiveConfigRound] = useState(1);
+  const [settings, setSettings] = useState({
+    roundSeconds: { 1: 15, 2: 25 },
+    marks: { 1: 10, 2: 20 }
+  });
   const [participants, setParticipants] = useState([]);
-  const [status, setStatus] = useState("waiting");
+  const [counts, setCounts] = useState({});
   const [round, setRound] = useState(0);
   const [question, setQuestion] = useState(null);
-  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [seconds, setSeconds] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [questions, setQuestions] = useState([blankQuestion()]);
   const [error, setError] = useState("");
   const [importStatus, setImportStatus] = useState("");
-  const [importing, setImporting] = useState(false);
+  const [roundUploads, setRoundUploads] = useState({});
+  const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    const applyHostSnapshot = (response) => {
-      if (!response?.success) {
-        setAuthenticated(false);
-        setError(response?.message || "Host authentication failed.");
-        return;
-      }
-      setAuthenticated(true);
-      setParticipants(response.participants || []);
-      setStatus(response.status || "waiting");
-      setRound(response.round || 0);
-      setLeaderboard(response.leaderboard || []);
-      setQuestion(response.question || null);
-      setSecondsLeft(response.question?.endsAt ? Math.max(0, Math.ceil((response.question.endsAt - Date.now()) / 1000)) : 0);
-    };
-    const onConnect = () => {
-      setConnected(true);
-      setError("");
-      if (passwordRef.current) socket.emit("host_login", passwordRef.current, applyHostSnapshot);
-    };
-    const onDisconnect = () => { setConnected(false); setError("Disconnected. Reconnecting..."); };
-    const onParticipants = setParticipants;
-    const onStatus = setStatus;
-    const onQuestion = (data) => { setQuestion(data); setRound(data.round); setSecondsLeft(Math.max(0, Math.ceil((data.endsAt - Date.now()) / 1000))); };
-    const onQuestionEnded = () => setQuestion(null);
-    const onRoundStarted = ({ round: next }) => { setRound(next); setStatus("running"); setQuestion(null); };
-    const onRoundFinished = ({ leaderboard: data }) => { setLeaderboard(data); setStatus("round_break"); setQuestion(null); };
-    const onFinished = ({ leaderboard: data }) => { setLeaderboard(data); setStatus("finished"); setQuestion(null); };
-    socket.on("connect", onConnect); socket.on("disconnect", onDisconnect);
-    socket.on("participants_updated", onParticipants); socket.on("competition_status_updated", onStatus);
-    socket.on("question_started", onQuestion); socket.on("question_ended", onQuestionEnded);
-    socket.on("round_started", onRoundStarted); socket.on("round_finished", onRoundFinished);
-    socket.on("competition_finished", onFinished); socket.connect();
-    return () => {
-      passwordRef.current = "";
-      socket.off("connect", onConnect); socket.off("disconnect", onDisconnect);
-      socket.off("participants_updated", onParticipants); socket.off("competition_status_updated", onStatus);
-      socket.off("question_started", onQuestion); socket.off("question_ended", onQuestionEnded);
-      socket.off("round_started", onRoundStarted); socket.off("round_finished", onRoundFinished);
-      socket.off("competition_finished", onFinished); socket.disconnect();
-    };
+  const apply = useCallback((response) => {
+    if (!response?.success) {
+      setError(response?.message || "Could not open host controls.");
+      return;
+    }
+    setAuthenticated(true);
+    setRoomCode(response.roomCode || "");
+    setRoomName(response.roomName || "");
+    setStatus(response.status || "idle");
+    setRounds(response.rounds || 2);
+    if (response.quizSettings) setSettings(response.quizSettings);
+    setParticipants(response.participants || []);
+    setCounts(response.questionCounts || {});
+    setRound(response.round || 0);
+    setQuestion(response.question || null);
+    setLeaderboard(response.leaderboard || []);
+    // Restore the control dashboard for any existing room, including a live quiz.
+    // Only a fresh/idle host session should remain on the room setup screen.
+    setStage(response.roomCode ? "control" : "room");
   }, []);
 
   useEffect(() => {
-    if (!question) return;
-    const tick = () => setSecondsLeft(Math.max(0, Math.ceil((question.endsAt - Date.now()) / 1000)));
-    tick(); const timer = setInterval(tick, 200); return () => clearInterval(timer);
-  }, [question]);
+    const connect = () => {
+      setConnected(true);
+      socket.emit("host_login", apply);
+    };
+    const disconnect = () => setConnected(false);
+    const onPeople = setParticipants;
+    const onStatus = setStatus;
+    const onQuestion = (q) => {
+      setQuestion(q);
+      setRound(q.round);
+      setSeconds(Math.max(0, Math.ceil((q.endsAt - Date.now()) / 1000)));
+    };
+    const onResume = (d) => setQuestion((q) => (q ? { ...q, endsAt: d.endsAt } : q));
+    const onEnded = () => setQuestion(null);
+    const onRound = (d) => {
+      setRound(d.round);
+      setStatus("running");
+      setQuestion(null);
+    };
+    const onBreak = (d) => {
+      setLeaderboard(d.leaderboard || []);
+      setStatus("round_break");
+      setQuestion(null);
+    };
+    const onFinish = (d) => {
+      setLeaderboard(d.leaderboard || []);
+      setStatus("finished");
+      setQuestion(null);
+    };
 
-  const login = () => {
-    passwordRef.current = password;
-    socket.emit("host_login", password, (response) => {
-      if (!response.success) {
-        passwordRef.current = "";
-        return setError(response.message);
+    socket.on("connect", connect);
+    socket.on("disconnect", disconnect);
+    socket.on("participants_updated", onPeople);
+    socket.on("competition_status_updated", onStatus);
+    socket.on("question_started", onQuestion);
+    socket.on("question_resumed", onResume);
+    socket.on("question_ended", onEnded);
+    socket.on("round_started", onRound);
+    socket.on("round_finished", onBreak);
+    socket.on("competition_finished", onFinish);
+    socket.connect();
+
+    return () => {
+      socket.off("connect", connect);
+      socket.off("disconnect", disconnect);
+      socket.off("participants_updated", onPeople);
+      socket.off("competition_status_updated", onStatus);
+      socket.off("question_started", onQuestion);
+      socket.off("question_resumed", onResume);
+      socket.off("question_ended", onEnded);
+      socket.off("round_started", onRound);
+      socket.off("round_finished", onBreak);
+      socket.off("competition_finished", onFinish);
+      socket.disconnect();
+    };
+  }, [apply]);
+
+  useEffect(() => {
+    setError("");
+  }, [stage]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timeout = window.setTimeout(() => setError(""), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [error]);
+
+  useEffect(() => {
+    onActivityChange?.(["running", "paused", "round_break"].includes(status));
+    return () => onActivityChange?.(false);
+  }, [status, onActivityChange]);
+
+  const requestHome = () => {
+    if (["running", "paused", "round_break"].includes(status)) {
+      const leave = window.confirm(
+        "The quiz is currently in progress. If you leave this page, you may lose access to host controls. The quiz will continue for players. Do you really want to leave?"
+      );
+      if (!leave) return;
+    }
+    onHome();
+  };
+
+  useEffect(() => {
+    if (!question || status !== "running") return;
+    const tick = () => setSeconds(Math.max(0, Math.ceil((question.endsAt - Date.now()) / 1000)));
+    tick();
+    const t = setInterval(tick, 200);
+    return () => clearInterval(t);
+  }, [question, status]);
+
+  const action = (event, payload, done, failed) => {
+    setError("");
+    const callback = (r) => {
+      if (!r?.success) {
+        setError(r?.message || "Action failed.");
+        failed?.(r);
+      } else done?.(r);
+    };
+    if (payload === undefined) socket.emit(event, callback);
+    else socket.emit(event, payload, callback);
+  };
+
+  const addRound = () => {
+    if (rounds >= 10) return;
+    const next = rounds + 1;
+    setRounds(next);
+    setSettings((s) => ({
+      roundSeconds: { ...s.roundSeconds, [next]: 20 },
+      marks: { ...s.marks, [next]: 10 }
+    }));
+    setActiveConfigRound(next);
+  };
+
+  const removeRound = (target) => {
+    if (rounds <= 1) return;
+    const nextTotal = rounds - 1;
+    setSettings((s) => {
+      const rs = {};
+      const mk = {};
+      let idx = 1;
+      for (let i = 1; i <= rounds; i++) {
+        if (i === target) continue;
+        rs[idx] = s.roundSeconds[i] ?? 20;
+        mk[idx] = s.marks[i] ?? 10;
+        idx++;
       }
-      setAuthenticated(true);
-      setParticipants(response.participants || []);
-      setStatus(response.status || "waiting");
-      setRound(response.round || 0);
-      setLeaderboard(response.leaderboard || []);
-      setQuestion(response.question || null);
-      setSecondsLeft(response.question?.endsAt ? Math.max(0, Math.ceil((response.question.endsAt - Date.now()) / 1000)) : 0);
-      setError("");
+      return { roundSeconds: rs, marks: mk };
     });
-  };
-  const action = (event) => socket.emit(event, (response) => { if (!response.success) setError(response.message); });
-
-  const downloadTemplate = () => {
-    const headers = ["round", "question", "option_a", "option_b", "option_c", "option_d", "correct_option", "explanation"];
-    const rows = [headers.join(",")];
-    for (const roundNumber of [1, 2]) {
-      for (let i = 0; i < 25; i += 1) rows.push([roundNumber, "", "", "", "", "", "", ""].join(","));
-    }
-    const csv = "\uFEFF" + rows.join("\r\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url; link.download = "cloud-clash-question-template.csv"; link.click();
-    URL.revokeObjectURL(url);
+    setRounds(nextTotal);
+    setActiveConfigRound((prev) => Math.min(prev, nextTotal));
   };
 
-  const importCsv = async (event) => {
-    const file = event.target.files?.[0];
+  const setValue = (group, n, v) => {
+    const limits = group === "roundSeconds" ? { min: 5, max: 300 } : { min: 1, max: 100 };
+    const value = Math.min(limits.max, Math.max(limits.min, Number(v) || limits.min));
+    setSettings((s) => ({
+      ...s,
+      [group]: { ...s[group], [n]: value }
+    }));
+  };
+
+  const create = () =>
+    action(
+      "create_quiz",
+      { roomName, rounds, roundSeconds: settings.roundSeconds, marks: settings.marks },
+      (r) => {
+        setRoomCode(r.roomCode);
+        setCounts(r.questionCounts);
+        setRoomName(r.roomName);
+        setStatus("waiting");
+        setStage("method");
+      }
+    );
+
+  const updateQuestion = (index, patch) =>
+    setQuestions((qs) => qs.map((q, i) => (i === index ? { ...q, ...patch } : q)));
+
+  const saveManual = () => {
+    if (!questions.length) return setError("Add at least one question.");
+    action(
+      "save_questions",
+      {
+        questions: questions.map(({ round: r, text, options, correctOption, explanation }) => ({
+          round: r,
+          text,
+          options,
+          correctOption,
+          explanation
+        }))
+      },
+      (r) => {
+        setCounts(r.counts);
+        setStatus("waiting");
+        setStage("lobby");
+        setImportStatus("Questions saved successfully.");
+      }
+    );
+  };
+
+  const downloadRoundTemplate = (n) => {
+    const csv = "question,option_a,option_b,option_c,option_d,correct_option,explanation\r\n";
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv" }));
+    a.download = "cloud-clash-round-" + n + "-questions.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const uploadRound = async (e, n) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-    setError(""); setImportStatus(""); setImporting(true);
+    setError("");
+    setRoundUploads((s) => ({ ...s, [n]: "Uploading..." }));
     try {
-      if (!file.name.toLowerCase().endsWith(".csv")) throw new Error("Please choose a .csv file.");
-      if (file.size > 1_000_000) throw new Error("CSV must be smaller than 1 MB.");
       const csv = await file.text();
-      socket.emit("import_questions", { csv }, (response) => {
-        setImporting(false);
-        if (!response.success) setError(response.message);
-        else setImportStatus(`Successfully imported ${response.counts[1]} questions for Round 1 and ${response.counts[2]} for Round 2.`);
+      action("import_round_questions", { round: n, csv }, (r) => {
+        setCounts(r.counts);
+        setRoundUploads((s) => ({ ...s, [n]: `${r.counts[n]} questions verified` }));
+        setImportStatus(`Round ${n} question bank uploaded.`);
+        if (Array.from({ length: rounds }, (_, i) => i + 1).every((k) => (r.counts[k] || 0) > 0)) {
+          setStatus("waiting");
+          setStage("lobby");
+        }
+      }, () => {
+        setRoundUploads((s) => ({ ...s, [n]: "Upload failed — check the CSV headers and format" }));
       });
-    } catch (uploadError) {
-      setImporting(false); setError(uploadError.message);
+    } catch {
+      setError("Could not read the CSV file.");
+      setRoundUploads((s) => ({ ...s, [n]: "Upload failed" }));
     }
-    event.target.value = "";
+    e.target.value = "";
   };
 
-  if (!authenticated) return <main className="container panel">
-    <p className="eyebrow">CONTROL ROOM</p><h1>CLOUD CLASH</h1><h2>Host login</h2>
-    <p className="muted">Server: {connected ? "Connected" : "Connecting..."}</p>
-    <input type="password" placeholder="Host password" value={password} onChange={(e) => setPassword(e.target.value)} />
-    <button onClick={login} disabled={!connected || !password}>Login</button>
-    {error && <p className="error">{error}</p>}
-  </main>;
+  const copyCode = () => {
+    navigator.clipboard?.writeText(roomCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
 
-  return <main className="container wide">
-    <header className="topbar"><div><p className="eyebrow">CONTROL ROOM</p><h1>CLOUD CLASH</h1></div><span className="live-pill">{status.toUpperCase().replace("_", " ")}</span></header>
-    <div className="stats-grid"><section className="panel"><p className="muted">Participants</p><h2>{participants.length}</h2></section><section className="panel"><p className="muted">Current round</p><h2>{round || "—"}</h2></section></div>
-    {status === "waiting" && <>
-      <section className="panel">
-        <h2>Question bank</h2>
-        <p>Download the CSV template, fill in all 50 questions in Excel or Google Sheets, then upload it here. Importing replaces the demo questions.</p>
-        <div className="import-actions">
-          <button className="secondary-button" onClick={downloadTemplate}>Download CSV template</button>
-          <label className="upload-button">{importing ? "Importing..." : "Import completed CSV"}<input type="file" accept=".csv,text/csv" onChange={importCsv} disabled={importing} /></label>
+  if (!authenticated) {
+    return (
+      <main className="app-shell narrow">
+        <button className="back-link" onClick={requestHome}>
+          ← Home
+        </button>
+        <section className="surface-card">
+          <p className="eyebrow">HOST SETUP</p>
+          <h1>Initializing Control Room</h1>
+          <p className="muted" style={{ marginTop: 10 }}>
+            {connected ? "Authenticating host session..." : "Connecting to arena server..."}
+          </p>
+          {error && <div className="error-banner">{error}</div>}
+        </section>
+      </main>
+    );
+  }
+
+  /* STAGE 01: ROOM & ROUND ARCHITECT */
+  if (stage === "room") {
+    const currentSeconds = settings.roundSeconds[activeConfigRound] ?? 20;
+    const currentMarks = settings.marks[activeConfigRound] ?? 10;
+
+    return (
+      <main className="app-shell narrow">
+        <button className="back-link" onClick={requestHome}>
+          ← Back to Home
+        </button>
+
+        <header style={{ marginBottom: 22 }}>
+          <p className="eyebrow">STEP 01 · MATCH ARCHITECT</p>
+          <h1>Configure your quiz.</h1>
+          <p className="muted" style={{ marginTop: 6 }}>
+            Configure up to 10 rounds with custom time limits and point values.
+          </p>
+        </header>
+
+        <section className="surface-card">
+          <div className="field-group">
+            <label className="field-label" htmlFor="room-name-input">Room Title</label>
+            <input
+              id="room-name-input"
+              className="input-control"
+              autoFocus
+              maxLength={60}
+              placeholder="e.g. CLOUD CLASH FINALS"
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+            />
+          </div>
+
+          <div className="telemetry-strip">
+            <div className="telemetry-cell">
+              <span>Total Rounds</span>
+              <strong>{String(rounds).padStart(2, "0")}</strong>
+            </div>
+            <div className="telemetry-cell">
+              <span>Active Timer</span>
+              <strong>{currentSeconds}s / Q</strong>
+            </div>
+            <div className="telemetry-cell">
+              <span>Active Weight</span>
+              <strong>{currentMarks} PTS</strong>
+            </div>
+          </div>
+
+          <div className="round-tabs">
+            {Array.from({ length: rounds }, (_, i) => i + 1).map((n) => (
+              <button
+                type="button"
+                key={n}
+                className={`round-tab ${activeConfigRound === n ? "active" : ""}`}
+                onClick={() => setActiveConfigRound(n)}
+              >
+                R{String(n).padStart(2, "0")}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="round-tab-add"
+              onClick={addRound}
+              disabled={rounds >= 10}
+              title={rounds >= 10 ? "Maximum of 10 rounds" : "Add a round"}
+            >
+              {rounds >= 10 ? "10 Rounds Max" : "+ Add Round"}
+            </button>
+          </div>
+
+          <div className="round-editor-box">
+            <div className="section-header" style={{ marginBottom: 0 }}>
+              <div>
+                <p className="eyebrow" style={{ marginBottom: 2 }}>
+                  ROUND {String(activeConfigRound).padStart(2, "0")} PARAMETERS
+                </p>
+                <h3 style={{ fontSize: "1rem" }}>Timing & Scoring Rules</h3>
+              </div>
+              {rounds > 1 && (
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm"
+                  onClick={() => removeRound(activeConfigRound)}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+
+            <div className="round-controls-grid">
+              <div className="field-group">
+                <label className="field-label">Seconds per Question</label>
+                <div className="stepper-row">
+                  <button
+                    type="button"
+                    className="stepper-btn"
+                    onClick={() =>
+                      setValue("roundSeconds", activeConfigRound, Math.max(5, currentSeconds - 5))
+                    }
+                  >
+                    -5
+                  </button>
+                  <input
+                    type="number"
+                    min="5"
+                    max="300"
+                    className="input-control mono"
+                    style={{ textAlign: "center" }}
+                    value={currentSeconds}
+                    onChange={(e) => setValue("roundSeconds", activeConfigRound, e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="stepper-btn"
+                    onClick={() =>
+                      setValue("roundSeconds", activeConfigRound, Math.min(300, currentSeconds + 5))
+                    }
+                  >
+                    +5
+                  </button>
+                </div>
+                <div className="preset-row">
+                  {[15, 25, 45].map((sec) => (
+                    <button
+                      type="button"
+                      key={sec}
+                      className={`preset-pill ${currentSeconds === sec ? "active" : ""}`}
+                      onClick={() => setValue("roundSeconds", activeConfigRound, sec)}
+                    >
+                      {sec}s
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">Points per Correct Answer</label>
+                <div className="stepper-row">
+                  <button
+                    type="button"
+                    className="stepper-btn"
+                    onClick={() =>
+                      setValue("marks", activeConfigRound, Math.max(1, currentMarks - 5))
+                    }
+                  >
+                    -5
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    className="input-control mono"
+                    style={{ textAlign: "center" }}
+                    value={currentMarks}
+                    onChange={(e) => setValue("marks", activeConfigRound, e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="stepper-btn"
+                    onClick={() =>
+                      setValue("marks", activeConfigRound, Math.min(100, currentMarks + 5))
+                    }
+                  >
+                    +5
+                  </button>
+                </div>
+                <div className="preset-row">
+                  {[5, 10, 25].map((pt) => (
+                    <button
+                      type="button"
+                      key={pt}
+                      className={`preset-pill ${currentMarks === pt ? "active" : ""}`}
+                      onClick={() => setValue("marks", activeConfigRound, pt)}
+                    >
+                      {pt} pts
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-primary btn-full"
+            style={{ marginTop: 20 }}
+            disabled={!connected || !roomName.trim()}
+            onClick={create}
+          >
+            Create Room & Continue →
+          </button>
+          {error && <div className="error-banner">{error}</div>}
+        </section>
+      </main>
+    );
+  }
+
+  /* STAGE 02: AUTHORING METHOD */
+  if (stage === "method") {
+    return (
+      <main className="app-shell">
+        <header style={{ marginBottom: 24 }}>
+          <p className="eyebrow">STEP 02 · QUESTION AUTHORING</p>
+          <h1>{roomName}</h1>
+          <p className="muted" style={{ marginTop: 6 }}>
+            Room Code <strong className="mono" style={{ color: "#22d3ee" }}>{roomCode}</strong> is active. Choose how you want to populate your {rounds} round{rounds === 1 ? "" : "s"}.
+          </p>
+        </header>
+
+        <section className="method-grid">
+          <button type="button" className="method-card" onClick={() => setStage("csv")}>
+            <div className="icon-badge">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </div>
+            <div>
+              <p className="eyebrow">OPTION A · BULK SCHEMA</p>
+              <h2 style={{ marginBottom: 6 }}>Upload CSV Templates</h2>
+              <p className="muted">
+                Download the official CSV template for each round, fill in your questions offline, and upload per round.
+              </p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="method-card"
+            onClick={() => {
+              if (!questions.length) setQuestions([blankQuestion()]);
+              setStage("manual");
+            }}
+          >
+            <div className="icon-badge">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            </div>
+            <div>
+              <p className="eyebrow">OPTION B · INTERACTIVE COMPOSER</p>
+              <h2 style={{ marginBottom: 6 }}>Add Questions One by One</h2>
+              <p className="muted">
+                Draft prompts, assign them to specific rounds, mark answer keys, and attach optional explanations.
+              </p>
+            </div>
+          </button>
+        </section>
+
+        {error && <div className="error-banner">{error}</div>}
+      </main>
+    );
+  }
+
+  /* STAGE 03A: CSV UPLOAD PER ROUND */
+  if (stage === "csv") {
+    return (
+      <main className="app-shell">
+        <button className="back-link" onClick={() => setStage("method")}>
+          ← Back to Authoring Method
+        </button>
+
+        <header style={{ marginBottom: 24 }}>
+          <p className="eyebrow">STEP 03 · ROUND CSV IMPORT</p>
+          <h1>Upload round-wise templates.</h1>
+          <p className="muted" style={{ marginTop: 6 }}>
+            Download the formatted CSV template for each round and upload the completed file. Once all rounds have questions, you will advance to the lobby.
+          </p>
+        </header>
+
+        <div className="round-upload-list">
+          {Array.from({ length: rounds }, (_, i) => i + 1).map((n) => (
+            <section className="surface-card" key={n} style={{ marginBottom: 0 }}>
+              <div className="section-header">
+                <div>
+                  <p className="eyebrow" style={{ marginBottom: 2 }}>
+                    ROUND {String(n).padStart(2, "0")} · {settings.roundSeconds[n] || 20}S · {settings.marks[n] || 5} PTS
+                  </p>
+                  <h2>Round {n} Bank</h2>
+                </div>
+                <span className="status-chip">{counts[n] || 0} loaded</span>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-full"
+                  onClick={() => downloadRoundTemplate(n)}
+                >
+                  Download Round {n} CSV Template
+                </button>
+                <label className="upload-dropzone">
+                  <span>Upload Round {n} CSV</span>
+                  <input type="file" accept=".csv,text/csv" onChange={(e) => uploadRound(e, n)} />
+                </label>
+              </div>
+
+              <p className="muted" style={{ marginTop: 12, fontSize: "0.8rem" }}>
+                {roundUploads[n] ||
+                  "Columns: question, option_a, option_b, option_c, option_d, correct_option, explanation"}
+              </p>
+            </section>
+          ))}
         </div>
-        <p className="muted">Fill all 50 rows. Use round 1 or 2, provide four options, and set correct_option to A, B, C or D. Explanation is optional. Save/export as CSV UTF-8. You can re-import any time before the quiz starts.</p>
-        {importStatus && <p className="success-message">{importStatus}</p>}
+
+        {error && <div className="error-banner">{error}</div>}
+      </main>
+    );
+  }
+
+  /* STAGE 03B: MANUAL QUESTION BUILDER */
+  if (stage === "manual") {
+    return (
+      <main className="app-shell">
+        <button className="back-link" onClick={() => setStage("method")}>
+          ← Back to Authoring Method
+        </button>
+
+        <div className="dashboard-head">
+          <div>
+            <p className="eyebrow">STEP 03 · MANUAL COMPOSER</p>
+            <h1>{roomName}</h1>
+          </div>
+          <span className="status-chip">
+            {questions.length} Question{questions.length === 1 ? "" : "s"}
+          </span>
+        </div>
+
+        <div className="builder-toolbar">
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "0.85rem" }}>
+            <input
+              type="checkbox"
+              checked={questions.length > 0 && questions.every((q) => q.selected)}
+              onChange={(e) =>
+                setQuestions((qs) => qs.map((q) => ({ ...q, selected: e.target.checked })))
+              }
+            />
+            Select All
+          </label>
+          <div className="button-group">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={!questions.some((q) => q.selected)}
+              onClick={() =>
+                setQuestions((qs) => [
+                  ...qs,
+                  ...qs
+                    .filter((q) => q.selected)
+                    .map((q) => ({ ...q, id: crypto.randomUUID(), selected: false }))
+                ])
+              }
+            >
+              Duplicate Selected
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger btn-sm"
+              disabled={!questions.some((q) => q.selected)}
+              onClick={() => setQuestions((qs) => qs.filter((q) => !q.selected))}
+            >
+              Delete Selected
+            </button>
+          </div>
+        </div>
+
+        {questions.map((q, i) => (
+          <section className="builder-card" key={q.id}>
+            <div className="builder-card-top">
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: "0.85rem" }}>
+                <input
+                  type="checkbox"
+                  checked={!!q.selected}
+                  onChange={(e) => updateQuestion(i, { selected: e.target.checked })}
+                />
+                <span className="mono">Q{String(i + 1).padStart(2, "0")}</span>
+              </label>
+              <span className="builder-badge">Round {q.round}</span>
+              <span className="builder-badge">{settings.roundSeconds[q.round] || 20}s</span>
+              <span className="builder-badge">{settings.marks[q.round] || 5} pts</span>
+              <div style={{ flex: 1 }} />
+              <div className="button-group">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={i === 0}
+                  onClick={() =>
+                    setQuestions((qs) => {
+                      const a = [...qs];
+                      [a[i - 1], a[i]] = [a[i], a[i - 1]];
+                      return a;
+                    })
+                  }
+                >
+                  Up
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm"
+                  onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+
+            <div className="builder-card-body">
+              <div className="builder-row-grid">
+                <div className="field-group">
+                  <label className="field-label">Question Prompt</label>
+                  <textarea
+                    rows="2"
+                    className="textarea-control"
+                    placeholder="Enter question text..."
+                    value={q.text}
+                    onChange={(e) => updateQuestion(i, { text: e.target.value })}
+                  />
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Assign Round</label>
+                  <select
+                    className="select-control"
+                    value={q.round}
+                    onChange={(e) => updateQuestion(i, { round: Number(e.target.value) })}
+                  >
+                    {Array.from({ length: rounds }, (_, j) => j + 1).map((n) => (
+                      <option value={n} key={n}>
+                        Round {n}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">Answer Options (Click letter to mark correct)</label>
+                <div className="builder-options-grid">
+                  {q.options.map((option, j) => (
+                    <div
+                      className={`builder-option-item ${q.correctOption === j ? "is-correct" : ""}`}
+                      key={j}
+                    >
+                      <button
+                        type="button"
+                        className="correct-btn"
+                        onClick={() => updateQuestion(i, { correctOption: j })}
+                      >
+                        {String.fromCharCode(65 + j)}
+                      </button>
+                      <input
+                        placeholder={`Option ${String.fromCharCode(65 + j)}`}
+                        value={option}
+                        onChange={(e) =>
+                          updateQuestion(i, {
+                            options: q.options.map((v, k) => (k === j ? e.target.value : v))
+                          })
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">Explanation (Optional)</label>
+                <textarea
+                  rows="2"
+                  className="textarea-control"
+                  placeholder="Clarify why the selected option is correct..."
+                  value={q.explanation}
+                  onChange={(e) => updateQuestion(i, { explanation: e.target.value })}
+                />
+              </div>
+            </div>
+          </section>
+        ))}
+
+        <button
+          type="button"
+          className="add-question-dashed"
+          onClick={() => setQuestions((qs) => [...qs, blankQuestion(1)])}
+        >
+          + ADD NEW QUESTION
+        </button>
+
+        {error && <div className="error-banner">{error}</div>}
+
+        <div className="sticky-footer">
+          <div className="sticky-footer-inner">
+            <span className="mono muted">
+              {questions.length} QUESTIONS · {rounds} ROUNDS
+            </span>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={
+                !questions.length ||
+                questions.some((q) => !q.text.trim() || q.options.some((o) => !o.trim()))
+              }
+              onClick={saveManual}
+            >
+              Save Questions & Continue →
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  /* IDLE / RESET STATE */
+  if (status === "idle" || (status === "finished" && !roomCode)) {
+    return (
+      <main className="app-shell narrow">
+        <section className="surface-card">
+          <p className="eyebrow">HOST CONTROL ROOM</p>
+          <h1>Ready for a new session.</h1>
+          <button
+            type="button"
+            className="btn btn-primary btn-full"
+            style={{ marginTop: 18 }}
+            onClick={() => setStage("room")}
+          >
+            Create Room
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  const totalRoundSeconds = settings.roundSeconds[round] || 20;
+  const progressPct = question ? Math.min(100, Math.max(0, (seconds / totalRoundSeconds) * 100)) : 0;
+  const timerState = seconds <= 5 ? "urgent" : seconds <= 10 ? "warning" : "";
+
+  /* STAGE 04: LIVE HOST CONTROL ROOM */
+  return (
+    <main className="app-shell">
+      <header className="dashboard-head">
+        <div>
+          <p className="eyebrow">HOST CONTROL ROOM</p>
+          <h1>{roomName || "Live Arena"}</h1>
+        </div>
+        <span className={`status-chip ${status}`}>{status.replace("_", " ")}</span>
+      </header>
+
+      <section className="room-banner">
+        <div>
+          <p className="eyebrow" style={{ marginBottom: 4 }}>ROOM ACCESS CODE</p>
+          <div className="room-code-display">{roomCode}</div>
+        </div>
+        <button type="button" className="btn btn-secondary" onClick={copyCode}>
+          {copied ? "Copied to Clipboard" : "Copy Room Code"}
+        </button>
       </section>
-      <section className="panel"><h2>Lobby ready</h2><p>{participants.length} participants have joined.</p><button disabled={!participants.length} onClick={() => action("start_competition")}>Start Round 1</button></section>
-    </>}
-    {status === "running" && <section className="panel"><div className="question-meta"><span>ROUND {round} · QUESTION {question?.questionNumber || "—"}/{question?.totalQuestions || "—"}</span><strong>{secondsLeft}s</strong></div><h2>{question?.text || "Preparing next question..."}</h2><div className="option-grid">{question?.options.map((option, i) => <div className="option host-option" key={option}>{String.fromCharCode(65+i)}. {option}</div>)}</div><p className="muted">Questions advance automatically when the timer expires.</p></section>}
-    {status === "round_break" && <section className="panel"><h2>Round 1 complete</h2><p>Review the standings, then start Round 2 when ready.</p><button onClick={() => action("start_round_two")}>Start Round 2</button></section>}
-    {(status === "round_break" || status === "finished") && <section className="panel"><h2>{status === "finished" ? "Final leaderboard" : "Round 1 leaderboard"}</h2>{leaderboard.map((p) => <div className="leader-row" key={p.id}><strong>#{p.rank} {p.name}</strong><span>{p.score} pts</span></div>)}</section>}
-    {status === "finished" && <section className="panel"><h2>Competition finished</h2><p>Final scores are displayed above.</p></section>}
-    <section className="panel"><h2>Participants ({participants.length})</h2>{participants.map((p) => <div className="leader-row" key={p.id}><span>{p.name}</span><span className="muted">Joined</span></div>)}</section>
-    {error && <p className="error">{error}</p>}
-  </main>;
+
+      {importStatus && status === "waiting" && (
+        <div className="success-banner" style={{ marginBottom: 16 }}>
+          {importStatus}
+        </div>
+      )}
+
+      {status === "waiting" && (
+        <div className="host-lobby-grid">
+          <section className="surface-card">
+            <div className="section-header">
+              <div>
+                <p className="eyebrow" style={{ marginBottom: 2 }}>QUESTION BANK</p>
+                <h2>Round Overview</h2>
+              </div>
+              <span className="mono muted">{rounds} Rounds</span>
+            </div>
+
+            <div className="standings-list">
+              {Array.from({ length: rounds }, (_, i) => i + 1).map((n) => (
+                <div className="standing-row" key={n}>
+                  <div>
+                    <strong>Round {String(n).padStart(2, "0")}</strong>
+                    <p className="muted" style={{ fontSize: "0.78rem" }}>
+                      {settings.roundSeconds[n] || 20}s timer · {settings.marks[n] || 5} pts/Q
+                    </p>
+                  </div>
+                  <span className="standing-score">{counts[n] || 0} Qs</span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-secondary btn-full"
+              style={{ marginTop: 16 }}
+              onClick={() => setStage("method")}
+            >
+              Edit Question Bank
+            </button>
+          </section>
+
+          <section className="surface-card">
+            <div className="section-header">
+              <div>
+                <p className="eyebrow" style={{ marginBottom: 2 }}>WAITING LOBBY</p>
+                <h2>Connected Players</h2>
+              </div>
+              <span className="status-chip">{participants.length} Joined</span>
+            </div>
+
+            {participants.length > 0 ? (
+              <div className="roster-grid">
+                {participants.map((p) => (
+                  <div className="player-chip" key={p.id}>
+                    <span className="avatar-monogram">{getInitials(p.name)}</span>
+                    <span className="player-chip-name">{p.name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted" style={{ padding: "18px 0" }}>
+                Share code <strong className="mono">{roomCode}</strong> with players to populate the lobby.
+              </p>
+            )}
+
+            {Array.from({ length: rounds }, (_, i) => i + 1).some((n) => !counts[n]) && (
+              <div className="error-banner">
+                Missing questions for:{" "}
+                {Array.from({ length: rounds }, (_, i) => i + 1)
+                  .filter((n) => !counts[n])
+                  .map((n) => `Round ${n}`)
+                  .join(", ")}
+                .
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="btn btn-primary btn-full"
+              style={{ marginTop: 16 }}
+              disabled={
+                !participants.length ||
+                Array.from({ length: rounds }, (_, i) => i + 1).some((n) => !counts[n])
+              }
+              onClick={() => action("start_quiz")}
+            >
+              Start Live Match →
+            </button>
+          </section>
+        </div>
+      )}
+
+      {(status === "running" || status === "paused") && (
+        <section className="arena-card">
+          <div className="timer-track">
+            <div
+              className={`timer-fill ${timerState}`}
+              style={{ width: `${status === "paused" ? 100 : progressPct}%` }}
+            />
+          </div>
+
+          <div className="question-hud">
+            <span className="hud-badge">
+              ROUND {String(round).padStart(2, "0")} · QUESTION {question?.questionNumber || "—"}/
+              {question?.totalQuestions || "—"} · {question?.marks || settings.marks[round]} PTS
+            </span>
+            <span className={`timer-readout ${timerState}`}>
+              {status === "paused" ? "PAUSED" : `${seconds}s`}
+            </span>
+          </div>
+
+          <h2 className="question-prompt">
+            {status === "paused"
+              ? "Match paused by host"
+              : question?.text || "Preparing next question..."}
+          </h2>
+
+          {question && (
+            <div className="options-grid">
+              {question.options.map((o, i) => (
+                <div className="option-tile host-readonly" key={i}>
+                  <span className="option-key">{String.fromCharCode(65 + i)}</span>
+                  <span>{o}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="host-controls-bar">
+            <span className="muted" style={{ fontSize: "0.82rem" }}>
+              {status === "paused"
+                ? "Player timers are frozen."
+                : "Advances automatically when timer reaches 0s."}
+            </span>
+            <div className="button-group">
+              {status === "running" ? (
+                <button
+                  type="button"
+                  className="btn btn-warning"
+                  onClick={() => action("pause_quiz")}
+                >
+                  Pause Quiz
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => action("resume_quiz")}
+                >
+                  Resume Quiz
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  if (window.confirm("End this quiz for everyone?")) action("end_quiz");
+                }}
+              >
+                End Quiz
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {status === "round_break" && (
+        <section className="surface-card">
+          <p className="eyebrow">ROUND {String(round).padStart(2, "0")} COMPLETE</p>
+          <h2>Interim Standings Locked</h2>
+          <p className="muted" style={{ margin: "6px 0 18px" }}>
+            Review the current rankings below before advancing the room.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-full"
+            onClick={() => action("start_next_round")}
+          >
+            {round < rounds ? `Start Round ${String(round + 1).padStart(2, "0")} →` : "Finish Quiz & Reveal Podium →"}
+          </button>
+        </section>
+      )}
+
+      {(status === "round_break" || status === "finished") && (
+        <section className="surface-card">
+          <p className="eyebrow">TELEMETRY STANDINGS</p>
+          <h2>{status === "finished" ? "Final Podium & Leaderboard" : "Current Leaderboard"}</h2>
+
+          {leaderboard.length >= 3 && (
+            <div className="podium-grid">
+              {[leaderboard[1], leaderboard[0], leaderboard[2]].map((p, idx) => {
+                const actualRank = idx === 0 ? 2 : idx === 1 ? 1 : 3;
+                return (
+                  <div className={`podium-slot rank-${actualRank}`} key={p.id}>
+                    <span className="podium-rank">#{String(actualRank).padStart(2, "0")}</span>
+                    <span className="avatar-monogram">{getInitials(p.name)}</span>
+                    <span className="podium-name">{p.name}</span>
+                    <span className="podium-score">{p.score} pts</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="standings-list">
+            {leaderboard.map((p) => (
+              <div className="standing-row" key={p.id}>
+                <div className="standing-left">
+                  <span className="standing-rank">#{String(p.rank).padStart(2, "0")}</span>
+                  <span className="avatar-monogram">{getInitials(p.name)}</span>
+                  <strong>{p.name}</strong>
+                </div>
+                <span className="standing-score">{p.score} pts</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {status === "finished" && (
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => {
+            setRoomCode("");
+            setStatus("idle");
+            setStage("room");
+          }}
+        >
+          Create Another Quiz
+        </button>
+      )}
+
+      {error && <div className="error-banner">{error}</div>}
+    </main>
+  );
 }
-export default Host;
