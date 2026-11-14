@@ -22,6 +22,7 @@ const stats = {
   eliminatedAnswerAccepted: 0,
   errors: 0,
   unexpectedDisconnects: 0,
+  reconnections: 0,
   eliminationsConfirmed: 0,
   latencies: [],
 };
@@ -70,7 +71,8 @@ function printSummary() {
   console.log("Requested participants:         " + stats.requested);
   console.log("Successfully joined:            " + stats.joined);
   console.log("Join failures:                  " + stats.joinFailed);
-  console.log("Unexpected disconnects:         " + stats.unexpectedDisconnects);
+  console.log("Disconnect events:               " + stats.unexpectedDisconnects);
+  console.log("Successful reconnections:        " + stats.reconnections);
   console.log("Question events received:       " + stats.questionsSeen);
   console.log("Answer attempts:                " + stats.answerAttempts);
   console.log("Accepted answers:               " + stats.accepted);
@@ -153,8 +155,31 @@ try {
 
       socket.participantId = joined.participant.id;
       socket.displayName = name;
+      socket.hasJoinedRoom = true;
       clients.push(socket);
       stats.joined++;
+
+      // Socket.IO reconnects create a fresh server-side socket. Rejoin with the
+      // original participant ID so the server restores the same participant.
+      socket.on("connect", async () => {
+        if (!socket.hasJoinedRoom || stopping) return;
+        stats.reconnections++;
+        try {
+          const restored = await ack(socket, "join_competition", {
+            name: socket.displayName,
+            code: roomCode,
+            participantId: socket.participantId,
+          });
+          if (!restored.success) {
+            console.log("✗ " + socket.displayName + " could not rejoin: " + (restored.message || "rejected"));
+            return;
+          }
+          if (restored.snapshot?.eliminated) eliminatedIds.add(socket.participantId);
+          console.log("↻ " + socket.displayName + " rejoined successfully.");
+        } catch (error) {
+          console.log("⚠ Rejoin failed for " + socket.displayName + ": " + error.message);
+        }
+      });
 
       socket.on("question_started", (question) => {
         if (stopping) return;
