@@ -61,7 +61,13 @@ export default function Participant({
 
   useEffect(() => {
     const people = setParticipants;
-    const onStatus = setStatus;
+    const onStatus = (nextStatus) => {
+      setStatus(nextStatus);
+      if (nextStatus === "paused") {
+        setLeaderboard([]);
+        setResult(null);
+      }
+    };
     const onQuestion = (q) => {
       if (participantRef.current?.eliminated) return;
       setQuestion(q);
@@ -276,6 +282,39 @@ export default function Participant({
     );
   }
 
+  if (status === "paused") {
+    return (
+      <main className="app-shell narrow">
+        <section
+          className="surface-card"
+          style={{
+            minHeight: "48vh",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            textAlign: "center",
+            borderColor: "rgba(245, 158, 11, 0.35)"
+          }}
+        >
+          <p className="eyebrow" style={{ color: "#fcd34d" }}>MATCH PAUSED</p>
+          <h1 style={{ marginTop: 8 }}>Quiz on Hold</h1>
+          <p className="muted" style={{ marginTop: 10, maxWidth: 420 }}>
+            The host has paused the quiz. Please wait here until the host resumes.
+          </p>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ marginTop: 24 }}
+            onClick={requestHome}
+          >
+            Leave Quiz
+          </button>
+        </section>
+      </main>
+    );
+  }
+
   const progressPct = question
     ? Math.min(100, Math.max(0, (seconds / Math.max(1, totalSeconds)) * 100))
     : 0;
@@ -389,16 +428,6 @@ export default function Participant({
               ))}
             </div>
           )}
-        </section>
-      )}
-
-      {status === "paused" && (
-        <section className="surface-card" style={{ borderColor: "rgba(245, 158, 11, 0.35)" }}>
-          <p className="eyebrow" style={{ color: "#fcd34d" }}>MATCH PAUSED</p>
-          <h2>Session on hold.</h2>
-          <p className="muted" style={{ marginTop: 6 }}>
-            The host has paused the match. Your current question and timer are frozen.
-          </p>
         </section>
       )}
 
