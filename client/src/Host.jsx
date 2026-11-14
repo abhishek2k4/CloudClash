@@ -232,7 +232,16 @@ export default function Host({ onHome, onActivityChange }) {
   };
 
   const create = () => {
-    action("create_quiz", { roomName, rounds }, (r) => {
+    const defaults = {
+      roomName,
+      rounds,
+      roundSeconds: Object.fromEntries(Array.from({ length: rounds }, (_, i) => [i + 1, 20])),
+      marks: Object.fromEntries(Array.from({ length: rounds }, (_, i) => [i + 1, 10])),
+      speedBonusPercent: 10,
+      eliminationEnabled: false,
+      advanceCounts: Object.fromEntries(Array.from({ length: rounds }, (_, i) => [i + 1, 0]))
+    };
+    action("create_quiz", defaults, (r) => {
       setRoomCode(r.roomCode);
       setCounts(r.questionCounts);
       setRoomName(r.roomName);
