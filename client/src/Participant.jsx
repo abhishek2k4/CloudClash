@@ -38,7 +38,7 @@ export default function Participant({
       setError(r?.message || "Could not join.");
       return;
     }
-    const p = { ...r.participant, name: r.participant.name, code: joinedCode };
+    const p = { ...r.participant, name: r.participant.name, code: joinedCode, eliminated: Boolean(r.snapshot?.eliminated) };
     participantRef.current = p;
     setParticipant(p);
     setParticipants(r.snapshot?.participants || []);
@@ -63,7 +63,7 @@ export default function Participant({
     const people = setParticipants;
     const onStatus = setStatus;
     const onQuestion = (q) => {
-      if (participantRef.current && eliminated) return;
+      if (participantRef.current?.eliminated) return;
       setQuestion(q);
       setSelected(null);
       setSubmitted(false);
@@ -91,6 +91,7 @@ export default function Participant({
     const onEliminationsConfirmed = (d) => {
       if (participantRef.current && (d.eliminatedIds || []).includes(participantRef.current.id)) {
         setEliminated(true);
+        participantRef.current = { ...participantRef.current, eliminated: true };
         setQuestion(null);
         setSelected(null);
       }
