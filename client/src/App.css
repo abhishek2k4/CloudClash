@@ -871,6 +871,42 @@ p {
   border-color: var(--accent-cyan-border);
 }
 
+.option-tile.correct-answer {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.65);
+}
+
+.option-tile.incorrect-answer {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.65);
+}
+
+.option-tile.correct-answer .option-key {
+  background: #10b981;
+  border-color: #10b981;
+  color: #04251b;
+}
+
+.option-tile.incorrect-answer .option-key {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+}
+
+.option-feedback {
+  margin-left: auto;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.option-tile.correct-answer .option-feedback {
+  color: #34d399;
+}
+
+.option-tile.incorrect-answer .option-feedback {
+  color: #f87171;
+}
+
 .option-key {
   width: 28px;
   height: 28px;
