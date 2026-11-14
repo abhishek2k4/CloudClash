@@ -27,7 +27,6 @@ export default function Participant({
   const [totalSeconds, setTotalSeconds] = useState(20);
   const [selected, setSelected] = useState(null);
   const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [status, setStatus] = useState("waiting");
@@ -48,7 +47,6 @@ export default function Participant({
     setQuestion(snapQ);
     setSelected(r.snapshot?.answer?.selectedOption ?? null);
     setSubmitted(Boolean(r.snapshot?.lastQuestionResult) || (Boolean(r.snapshot?.answer) && r.snapshot?.status !== "running"));
-    setSubmitting(false);
     setResult(r.snapshot?.lastQuestionResult || null);
     if (snapQ?.endsAt) {
       const rem = Math.max(0, Math.ceil((snapQ.endsAt - Date.now()) / 1000));
@@ -66,7 +64,6 @@ export default function Participant({
       setQuestion(q);
       setSelected(null);
       setSubmitted(false);
-      setSubmitting(false);
       setResult(null);
       const rem = Math.max(0, Math.ceil((q.endsAt - Date.now()) / 1000));
       setSeconds(rem);
