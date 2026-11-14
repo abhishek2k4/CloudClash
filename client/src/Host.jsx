@@ -50,6 +50,32 @@ export default function Host({ onHome, onActivityChange }) {
       return;
     }
     setAuthenticated(true);
+
+    // A finished quiz belongs to the previous host session. A new visit to
+    // /host should start with a clean setup screen, not reopen its leaderboard.
+    // Active/waiting rooms still restore their control dashboard for host recovery.
+    if (response.status === "finished") {
+      setRoomCode("");
+      setRoomName("");
+      setStatus("idle");
+      setRounds(2);
+      setActiveConfigRound(1);
+      setSettings({
+        roundSeconds: { 1: 15, 2: 25 },
+        marks: { 1: 10, 2: 20 }
+      });
+      setParticipants([]);
+      setCounts({});
+      setRound(0);
+      setQuestion(null);
+      setLeaderboard([]);
+      setQuestions([blankQuestion()]);
+      setImportStatus("");
+      setRoundUploads({});
+      setStage("room");
+      return;
+    }
+
     setRoomCode(response.roomCode || "");
     setRoomName(response.roomName || "");
     setStatus(response.status || "idle");
@@ -60,8 +86,7 @@ export default function Host({ onHome, onActivityChange }) {
     setRound(response.round || 0);
     setQuestion(response.question || null);
     setLeaderboard(response.leaderboard || []);
-    // Restore the control dashboard for any existing room, including a live quiz.
-    // Only a fresh/idle host session should remain on the room setup screen.
+    // Restore an existing waiting/live session for host recovery.
     setStage(response.roomCode ? "control" : "room");
   }, []);
 
