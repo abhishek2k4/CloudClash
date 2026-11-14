@@ -398,6 +398,15 @@ export default function Host({ onHome, onActivityChange }) {
           </div>
           <p className="muted" style={{ fontSize: "0.82rem" }}>Round timers, scoring, speed bonuses and optional elimination can be adjusted later from the host dashboard.</p>
           {error && <div className="error-banner">{error}</div>}
+          <button
+            type="button"
+            className="btn btn-primary btn-full"
+            style={{ marginTop: 18 }}
+            disabled={!connected || !roomName.trim()}
+            onClick={create}
+          >
+            Create Room & Continue →
+          </button>
         </section>
       </main>
     );
