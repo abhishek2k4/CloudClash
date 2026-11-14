@@ -190,6 +190,23 @@ export default function Participant({
     );
   };
 
+  if (status === "cancelled") {
+    return (
+      <main className="app-shell narrow">
+        <section className="surface-card">
+          <p className="eyebrow">ROOM CANCELLED</p>
+          <h1>Quiz cancelled.</h1>
+          <p className="muted" style={{ marginTop: 8 }}>
+            The host has cancelled this room. You are no longer connected to the quiz.
+          </p>
+          <button type="button" className="btn btn-primary btn-full" style={{ marginTop: 20 }} onClick={onHome}>
+            Back to Home
+          </button>
+        </section>
+      </main>
+    );
+  }
+
   /* ENTRY VIEW */
   if (!participant) {
     return (
@@ -241,23 +258,6 @@ export default function Participant({
           </form>
 
           {error && <div className="error-banner">{error}</div>}
-        </section>
-      </main>
-    );
-  }
-
-  if (status === "cancelled") {
-    return (
-      <main className="app-shell narrow">
-        <section className="surface-card">
-          <p className="eyebrow">ROOM CANCELLED</p>
-          <h1>Quiz cancelled.</h1>
-          <p className="muted" style={{ marginTop: 8 }}>
-            The host has cancelled this room. You are no longer connected to the quiz.
-          </p>
-          <button type="button" className="btn btn-primary btn-full" style={{ marginTop: 20 }} onClick={onHome}>
-            Back to Home
-          </button>
         </section>
       </main>
     );
