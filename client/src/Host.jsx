@@ -32,6 +32,7 @@ export default function Host({ onHome, onActivityChange }) {
     roundSeconds: { 1: 15, 2: 25 },
     marks: { 1: 10, 2: 20 },
     speedBonusPercent: 10,
+    eliminationEnabled: false,
     advanceCounts: { 1: 0, 2: 0 }
   });
   const [participants, setParticipants] = useState([]);
@@ -58,7 +59,10 @@ export default function Host({ onHome, onActivityChange }) {
     setRoomName(response.roomName || "");
     setStatus(response.status || "idle");
     setRounds(response.rounds || 2);
-    if (response.quizSettings) setSettings(response.quizSettings);
+    if (response.quizSettings) setSettings({
+      ...response.quizSettings,
+      eliminationEnabled: response.quizSettings.eliminationEnabled ?? false
+    });
     setParticipants(response.participants || []);
     setCounts(response.questionCounts || {});
     setRound(response.round || 0);
@@ -228,23 +232,38 @@ export default function Host({ onHome, onActivityChange }) {
   };
 
   const create = () => {
-    const payload = { roomName, rounds, roundSeconds: settings.roundSeconds, marks: settings.marks, speedBonusPercent: settings.speedBonusPercent ?? 10, advanceCounts: settings.advanceCounts ?? {} };
-    if (roomCode) {
-      action("update_quiz_config", payload, (r) => {
-        setRounds(r.rounds);
-        setSettings(r.quizSettings);
-        setCounts(r.questionCounts);
-        setStage("lobby");
-        setImportStatus("Quiz configuration saved.");
-      });
-      return;
-    }
-    action("create_quiz", payload, (r) => {
+    action("create_quiz", { roomName, rounds }, (r) => {
       setRoomCode(r.roomCode);
       setCounts(r.questionCounts);
       setRoomName(r.roomName);
+      if (r.quizSettings) setSettings({
+        ...r.quizSettings,
+        eliminationEnabled: r.quizSettings.eliminationEnabled ?? false
+      });
       setStatus("waiting");
       setStage("method");
+    });
+  };
+
+  const saveAdvancedConfig = () => {
+    const payload = {
+      roomName,
+      rounds,
+      roundSeconds: settings.roundSeconds,
+      marks: settings.marks,
+      speedBonusPercent: settings.speedBonusPercent ?? 10,
+      eliminationEnabled: settings.eliminationEnabled ?? false,
+      advanceCounts: settings.advanceCounts ?? {}
+    };
+    action("update_quiz_config", payload, (r) => {
+      setRounds(r.rounds);
+      setSettings({
+        ...r.quizSettings,
+        eliminationEnabled: r.quizSettings.eliminationEnabled ?? false
+      });
+      setCounts(r.questionCounts);
+      setStage("lobby");
+      setImportStatus("Advanced configuration saved.");
     });
   };
 
@@ -339,7 +358,7 @@ export default function Host({ onHome, onActivityChange }) {
         <header style={{ marginBottom: 22 }}>
           <p className="eyebrow">STEP 01 · ROOM SETUP</p>
           <h1>Create your quiz.</h1>
-          <p className="muted" style={{ marginTop: 6 }}>Start with the essentials. Fine-tune each round in advanced configuration.</p>
+          <p className="muted" style={{ marginTop: 6 }}>Set up the room first. You can configure quiz rules from the host dashboard after creating it.</p>
         </header>
         <section className="surface-card">
           <div className="field-group">
@@ -368,15 +387,7 @@ export default function Host({ onHome, onActivityChange }) {
               {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n} rounds</option>)}
             </select>
           </div>
-          <div className="telemetry-strip">
-            <div className="telemetry-cell"><span>Total Rounds</span><strong>{String(rounds).padStart(2, "0")}</strong></div>
-            <div className="telemetry-cell"><span>Default Timer</span><strong>{settings.roundSeconds[1] || 20}s / Q</strong></div>
-            <div className="telemetry-cell"><span>Default Points</span><strong>{settings.marks[1] || 10} PTS</strong></div>
-          </div>
-          <button type="button" className="btn btn-secondary btn-full" style={{ marginTop: 18 }}
-            onClick={() => setStage("advanced")}>
-            <span>Advanced Quiz Configuration →</span>
-          </button>
+          <p className="muted" style={{ fontSize: "0.82rem" }}>Round timers, scoring, speed bonuses and optional elimination can be adjusted later from the host dashboard.</p>
           {error && <div className="error-banner">{error}</div>}
         </section>
       </main>
@@ -390,32 +401,19 @@ export default function Host({ onHome, onActivityChange }) {
 
     return (
       <main className="app-shell narrow">
-        <button className="back-link" onClick={requestHome}>
-          ← Back to Home
+        <button className="back-link" onClick={() => setStage("lobby")}>
+          ← Back to Host Dashboard
         </button>
 
         <header style={{ marginBottom: 22 }}>
-          <p className="eyebrow">STEP 01 · MATCH ARCHITECT</p>
+          <p className="eyebrow">HOST DASHBOARD · ADVANCED SETTINGS</p>
           <h1>Configure your quiz.</h1>
           <p className="muted" style={{ marginTop: 6 }}>
-            Configure up to 10 rounds with custom time limits and point values.
+            Fine-tune round timing, scoring and optional elimination before the quiz begins.
           </p>
         </header>
 
         <section className="surface-card">
-          <div className="field-group">
-            <label className="field-label" htmlFor="room-name-input">Room Title</label>
-            <input
-              id="room-name-input"
-              className="input-control"
-              autoFocus
-              maxLength={60}
-              placeholder="e.g. CLOUD CLASH FINALS"
-              value={roomName}
-              onChange={(e) => setRoomName(e.target.value)}
-            />
-          </div>
-
           <div className="telemetry-strip">
             <div className="telemetry-cell">
               <span>Total Rounds</span>
@@ -563,21 +561,33 @@ export default function Host({ onHome, onActivityChange }) {
                 </div>
               </div>
             </div>
-            <div className="field-group" style={{ marginTop: 16 }}>
-              {activeConfigRound < rounds ? (
-                <>
-                  <label className="field-label" htmlFor="advance-count-input">Participants to keep after Round {activeConfigRound}</label>
-                  <div className="stepper-row">
-                    <input id="advance-count-input" type="number" min="0" max="500" step="1" className="input-control mono" style={{ maxWidth: 140, textAlign: "center" }} value={settings.advanceCounts?.[activeConfigRound] ?? 0}
-                      onChange={(e) => setSettings((current) => ({ ...current, advanceCounts: { ...current.advanceCounts, [activeConfigRound]: Math.min(500, Math.max(0, Math.floor(Number(e.target.value) || 0))) } }))} />
-                    <span className="muted">participants</span>
-                  </div>
-                  <p className="muted" style={{ marginTop: 6, fontSize: "0.78rem" }}>Set 0 to let everyone advance. Tied players at the cutoff are all kept.</p>
-                </>
-              ) : (
-                <p className="muted">Final round: all remaining participants compete. No elimination.</p>
-              )}
+            <div className="field-group" style={{ marginTop: 18, padding: 14, border: "1px solid var(--border-color, rgba(148,163,184,.2))", borderRadius: 12 }}>
+              <label className="field-label" htmlFor="elimination-enabled" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <span>Enable participant elimination</span>
+                <input id="elimination-enabled" type="checkbox" checked={!!settings.eliminationEnabled}
+                  onChange={(e) => setSettings((current) => ({ ...current, eliminationEnabled: e.target.checked }))} />
+              </label>
+              <p className="muted" style={{ fontSize: "0.78rem", margin: "6px 0 0" }}>
+                Optional. When disabled, every participant advances through all rounds.
+              </p>
             </div>
+            {settings.eliminationEnabled && (
+              <div className="field-group" style={{ marginTop: 16 }}>
+                {activeConfigRound < rounds ? (
+                  <>
+                    <label className="field-label" htmlFor="advance-count-input">Participants to keep after Round {activeConfigRound}</label>
+                    <div className="stepper-row">
+                      <input id="advance-count-input" type="number" min="0" max="500" step="1" className="input-control mono" style={{ maxWidth: 140, textAlign: "center" }} value={settings.advanceCounts?.[activeConfigRound] ?? 0}
+                        onChange={(e) => setSettings((current) => ({ ...current, advanceCounts: { ...current.advanceCounts, [activeConfigRound]: Math.min(500, Math.max(0, Math.floor(Number(e.target.value) || 0))) } }))} />
+                      <span className="muted">participants</span>
+                    </div>
+                    <p className="muted" style={{ marginTop: 6, fontSize: "0.78rem" }}>Set 0 to let everyone advance. Tied players at the cutoff are all kept.</p>
+                  </>
+                ) : (
+                  <p className="muted">Final round: all remaining participants compete. No elimination.</p>
+                )}
+              </div>
+            )}
             <div className="field-group" style={{ marginTop: 16 }}>
               <label className="field-label" htmlFor="speed-bonus-input">Maximum Speed Bonus (%)</label>
               <div className="stepper-row">
@@ -601,12 +611,10 @@ export default function Host({ onHome, onActivityChange }) {
           </div>
 
           <button type="button" className="btn btn-primary btn-full" style={{ marginTop: 20 }}
-            disabled={!connected || !roomName.trim()}
-            onClick={create}>
-            {roomCode ? "Save Configuration →" : "Create Room & Continue →"}
+            disabled={!connected || !roomCode}
+            onClick={saveAdvancedConfig}>
+            Save Advanced Configuration →
           </button>
-          {roomCode && <button type="button" className="btn btn-secondary btn-full" style={{ marginTop: 10 }}
-            onClick={() => setStage("lobby")}>Back to Lobby</button>}
           {error && <div className="error-banner">{error}</div>}
         </section>
       </main>
@@ -995,7 +1003,7 @@ export default function Host({ onHome, onActivityChange }) {
                   <div>
                     <strong>Round {String(n).padStart(2, "0")}</strong>
                     <p className="muted" style={{ fontSize: "0.78rem" }}>
-                      {settings.roundSeconds[n] || 20}s timer · {settings.marks[n] || 5} pts/Q · {n < rounds && (settings.advanceCounts?.[n] ? `keep top ${settings.advanceCounts[n]}` : "no elimination")}
+                      {settings.roundSeconds[n] || 20}s timer · {settings.marks[n] || 5} pts/Q · {n < rounds && (settings.eliminationEnabled ? (settings.advanceCounts?.[n] ? `keep top ${settings.advanceCounts[n]}` : "everyone advances") : "elimination off")}
                     </p>
                   </div>
                   <span className="standing-score">{counts[n] || 0} Qs</span>
@@ -1150,7 +1158,9 @@ export default function Host({ onHome, onActivityChange }) {
           <p className="eyebrow">ROUND {String(round).padStart(2, "0")} COMPLETE</p>
           <h2>Interim Standings Locked</h2>
           <p className="muted" style={{ margin: "6px 0 18px" }}>
-            Review the current rankings below before advancing the room.
+            {settings.eliminationEnabled
+              ? "Review the current rankings below before advancing the room."
+              : "Elimination is disabled. All participants will advance to the next round."}
           </p>
           {roundElimination?.eliminatedCandidates?.length > 0 && !eliminationsConfirmed && (
             <div className="surface-card" style={{ margin: "14px 0", padding: 14 }}>
