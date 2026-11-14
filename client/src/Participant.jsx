@@ -47,7 +47,7 @@ export default function Participant({
     const snapQ = r.snapshot?.question || null;
     setQuestion(snapQ);
     setSelected(r.snapshot?.answer?.selectedOption ?? null);
-    setSubmitted(Boolean(r.snapshot?.answer));
+    setSubmitted(Boolean(r.snapshot?.lastQuestionResult) || (Boolean(r.snapshot?.answer) && r.snapshot?.status !== "running"));
     setSubmitting(false);
     setResult(r.snapshot?.lastQuestionResult || null);
     if (snapQ?.endsAt) {
@@ -76,6 +76,7 @@ export default function Participant({
     const onResume = (d) => setQuestion((q) => (q ? { ...q, endsAt: d.endsAt } : q));
     const onEnd = (d) => {
       setResult(d);
+      setSubmitted(true);
     };
     const onRound = (d) => {
       setStatus("running");
@@ -164,10 +165,9 @@ export default function Participant({
     onHome();
   };
 
-  const submit = (optionIndex) => {
-    if (submitted || submitting || !question || !participant || result) return;
+  const selectOption = (optionIndex) => {
+    if (submitted || !question || !participant || result || selected === optionIndex) return;
     setSelected(optionIndex);
-    setSubmitting(true);
     setError("");
     socket.emit(
       "submit_answer",
@@ -177,12 +177,8 @@ export default function Participant({
         selectedOption: optionIndex
       },
       (r) => {
-        setSubmitting(false);
         if (!r?.success) {
-          setError(r?.message || "Your answer could not be submitted. Please try again.");
-          setSelected(null);
-        } else {
-          setSubmitted(true);
+          setError(r?.message || "Your selection could not be saved.");
         }
       }
     );
@@ -308,8 +304,8 @@ export default function Participant({
                   type="button"
                   key={i}
                   className={tileClass}
-                  disabled={submitted || submitting || seconds === 0 || isRevealed}
-                  onClick={() => submit(i)}
+                  disabled={submitted || seconds === 0 || isRevealed}
+                  onClick={() => selectOption(i)}
                 >
                   <span className="option-key">{String.fromCharCode(65 + i)}</span>
                   <span className="option-text">{o}</span>
@@ -320,9 +316,8 @@ export default function Participant({
             })}
           </div>
 
-          {submitting && <div className="success-banner">Submitting your answer…</div>}
-          {submitted && !result && (
-            <div className="success-banner">Answer submitted. Waiting for the timer to end.</div>
+          {selected !== null && !submitted && !result && (
+            <div className="success-banner">Option {String.fromCharCode(65 + selected)} selected. You can change it until the timer ends.</div>
           )}
           {result?.correctOption !== undefined && result.explanation && (
             <div className="surface-card" style={{ marginTop: 14 }}>
