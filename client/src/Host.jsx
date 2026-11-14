@@ -30,7 +30,8 @@ export default function Host({ onHome, onActivityChange }) {
   const [activeConfigRound, setActiveConfigRound] = useState(1);
   const [settings, setSettings] = useState({
     roundSeconds: { 1: 15, 2: 25 },
-    marks: { 1: 10, 2: 20 }
+    marks: { 1: 10, 2: 20 },
+    speedBonusPercent: 10
   });
   const [participants, setParticipants] = useState([]);
   const [counts, setCounts] = useState({});
@@ -192,7 +193,7 @@ export default function Host({ onHome, onActivityChange }) {
         mk[idx] = s.marks[i] ?? 10;
         idx++;
       }
-      return { roundSeconds: rs, marks: mk };
+      return { ...s, roundSeconds: rs, marks: mk };
     });
     setRounds(nextTotal);
     setActiveConfigRound((prev) => Math.min(prev, nextTotal));
@@ -208,7 +209,7 @@ export default function Host({ onHome, onActivityChange }) {
   };
 
   const create = () => {
-    const payload = { roomName, rounds, roundSeconds: settings.roundSeconds, marks: settings.marks };
+    const payload = { roomName, rounds, roundSeconds: settings.roundSeconds, marks: settings.marks, speedBonusPercent: settings.speedBonusPercent ?? 10 };
     if (roomCode) {
       action("update_quiz_config", payload, (r) => {
         setRounds(r.rounds);
@@ -342,7 +343,7 @@ export default function Host({ onHome, onActivityChange }) {
                     roundSeconds[n] ??= 20;
                     marks[n] ??= 10;
                   }
-                  return { roundSeconds, marks };
+                  return { ...current, roundSeconds, marks };
                 });
               }}>
               {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n} rounds</option>)}
@@ -542,6 +543,26 @@ export default function Host({ onHome, onActivityChange }) {
                   ))}
                 </div>
               </div>
+            </div>
+            <div className="field-group" style={{ marginTop: 16 }}>
+              <label className="field-label" htmlFor="speed-bonus-input">Maximum Speed Bonus (%)</label>
+              <div className="stepper-row">
+                <input
+                  id="speed-bonus-input"
+                  type="number"
+                  min="0"
+                  max="50"
+                  step="1"
+                  className="input-control mono"
+                  style={{ maxWidth: 140, textAlign: "center" }}
+                  value={settings.speedBonusPercent ?? 10}
+                  onChange={(e) => setSettings((current) => ({ ...current, speedBonusPercent: Math.min(50, Math.max(0, Number(e.target.value) || 0)) }))}
+                />
+                <span className="muted">of the question's base points</span>
+              </div>
+              <p className="muted" style={{ marginTop: 6, fontSize: "0.78rem" }}>
+                Correct answers earn up to this extra percentage for answering quickly. The bonus decreases linearly until the timer ends.
+              </p>
             </div>
           </div>
 
@@ -1121,7 +1142,7 @@ export default function Host({ onHome, onActivityChange }) {
                     <span className="podium-rank">#{String(actualRank).padStart(2, "0")}</span>
                     <span className="avatar-monogram">{getInitials(p.name)}</span>
                     <span className="podium-name">{p.name}</span>
-                    <span className="podium-score">{p.score} pts</span>
+                    <span className="podium-score">{Number(p.score).toFixed(2)} pts</span>
                   </div>
                 );
               })}
@@ -1136,7 +1157,7 @@ export default function Host({ onHome, onActivityChange }) {
                   <span className="avatar-monogram">{getInitials(p.name)}</span>
                   <strong>{p.name}</strong>
                 </div>
-                <span className="standing-score">{p.score} pts</span>
+                <span className="standing-score">{Number(p.score).toFixed(2)} pts</span>
               </div>
             ))}
           </div>
