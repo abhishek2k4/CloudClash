@@ -207,18 +207,26 @@ export default function Host({ onHome, onActivityChange }) {
     }));
   };
 
-  const create = () =>
-    action(
-      "create_quiz",
-      { roomName, rounds, roundSeconds: settings.roundSeconds, marks: settings.marks },
-      (r) => {
-        setRoomCode(r.roomCode);
+  const create = () => {
+    const payload = { roomName, rounds, roundSeconds: settings.roundSeconds, marks: settings.marks };
+    if (roomCode) {
+      action("update_quiz_config", payload, (r) => {
+        setRounds(r.rounds);
+        setSettings(r.quizSettings);
         setCounts(r.questionCounts);
-        setRoomName(r.roomName);
-        setStatus("waiting");
-        setStage("method");
-      }
-    );
+        setStage("lobby");
+        setImportStatus("Quiz configuration saved.");
+      });
+      return;
+    }
+    action("create_quiz", payload, (r) => {
+      setRoomCode(r.roomCode);
+      setCounts(r.questionCounts);
+      setRoomName(r.roomName);
+      setStatus("waiting");
+      setStage("method");
+    });
+  };
 
   const updateQuestion = (index, patch) =>
     setQuestions((qs) => qs.map((q, i) => (i === index ? { ...q, ...patch } : q)));
@@ -303,8 +311,60 @@ export default function Host({ onHome, onActivityChange }) {
     );
   }
 
-  /* STAGE 01: ROOM & ROUND ARCHITECT */
+  /* BASIC ROOM SETUP */
   if (stage === "room") {
+    return (
+      <main className="app-shell narrow">
+        <button className="back-link" onClick={requestHome}>← Back to Home</button>
+        <header style={{ marginBottom: 22 }}>
+          <p className="eyebrow">STEP 01 · ROOM SETUP</p>
+          <h1>Create your quiz.</h1>
+          <p className="muted" style={{ marginTop: 6 }}>Start with the essentials. Fine-tune each round in advanced configuration.</p>
+        </header>
+        <section className="surface-card">
+          <div className="field-group">
+            <label className="field-label" htmlFor="room-name-input">Room Title</label>
+            <input id="room-name-input" className="input-control" autoFocus maxLength={60}
+              placeholder="e.g. CLOUD CLASH FINALS" value={roomName}
+              onChange={(e) => setRoomName(e.target.value)} />
+          </div>
+          <div className="field-group">
+            <label className="field-label" htmlFor="round-count-input">Number of Rounds</label>
+            <select id="round-count-input" className="select-control" value={rounds}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                setRounds(next);
+                setActiveConfigRound((current) => Math.min(current, next));
+                setSettings((current) => {
+                  const roundSeconds = { ...current.roundSeconds };
+                  const marks = { ...current.marks };
+                  for (let n = 1; n <= next; n++) {
+                    roundSeconds[n] ??= 20;
+                    marks[n] ??= 10;
+                  }
+                  return { roundSeconds, marks };
+                });
+              }}>
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n} rounds</option>)}
+            </select>
+          </div>
+          <div className="telemetry-strip">
+            <div className="telemetry-cell"><span>Total Rounds</span><strong>{String(rounds).padStart(2, "0")}</strong></div>
+            <div className="telemetry-cell"><span>Default Timer</span><strong>{settings.roundSeconds[1] || 20}s / Q</strong></div>
+            <div className="telemetry-cell"><span>Default Points</span><strong>{settings.marks[1] || 10} PTS</strong></div>
+          </div>
+          <button type="button" className="btn btn-secondary btn-full" style={{ marginTop: 18 }}
+            onClick={() => setStage("advanced")}>
+            <span>Advanced Quiz Configuration →</span>
+          </button>
+          {error && <div className="error-banner">{error}</div>}
+        </section>
+      </main>
+    );
+  }
+
+  /* ADVANCED QUIZ CONFIGURATION */
+  if (stage === "advanced") {
     const currentSeconds = settings.roundSeconds[activeConfigRound] ?? 20;
     const currentMarks = settings.marks[activeConfigRound] ?? 10;
 
@@ -485,15 +545,13 @@ export default function Host({ onHome, onActivityChange }) {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="btn btn-primary btn-full"
-            style={{ marginTop: 20 }}
+          <button type="button" className="btn btn-primary btn-full" style={{ marginTop: 20 }}
             disabled={!connected || !roomName.trim()}
-            onClick={create}
-          >
-            Create Room & Continue →
+            onClick={create}>
+            {roomCode ? "Save Configuration →" : "Create Room & Continue →"}
           </button>
+          {roomCode && <button type="button" className="btn btn-secondary btn-full" style={{ marginTop: 10 }}
+            onClick={() => setStage("lobby")}>Back to Lobby</button>}
           {error && <div className="error-banner">{error}</div>}
         </section>
       </main>
@@ -890,12 +948,12 @@ export default function Host({ onHome, onActivityChange }) {
               ))}
             </div>
 
-            <button
-              type="button"
-              className="btn btn-secondary btn-full"
-              style={{ marginTop: 16 }}
-              onClick={() => setStage("method")}
-            >
+            <button type="button" className="btn btn-secondary btn-full" style={{ marginTop: 16 }}
+              onClick={() => setStage("advanced")}>
+              Configure Quiz Settings
+            </button>
+            <button type="button" className="btn btn-secondary btn-full" style={{ marginTop: 10 }}
+              onClick={() => setStage("method")}>
               Edit Question Bank
             </button>
           </section>
