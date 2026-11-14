@@ -31,7 +31,8 @@ export default function Host({ onHome, onActivityChange }) {
   const [settings, setSettings] = useState({
     roundSeconds: { 1: 15, 2: 25 },
     marks: { 1: 10, 2: 20 },
-    speedBonusPercent: 10
+    speedBonusPercent: 10,
+    advanceCounts: { 1: 0, 2: 0 }
   });
   const [participants, setParticipants] = useState([]);
   const [counts, setCounts] = useState({});
@@ -39,6 +40,9 @@ export default function Host({ onHome, onActivityChange }) {
   const [question, setQuestion] = useState(null);
   const [seconds, setSeconds] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [roundElimination, setRoundElimination] = useState(null);
+  const [eliminationsConfirmed, setEliminationsConfirmed] = useState(true);
+  const [eliminatedIds, setEliminatedIds] = useState([]);
   const [questions, setQuestions] = useState([blankQuestion()]);
   const [error, setError] = useState("");
   const [importStatus, setImportStatus] = useState("");
@@ -61,6 +65,13 @@ export default function Host({ onHome, onActivityChange }) {
     setRound(response.round || 0);
     setQuestion(response.question || null);
     setLeaderboard(response.leaderboard || []);
+    setEliminatedIds(response.eliminatedIds || []);
+    setEliminationsConfirmed(response.eliminationsConfirmed ?? true);
+    if (response.status === "round_break") {
+      const pending = response.pendingEliminationIds || [];
+      const board = response.leaderboard || [];
+      setRoundElimination({ keepCount: response.quizSettings?.advanceCounts?.[response.round] || null, advancingCount: board.filter((p) => !p.eliminated).length - pending.length, eliminatedCandidates: board.filter((p) => pending.includes(p.id)) });
+    }
     // Restore the control dashboard for any existing room, including a live quiz.
     // Only a fresh/idle host session should remain on the room setup screen.
     setStage(response.roomCode ? "control" : "room");
@@ -83,13 +94,23 @@ export default function Host({ onHome, onActivityChange }) {
     const onEnded = () => setQuestion(null);
     const onRound = (d) => {
       setRound(d.round);
+      setRoundElimination(null);
+      setEliminationsConfirmed(true);
       setStatus("running");
       setQuestion(null);
     };
     const onBreak = (d) => {
       setLeaderboard(d.leaderboard || []);
+      setRoundElimination(d);
+      setEliminationsConfirmed(d.eliminationsConfirmed ?? true);
       setStatus("round_break");
       setQuestion(null);
+    };
+    const onEliminationsConfirmed = (d) => {
+      setLeaderboard(d.leaderboard || []);
+      setEliminatedIds(d.eliminatedIds || []);
+      setEliminationsConfirmed(true);
+      setRoundElimination((current) => current ? { ...current, eliminatedCandidates: [], advancingCount: d.advancingCount } : current);
     };
     const onFinish = (d) => {
       setLeaderboard(d.leaderboard || []);
@@ -106,6 +127,7 @@ export default function Host({ onHome, onActivityChange }) {
     socket.on("question_ended", onEnded);
     socket.on("round_started", onRound);
     socket.on("round_finished", onBreak);
+    socket.on("eliminations_confirmed", onEliminationsConfirmed);
     socket.on("competition_finished", onFinish);
     socket.connect();
 
@@ -119,6 +141,7 @@ export default function Host({ onHome, onActivityChange }) {
       socket.off("question_ended", onEnded);
       socket.off("round_started", onRound);
       socket.off("round_finished", onBreak);
+      socket.off("eliminations_confirmed", onEliminationsConfirmed);
       socket.off("competition_finished", onFinish);
       socket.disconnect();
     };
@@ -173,10 +196,7 @@ export default function Host({ onHome, onActivityChange }) {
     if (rounds >= 10) return;
     const next = rounds + 1;
     setRounds(next);
-    setSettings((s) => ({
-      roundSeconds: { ...s.roundSeconds, [next]: 20 },
-      marks: { ...s.marks, [next]: 10 }
-    }));
+    setSettings((s) => ({ ...s, roundSeconds: { ...s.roundSeconds, [next]: 20 }, marks: { ...s.marks, [next]: 10 }, advanceCounts: { ...s.advanceCounts, [next]: 0 } }));
     setActiveConfigRound(next);
   };
 
@@ -186,14 +206,16 @@ export default function Host({ onHome, onActivityChange }) {
     setSettings((s) => {
       const rs = {};
       const mk = {};
+      const ac = {};
       let idx = 1;
       for (let i = 1; i <= rounds; i++) {
         if (i === target) continue;
         rs[idx] = s.roundSeconds[i] ?? 20;
         mk[idx] = s.marks[i] ?? 10;
+        ac[idx] = s.advanceCounts?.[i] ?? 0;
         idx++;
       }
-      return { ...s, roundSeconds: rs, marks: mk };
+      return { ...s, roundSeconds: rs, marks: mk, advanceCounts: ac };
     });
     setRounds(nextTotal);
     setActiveConfigRound((prev) => Math.min(prev, nextTotal));
@@ -209,7 +231,7 @@ export default function Host({ onHome, onActivityChange }) {
   };
 
   const create = () => {
-    const payload = { roomName, rounds, roundSeconds: settings.roundSeconds, marks: settings.marks, speedBonusPercent: settings.speedBonusPercent ?? 10 };
+    const payload = { roomName, rounds, roundSeconds: settings.roundSeconds, marks: settings.marks, speedBonusPercent: settings.speedBonusPercent ?? 10, advanceCounts: settings.advanceCounts ?? {} };
     if (roomCode) {
       action("update_quiz_config", payload, (r) => {
         setRounds(r.rounds);
@@ -543,6 +565,21 @@ export default function Host({ onHome, onActivityChange }) {
                   ))}
                 </div>
               </div>
+            </div>
+            <div className="field-group" style={{ marginTop: 16 }}>
+              {activeConfigRound < rounds ? (
+                <>
+                  <label className="field-label" htmlFor="advance-count-input">Participants to keep after Round {activeConfigRound}</label>
+                  <div className="stepper-row">
+                    <input id="advance-count-input" type="number" min="0" max="500" step="1" className="input-control mono" style={{ maxWidth: 140, textAlign: "center" }} value={settings.advanceCounts?.[activeConfigRound] ?? 0}
+                      onChange={(e) => setSettings((current) => ({ ...current, advanceCounts: { ...current.advanceCounts, [activeConfigRound]: Math.min(500, Math.max(0, Math.floor(Number(e.target.value) || 0))) } }))} />
+                    <span className="muted">participants</span>
+                  </div>
+                  <p className="muted" style={{ marginTop: 6, fontSize: "0.78rem" }}>Set 0 to let everyone advance. Tied players at the cutoff are all kept.</p>
+                </>
+              ) : (
+                <p className="muted">Final round: all remaining participants compete. No elimination.</p>
+              )}
             </div>
             <div className="field-group" style={{ marginTop: 16 }}>
               <label className="field-label" htmlFor="speed-bonus-input">Maximum Speed Bonus (%)</label>
@@ -961,7 +998,7 @@ export default function Host({ onHome, onActivityChange }) {
                   <div>
                     <strong>Round {String(n).padStart(2, "0")}</strong>
                     <p className="muted" style={{ fontSize: "0.78rem" }}>
-                      {settings.roundSeconds[n] || 20}s timer · {settings.marks[n] || 5} pts/Q
+                      {settings.roundSeconds[n] || 20}s timer · {settings.marks[n] || 5} pts/Q · {n < rounds && (settings.advanceCounts?.[n] ? `keep top ${settings.advanceCounts[n]}` : "no elimination")}
                     </p>
                   </div>
                   <span className="standing-score">{counts[n] || 0} Qs</span>
@@ -1118,11 +1155,28 @@ export default function Host({ onHome, onActivityChange }) {
           <p className="muted" style={{ margin: "6px 0 18px" }}>
             Review the current rankings below before advancing the room.
           </p>
-          <button
-            type="button"
-            className="btn btn-primary btn-full"
-            onClick={() => action("start_next_round")}
-          >
+          {roundElimination?.eliminatedCandidates?.length > 0 && !eliminationsConfirmed && (
+            <div className="surface-card" style={{ margin: "14px 0", padding: 14 }}>
+              <p className="eyebrow">ELIMINATION REVIEW</p>
+              <h3 style={{ marginBottom: 6 }}>Keep top {roundElimination.keepCount}</h3>
+              <p className="muted" style={{ marginBottom: 10 }}>{roundElimination.advancingCount} participants will advance. Review the players below before confirming.</p>
+              <div className="standings-list">
+                {roundElimination.eliminatedCandidates.map((p) => (
+                  <div className="standing-row" key={p.id}>
+                    <strong>{p.name}</strong>
+                    <span className="standing-score">{Number(p.score).toFixed(2)} pts</span>
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="btn btn-danger btn-full" style={{ marginTop: 12 }} onClick={() => action("confirm_eliminations")}>
+                Confirm Elimination ({roundElimination.eliminatedCandidates.length})
+              </button>
+            </div>
+          )}
+          {roundElimination?.eliminatedCandidates?.length > 0 && eliminationsConfirmed && (
+            <p className="success-banner">Eliminations confirmed. {roundElimination.advancingCount} participants advance.</p>
+          )}
+          <button type="button" className="btn btn-primary btn-full" disabled={!eliminationsConfirmed} onClick={() => action("start_next_round")}>
             {round < rounds ? `Start Round ${String(round + 1).padStart(2, "0")} →` : "Finish Quiz & Reveal Podium →"}
           </button>
         </section>
