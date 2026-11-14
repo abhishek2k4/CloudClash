@@ -42,7 +42,6 @@ export default function Host({ onHome, onActivityChange }) {
   const [leaderboard, setLeaderboard] = useState([]);
   const [roundElimination, setRoundElimination] = useState(null);
   const [eliminationsConfirmed, setEliminationsConfirmed] = useState(true);
-  const [eliminatedIds, setEliminatedIds] = useState([]);
   const [questions, setQuestions] = useState([blankQuestion()]);
   const [error, setError] = useState("");
   const [importStatus, setImportStatus] = useState("");
@@ -65,7 +64,6 @@ export default function Host({ onHome, onActivityChange }) {
     setRound(response.round || 0);
     setQuestion(response.question || null);
     setLeaderboard(response.leaderboard || []);
-    setEliminatedIds(response.eliminatedIds || []);
     setEliminationsConfirmed(response.eliminationsConfirmed ?? true);
     if (response.status === "round_break") {
       const pending = response.pendingEliminationIds || [];
@@ -108,7 +106,6 @@ export default function Host({ onHome, onActivityChange }) {
     };
     const onEliminationsConfirmed = (d) => {
       setLeaderboard(d.leaderboard || []);
-      setEliminatedIds(d.eliminatedIds || []);
       setEliminationsConfirmed(true);
       setRoundElimination((current) => current ? { ...current, eliminatedCandidates: [], advancingCount: d.advancingCount } : current);
     };
