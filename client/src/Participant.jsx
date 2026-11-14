@@ -30,6 +30,7 @@ export default function Participant({
   const [result, setResult] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [status, setStatus] = useState("waiting");
+  const [eliminated, setEliminated] = useState(false);
   const [error, setError] = useState("");
 
   const apply = useCallback((r, joinedCode) => {
@@ -43,6 +44,7 @@ export default function Participant({
     setParticipants(r.snapshot?.participants || []);
     setStatus(r.snapshot?.status || "waiting");
     setLeaderboard(r.snapshot?.leaderboard || []);
+    setEliminated(Boolean(r.snapshot?.eliminated));
     const snapQ = r.snapshot?.question || null;
     setQuestion(snapQ);
     setSelected(r.snapshot?.answer?.selectedOption ?? null);
@@ -61,6 +63,7 @@ export default function Participant({
     const people = setParticipants;
     const onStatus = setStatus;
     const onQuestion = (q) => {
+      if (participantRef.current && eliminated) return;
       setQuestion(q);
       setSelected(null);
       setSubmitted(false);
@@ -85,6 +88,13 @@ export default function Participant({
       setLeaderboard(d.leaderboard || []);
       setResult({ message: "Round complete" });
     };
+    const onEliminationsConfirmed = (d) => {
+      if (participantRef.current && (d.eliminatedIds || []).includes(participantRef.current.id)) {
+        setEliminated(true);
+        setQuestion(null);
+        setSelected(null);
+      }
+    };
     const onFinish = (d) => {
       setStatus("finished");
       setLeaderboard(d.leaderboard || []);
@@ -105,6 +115,7 @@ export default function Participant({
     socket.on("question_ended", onEnd);
     socket.on("round_started", onRound);
     socket.on("round_finished", onBreak);
+    socket.on("eliminations_confirmed", onEliminationsConfirmed);
     socket.on("competition_finished", onFinish);
     socket.on("competition_cancelled", onCancelled);
 
@@ -130,6 +141,7 @@ export default function Participant({
       socket.off("question_ended", onEnd);
       socket.off("round_started", onRound);
       socket.off("round_finished", onBreak);
+      socket.off("eliminations_confirmed", onEliminationsConfirmed);
       socket.off("competition_finished", onFinish);
       socket.off("competition_cancelled", onCancelled);
       socket.off("connect", connect);
@@ -172,7 +184,7 @@ export default function Participant({
   };
 
   const selectOption = (optionIndex) => {
-    if (submitted || !question || !participant || result || selected === optionIndex) return;
+    if (eliminated || submitted || !question || !participant || result || selected === optionIndex) return;
     setSelected(optionIndex);
     setError("");
     socket.emit(
@@ -370,7 +382,7 @@ export default function Participant({
                 <div className="player-chip" key={p.id}>
                   <span className="avatar-monogram">{getInitials(p.name)}</span>
                   <span className="player-chip-name">
-                    {p.name} {p.id === participant.id ? "(You)" : ""}
+                    {p.name} {p.id === participant.id ? "(You)" : ""} {p.eliminated ? "· Eliminated" : ""}
                   </span>
                 </div>
               ))}
@@ -391,10 +403,10 @@ export default function Participant({
 
       {!question && status === "running" && (
         <section className="surface-card">
-          <p className="eyebrow">TELEMETRY SYNC</p>
-          <h2>Question Closed</h2>
+          <p className="eyebrow">{eliminated ? "SPECTATOR MODE" : "TELEMETRY SYNC"}</p>
+          <h2>{eliminated ? "You're watching the remaining rounds" : "Question Closed"}</h2>
           <p className="muted" style={{ marginTop: 6 }}>
-            Stand by for the next prompt.
+            {eliminated ? "Your competition has ended. You can still follow the live match and standings." : "Stand by for the next prompt."}
           </p>
           {result?.correctOption !== undefined && (
             <div className="success-banner">
@@ -407,9 +419,11 @@ export default function Participant({
       {status === "round_break" && (
         <section className="surface-card">
           <p className="eyebrow">INTERMISSION</p>
-          <h2>Round Complete</h2>
+          <h2>{eliminated ? "You're out of the competition" : "Round Complete"}</h2>
           <p className="muted" style={{ marginTop: 6 }}>
-            Standings updated. The host will initiate the next round shortly.
+            {eliminated
+              ? "You can stay connected and watch the remaining rounds and leaderboard, but you can no longer answer questions."
+              : "Standings updated. The host will initiate the next round shortly."}
           </p>
         </section>
       )}
