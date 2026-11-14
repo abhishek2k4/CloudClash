@@ -30,6 +30,7 @@ export default function Participant({
   const [result, setResult] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [status, setStatus] = useState("waiting");
+  const [eliminated, setEliminated] = useState(false);
   const [error, setError] = useState("");
 
   const apply = useCallback((r, joinedCode) => {
@@ -37,16 +38,17 @@ export default function Participant({
       setError(r?.message || "Could not join.");
       return;
     }
-    const p = { ...r.participant, name: r.participant.name, code: joinedCode };
+    const p = { ...r.participant, name: r.participant.name, code: joinedCode, eliminated: Boolean(r.snapshot?.eliminated) };
     participantRef.current = p;
     setParticipant(p);
     setParticipants(r.snapshot?.participants || []);
     setStatus(r.snapshot?.status || "waiting");
     setLeaderboard(r.snapshot?.leaderboard || []);
+    setEliminated(Boolean(r.snapshot?.eliminated));
     const snapQ = r.snapshot?.question || null;
     setQuestion(snapQ);
     setSelected(r.snapshot?.answer?.selectedOption ?? null);
-    setSubmitted(Boolean(r.snapshot?.answer));
+    setSubmitted(Boolean(r.snapshot?.lastQuestionResult) || (Boolean(r.snapshot?.answer) && r.snapshot?.status !== "running"));
     setResult(r.snapshot?.lastQuestionResult || null);
     if (snapQ?.endsAt) {
       const rem = Math.max(0, Math.ceil((snapQ.endsAt - Date.now()) / 1000));
@@ -67,6 +69,7 @@ export default function Participant({
       }
     };
     const onQuestion = (q) => {
+      if (participantRef.current?.eliminated) return;
       setQuestion(q);
       setSelected(null);
       setSubmitted(false);
@@ -79,7 +82,7 @@ export default function Participant({
     const onResume = (d) => setQuestion((q) => (q ? { ...q, endsAt: d.endsAt } : q));
     const onEnd = (d) => {
       setResult(d);
-      setQuestion(null);
+      setSubmitted(true);
     };
     const onRound = (d) => {
       setStatus("running");
@@ -91,10 +94,25 @@ export default function Participant({
       setLeaderboard(d.leaderboard || []);
       setResult({ message: "Round complete" });
     };
+    const onEliminationsConfirmed = (d) => {
+      if (participantRef.current && (d.eliminatedIds || []).includes(participantRef.current.id)) {
+        setEliminated(true);
+        participantRef.current = { ...participantRef.current, eliminated: true };
+        setQuestion(null);
+        setSelected(null);
+      }
+    };
     const onFinish = (d) => {
       setStatus("finished");
       setLeaderboard(d.leaderboard || []);
       setQuestion(null);
+    };
+    const onCancelled = () => {
+      participantRef.current = null;
+      setParticipant(null);
+      setQuestion(null);
+      setStatus("cancelled");
+      setError("The host cancelled this quiz. You have been removed from the room.");
     };
 
     socket.on("participants_updated", people);
@@ -104,7 +122,9 @@ export default function Participant({
     socket.on("question_ended", onEnd);
     socket.on("round_started", onRound);
     socket.on("round_finished", onBreak);
+    socket.on("eliminations_confirmed", onEliminationsConfirmed);
     socket.on("competition_finished", onFinish);
+    socket.on("competition_cancelled", onCancelled);
 
     const connect = () => {
       const p = participantRef.current;
@@ -128,7 +148,9 @@ export default function Participant({
       socket.off("question_ended", onEnd);
       socket.off("round_started", onRound);
       socket.off("round_finished", onBreak);
+      socket.off("eliminations_confirmed", onEliminationsConfirmed);
       socket.off("competition_finished", onFinish);
+      socket.off("competition_cancelled", onCancelled);
       socket.off("connect", connect);
       socket.disconnect();
     };
@@ -154,7 +176,7 @@ export default function Participant({
   };
 
   useEffect(() => {
-    onActivityChange?.(Boolean(participant) && status !== "finished");
+    onActivityChange?.(Boolean(participant) && !["finished", "cancelled"].includes(status));
     return () => onActivityChange?.(false);
   }, [participant, status, onActivityChange]);
 
@@ -168,21 +190,41 @@ export default function Participant({
     onHome();
   };
 
-  const submit = () => {
-    if (selected === null || submitted || !question || !participant) return;
+  const selectOption = (optionIndex) => {
+    if (eliminated || submitted || !question || !participant || result || selected === optionIndex) return;
+    setSelected(optionIndex);
+    setError("");
     socket.emit(
       "submit_answer",
       {
         participantId: participant.id,
         questionNumber: question.questionNumber,
-        selectedOption: selected
+        selectedOption: optionIndex
       },
       (r) => {
-        if (!r.success) setError(r.message);
-        else setSubmitted(true);
+        if (!r?.success) {
+          setError(r?.message || "Your selection could not be saved.");
+        }
       }
     );
   };
+
+  if (status === "cancelled") {
+    return (
+      <main className="app-shell narrow">
+        <section className="surface-card">
+          <p className="eyebrow">ROOM CANCELLED</p>
+          <h1>Quiz cancelled.</h1>
+          <p className="muted" style={{ marginTop: 8 }}>
+            The host has cancelled this room. You are no longer connected to the quiz.
+          </p>
+          <button type="button" className="btn btn-primary btn-full" style={{ marginTop: 20 }} onClick={onHome}>
+            Back to Home
+          </button>
+        </section>
+      </main>
+    );
+  }
 
   /* ENTRY VIEW */
   if (!participant) {
@@ -322,36 +364,40 @@ export default function Participant({
           <div className="options-grid">
             {question.options.map((o, i) => {
               const isSelected = selected === i;
-              const tileClass = `option-tile ${
-                submitted && isSelected ? "locked" : isSelected ? "selected" : ""
-              }`;
+              const isRevealed = result?.correctOption !== undefined;
+              const isCorrect = isRevealed && result.correctOption === i;
+              const isIncorrectSelection = isRevealed && isSelected && !isCorrect;
+              const tileClass = [
+                "option-tile",
+                !isRevealed && isSelected ? "selected" : "",
+                isRevealed && isSelected ? "locked" : "",
+                isCorrect ? "correct-answer" : "",
+                isIncorrectSelection ? "incorrect-answer" : ""
+              ].filter(Boolean).join(" ");
               return (
                 <button
                   type="button"
                   key={i}
                   className={tileClass}
-                  disabled={submitted || seconds === 0}
-                  onClick={() => setSelected(i)}
+                  disabled={submitted || seconds === 0 || isRevealed}
+                  onClick={() => selectOption(i)}
                 >
                   <span className="option-key">{String.fromCharCode(65 + i)}</span>
-                  <span>{o}</span>
+                  <span className="option-text">{o}</span>
+                  {isRevealed && isCorrect && <span className="option-feedback" aria-label="Correct answer">✓</span>}
+                  {isRevealed && isIncorrectSelection && <span className="option-feedback" aria-label="Your answer was incorrect">✕</span>}
                 </button>
               );
             })}
           </div>
 
-          <button
-            type="button"
-            className="btn btn-primary btn-full"
-            disabled={selected === null || submitted || seconds === 0}
-            onClick={submit}
-          >
-            {submitted ? "Answer Locked In" : "Lock Answer"}
-          </button>
-
-          {submitted && (
-            <div className="success-banner">
-              Selection locked. Waiting for the round timer to conclude.
+          {selected !== null && !submitted && !result && (
+            <div className="success-banner">Option {String.fromCharCode(65 + selected)} selected. You can change it until the timer ends.</div>
+          )}
+          {result?.correctOption !== undefined && result.explanation && (
+            <div className="surface-card" style={{ marginTop: 14 }}>
+              <p className="eyebrow">EXPLANATION</p>
+              <p className="muted">{result.explanation}</p>
             </div>
           )}
         </section>
@@ -376,7 +422,7 @@ export default function Participant({
                 <div className="player-chip" key={p.id}>
                   <span className="avatar-monogram">{getInitials(p.name)}</span>
                   <span className="player-chip-name">
-                    {p.name} {p.id === participant.id ? "(You)" : ""}
+                    {p.name} {p.id === participant.id ? "(You)" : ""} {p.eliminated ? "· Eliminated" : ""}
                   </span>
                 </div>
               ))}
@@ -387,10 +433,10 @@ export default function Participant({
 
       {!question && status === "running" && (
         <section className="surface-card">
-          <p className="eyebrow">TELEMETRY SYNC</p>
-          <h2>Question Closed</h2>
+          <p className="eyebrow">{eliminated ? "SPECTATOR MODE" : "TELEMETRY SYNC"}</p>
+          <h2>{eliminated ? "You're watching the remaining rounds" : "Question Closed"}</h2>
           <p className="muted" style={{ marginTop: 6 }}>
-            Stand by for the next prompt.
+            {eliminated ? "Your competition has ended. You can still follow the live match and standings." : "Stand by for the next prompt."}
           </p>
           {result?.correctOption !== undefined && (
             <div className="success-banner">
@@ -403,9 +449,11 @@ export default function Participant({
       {status === "round_break" && (
         <section className="surface-card">
           <p className="eyebrow">INTERMISSION</p>
-          <h2>Round Complete</h2>
+          <h2>{eliminated ? "You're out of the competition" : "Round Complete"}</h2>
           <p className="muted" style={{ marginTop: 6 }}>
-            Standings updated. The host will initiate the next round shortly.
+            {eliminated
+              ? "You can stay connected and watch the remaining rounds and leaderboard, but you can no longer answer questions."
+              : "Standings updated. The host will initiate the next round shortly."}
           </p>
         </section>
       )}
@@ -434,7 +482,7 @@ export default function Participant({
                     <span className="podium-rank">#{String(actualRank).padStart(2, "0")}</span>
                     <span className="avatar-monogram">{getInitials(p.name)}</span>
                     <span className="podium-name">{p.name}</span>
-                    <span className="podium-score">{p.score} pts</span>
+                    <span className="podium-score">{Number(p.score).toFixed(2)} pts</span>
                   </div>
                 );
               })}
@@ -448,10 +496,10 @@ export default function Participant({
                   <span className="standing-rank">#{String(p.rank).padStart(2, "0")}</span>
                   <span className="avatar-monogram">{getInitials(p.name)}</span>
                   <strong>
-                    {p.name} {p.id === participant.id ? "(You)" : ""}
+                    {p.name} {p.id === participant.id ? "(You)" : ""} {p.eliminated ? "(Eliminated)" : ""}
                   </strong>
                 </div>
-                <span className="standing-score">{p.score} pts</span>
+                <span className="standing-score">{Number(p.score).toFixed(2)} pts</span>
               </div>
             ))}
           </div>
