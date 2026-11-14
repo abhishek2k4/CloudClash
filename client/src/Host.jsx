@@ -1005,6 +1005,13 @@ export default function Host({ onHome, onActivityChange }) {
             >
               Start Live Match →
             </button>
+            <button type="button" className="btn btn-danger btn-full" style={{ marginTop: 10 }}
+              onClick={() => {
+                if (!window.confirm("Cancel this quiz room? All connected participants will be removed and the room code will stop working.")) return;
+                action("cancel_quiz", undefined, () => onHome());
+              }}>
+              Exit & Cancel Quiz
+            </button>
           </section>
         </div>
       )}
