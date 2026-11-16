@@ -121,6 +121,10 @@ export default function Host({ onHome, onActivityChange }) {
       socket.emit("host_login", apply);
     };
     const disconnect = () => setConnected(false);
+    const onConnectError = (err) => {
+      setConnected(false);
+      setError(err?.message || "Could not verify your account session.");
+    };
     const onPeople = setParticipants;
     const onStatus = setStatus;
     const onQuestion = (q) => {
@@ -164,6 +168,7 @@ export default function Host({ onHome, onActivityChange }) {
 
     socket.on("connect", connect);
     socket.on("disconnect", disconnect);
+    socket.on("connect_error", onConnectError);
     socket.on("participants_updated", onPeople);
     socket.on("competition_status_updated", onStatus);
     socket.on("question_started", onQuestion);
@@ -179,6 +184,7 @@ export default function Host({ onHome, onActivityChange }) {
     return () => {
       socket.off("connect", connect);
       socket.off("disconnect", disconnect);
+      socket.off("connect_error", onConnectError);
       socket.off("participants_updated", onPeople);
       socket.off("competition_status_updated", onStatus);
       socket.off("question_started", onQuestion);
