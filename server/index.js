@@ -4,13 +4,31 @@ import cors from "cors";
 import { createServer } from "http";
 import { randomUUID } from "crypto";
 import { Server } from "socket.io";
-import { persistenceEnabled, loadCompetitionState, saveCompetitionState } from "./persistence.js";
+import { persistenceEnabled, loadCompetitionState, saveCompetitionState, archiveCompletedQuiz, listQuizArchives } from "./persistence.js";
 
 const app=express(), httpServer=createServer(app);
 const allowedOrigins=(process.env.CLIENT_ORIGIN||"http://localhost:5173").split(",").map(x=>x.trim());
 const SUPABASE_URL=(process.env.SUPABASE_URL||"").replace(/\/$/,"");
 const SUPABASE_ANON_KEY=process.env.SUPABASE_ANON_KEY;
+
 app.use(cors({origin:allowedOrigins})); app.use(express.json());
+async function requireAccount(req,res,next){
+ const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+ if(!token||!SUPABASE_URL||!SUPABASE_ANON_KEY)return res.status(401).json({error:"Sign in to view your quiz archives."});
+ try{
+  const response=await fetch(SUPABASE_URL+"/auth/v1/user",{headers:{apikey:SUPABASE_ANON_KEY,Authorization:"Bearer "+token}});
+  if(!response.ok)return res.status(401).json({error:"Your account session is invalid. Please sign in again."});
+  const user=await response.json();
+  if(!user?.id)return res.status(401).json({error:"Could not verify your account."});
+  req.accountId=user.id;
+  next();
+ }catch{return res.status(503).json({error:"Could not verify your account right now."});}
+}
+app.get("/api/archives",requireAccount,async(req,res)=>{
+ try{res.json({archives:await listQuizArchives(req.accountId)});}
+ catch(error){console.error("Archive lookup failed:",error.message);res.status(503).json({error:"Quiz archives are temporarily unavailable. Check the Supabase archive setup."});}
+});
+
 const io=new Server(httpServer,{cors:{origin:allowedOrigins,methods:["GET","POST"]}});
 io.use(async (socket,next)=>{
  const accessToken=socket.handshake.auth?.accessToken;
@@ -66,7 +84,18 @@ const roundScore=value=>Math.round((value+Number.EPSILON)*10000)/10000;
 function enqueueAnswer(task){const p=answerQueue.then(task,task);answerQueue=p.catch(()=>{});return p;}
 function emitStatus(){io.to("host").emit("competition_status_updated",status);io.to("competition").emit("competition_status_updated",status);}
 function clearQuestionTimer(){if(questionTimer)clearTimeout(questionTimer);questionTimer=null;}
-function finishQuiz(){clearQuestionTimer();if(roundTimer)clearTimeout(roundTimer);status="finished";questionLocked=true;questionEndsAt=null;remainingMs=null;resultsRevealed=false;const board=leaderboard();io.to("host").emit("competition_finished",{resultsRevealed:false});for(const client of io.of("/").sockets.values()){if(client.rooms.has("competition")){const own=board.find(p=>p.id===client.data.participantId);client.emit("competition_finished",{resultsRevealed:false});client.emit("personal_final_report",{report:own||null});}}emitStatus();persistSafe();}
+function finishQuiz(){
+ if(status==="finished")return;
+ clearQuestionTimer();if(roundTimer)clearTimeout(roundTimer);status="finished";questionLocked=true;questionEndsAt=null;remainingMs=null;resultsRevealed=false;
+ const board=leaderboard();
+ if(roomOwnerId&&roomCode){
+  const archive={host_user_id:roomOwnerId,room_name:roomName,room_code:roomCode,rounds,completed_at:new Date().toISOString(),participant_count:participants.size,leaderboard:board,quiz_settings:quizSettings,question_counts:Object.fromEntries(Array.from({length:rounds},(_,i)=>[i+1,roundQuestions(i+1).length]))};
+  archiveCompletedQuiz(archive).then(()=>console.log("Archived completed quiz",roomCode)).catch(e=>console.error("Could not archive completed quiz:",e.message));
+ }
+ io.to("host").emit("competition_finished",{resultsRevealed:false});
+ for(const client of io.of("/").sockets.values()){if(client.rooms.has("competition")){const own=board.find(p=>p.id===client.data.participantId);client.emit("competition_finished",{resultsRevealed:false});client.emit("personal_final_report",{report:own||null});}}
+ emitStatus();persistSafe();
+}
 function finishRound(){clearQuestionTimer();questionLocked=true;questionEndsAt=null;remainingMs=null;if(currentRound>=rounds){finishQuiz();return;}status="round_break";const board=leaderboard(),summary=roundEliminationSummary();pendingEliminationIds=summary.eliminatedCandidates.map(p=>p.id);eliminationsConfirmed=pendingEliminationIds.length===0;const payload={round:currentRound,leaderboard:board,keepCount:summary.keepCount,advancingCount:summary.advancingCount,eliminatedCandidates:summary.eliminatedCandidates,eliminationsConfirmed};io.to("host").emit("round_finished",payload);for(const client of io.of("/").sockets.values()){if(client.rooms.has("competition")){const own=board.find(p=>p.id===client.data.participantId);client.emit("round_finished",{round:currentRound});client.emit("personal_round_report",{round:currentRound,report:own?.roundStats?.[currentRound]||null,roundScore:own?Number(own.roundStats?.[currentRound]?.basePoints||0)+Number(own.roundStats?.[currentRound]?.speedBonus||0):0});}}emitStatus();persistSafe();}
 function startQuestion(){clearQuestionTimer();const list=roundQuestions(currentRound);questionIndex++;if(questionIndex>=list.length){finishRound();return;}questionLocked=false;remainingMs=null;questionEndsAt=Date.now()+quizSettings.roundSeconds[currentRound]*1000;const q=safeQuestion();io.to("host").emit("question_started",q);io.to("competition").emit("question_started",q);questionTimer=setTimeout(()=>endQuestion("time"),quizSettings.roundSeconds[currentRound]*1000);persistSafe();}
 async function endQuestion(reason="time"){if(questionLocked||status!=="running")return;clearQuestionTimer();await answerQueue;if(questionLocked||status!=="running")return;questionLocked=true;const q=roundQuestions(currentRound)[questionIndex];const result={round:currentRound,questionNumber:questionIndex+1,correctOption:q.correctOption,explanation:q.explanation||"",reason};io.to("host").emit("question_ended",result);io.to("competition").emit("question_ended",result);io.to("host").emit("leaderboard_updated",leaderboard());questionEndsAt=null;persistSafe();roundTimer=setTimeout(()=>{if(status==="running"&&questionLocked)startQuestion();},2500);}
