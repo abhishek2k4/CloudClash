@@ -47,6 +47,7 @@ export default function Host({ onHome, onActivityChange }) {
   const [error, setError] = useState("");
   const [importStatus, setImportStatus] = useState("");
   const [roundUploads, setRoundUploads] = useState({});
+  const [roundFilenames, setRoundFilenames] = useState({});
   const [copied, setCopied] = useState(false);
 
   const apply = useCallback((response) => {
@@ -344,7 +345,8 @@ export default function Host({ onHome, onActivityChange }) {
       const csv = await file.text();
       action("import_round_questions", { round: n, csv }, (r) => {
         setCounts(r.counts);
-        setRoundUploads((s) => ({ ...s, [n]: `${r.counts[n]} questions verified` }));
+        setRoundFilenames((s) => ({ ...s, [n]: file.name }));
+        setRoundUploads((s) => ({ ...s, [n]: "" }));
         setImportStatus(`Round ${n} question bank uploaded.`);
       }, () => {
         setRoundUploads((s) => ({ ...s, [n]: "Upload failed — check the CSV headers and format" }));
@@ -363,6 +365,7 @@ export default function Host({ onHome, onActivityChange }) {
     action("discard_round_questions", { round: n }, (r) => {
       setCounts(r.counts);
       setRoundUploads((s) => ({ ...s, [n]: "" }));
+      setRoundFilenames((s) => ({ ...s, [n]: "" }));
       setImportStatus(`Round ${n} upload discarded.`);
     }, () => {
       setRoundUploads((s) => ({ ...s, [n]: "Could not discard upload. Please try again." }));
@@ -808,6 +811,12 @@ export default function Host({ onHome, onActivityChange }) {
                 </button>
               )}
 
+              {roundFilenames[n] && counts[n] > 0 && (
+                <p className="muted" style={{ marginTop: 12, fontSize: "0.8rem", overflowWrap: "anywhere" }}>
+                  <span style={{ color: "var(--text-muted, #94a3b8)" }}>File: </span>
+                  {roundFilenames[n]}
+                </p>
+              )}
 
             </section>
           ))}
