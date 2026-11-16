@@ -356,6 +356,19 @@ export default function Host({ onHome, onActivityChange }) {
     e.target.value = "";
   };
 
+  const discardRoundUpload = (n) => {
+    if (!window.confirm(`Discard all ${counts[n] || 0} questions uploaded for Round ${n}?`)) return;
+    setError("");
+    setRoundUploads((s) => ({ ...s, [n]: "Discarding..." }));
+    action("discard_round_questions", { round: n }, (r) => {
+      setCounts(r.counts);
+      setRoundUploads((s) => ({ ...s, [n]: "" }));
+      setImportStatus(`Round ${n} upload discarded.`);
+    }, () => {
+      setRoundUploads((s) => ({ ...s, [n]: "Could not discard upload. Please try again." }));
+    });
+  };
+
   const copyCode = () => {
     navigator.clipboard?.writeText(roomCode);
     setCopied(true);
@@ -768,15 +781,34 @@ export default function Host({ onHome, onActivityChange }) {
                   </p>
                   <h2>Round {n} Bank</h2>
                 </div>
-                <span className="status-chip">{counts[n] || 0} loaded</span>
+                <span className="status-chip">
+                  {counts[n] > 0 ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#22c55e" }}>
+                      <span aria-hidden="true" style={{ fontWeight: 800, fontSize: "1rem" }}>✓</span>
+                      {counts[n]} loaded
+                    </span>
+                  ) : "0 loaded"}
+                </span>
               </div>
 
               <label className="upload-dropzone">
-                <span>Upload Round {n} CSV</span>
+                <span>{counts[n] > 0 ? `Replace Round ${n} CSV` : `Upload Round ${n} CSV`}</span>
                 <input type="file" accept=".csv,text/csv" onChange={(e) => uploadRound(e, n)} />
               </label>
 
-              {roundUploads[n] && (
+              {counts[n] > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-danger btn-full"
+                  style={{ marginTop: 10 }}
+                  disabled={roundUploads[n] === "Discarding..."}
+                  onClick={() => discardRoundUpload(n)}
+                >
+                  {roundUploads[n] === "Discarding..." ? "Discarding..." : "Discard uploaded questions"}
+                </button>
+              )}
+
+              {roundUploads[n] && roundUploads[n] !== "Discarding..." && (
                 <p className="muted" style={{ marginTop: 12, fontSize: "0.8rem" }}>
                   {roundUploads[n]}
                 </p>
