@@ -65,9 +65,11 @@ export default function App() {
   };
 
   const handleSignOut = async () => {
-    await signOut(session);
-    socket.auth = {};
-    setSession(null);
+    try { await signOut(session); }
+    finally {
+      socket.auth = {};
+      setSession(null);
+    }
   };
 
   const handleQuickJoin = (e) => {
