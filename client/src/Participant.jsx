@@ -18,7 +18,11 @@ export default function Participant({
   initialCode = ""
 }) {
   const [name, setName] = useState(initialName);
-  const [code, setCode] = useState(initialCode);\n\n  useEffect(() => {\n    if (!participantRef.current && initialName) setName(initialName);\n  }, [initialName]);
+  const [code, setCode] = useState(initialCode);
+
+  useEffect(() => {
+    if (!participantRef.current && initialName) setName(initialName);
+  }, [initialName]);
   const participantRef = useRef(null);
 
   const [participant, setParticipant] = useState(null);
