@@ -1319,12 +1319,13 @@ export default function Host({ onHome, onActivityChange }) {
               const questionTotal = leaderboardView === "round" ? Number(counts[leaderboardRound] || 0) : Object.values(counts).reduce((sum, n) => sum + Number(n || 0), 0);
               const expanded = expandedPlayerId === p.id;
               const accuracy = Number(stats.accuracy || 0);
+              const displayScore = leaderboardView === "round" ? Number(stats.basePoints || 0) + Number(stats.speedBonus || 0) : Number(p.score || 0);
               return (
                 <article className={`host-player-card ${expanded ? "expanded" : ""} ${p.eliminated ? "is-eliminated" : ""}`} key={p.id}>
                   <button type="button" className="host-player-summary" onClick={() => setExpandedPlayerId(expanded ? null : p.id)} aria-expanded={expanded}>
                     <span className="host-player-identity"><span className="host-player-rank">#{String(p.rank).padStart(2, "0")}</span><span className="avatar-monogram">{getInitials(p.name)}</span><span className="host-player-name">{p.name}{p.eliminated ? <small>ELIMINATED</small> : null}</span></span>
                     <span className="host-player-attempted">{stats.attempted || 0}/{questionTotal}</span><span className="host-player-correct">{stats.correct || 0} ✓</span><span className="host-player-wrong">{stats.wrong || 0} ✕</span>
-                    <span className="host-player-score">{Number(p.score).toFixed(2)} <small>pts</small><span className={`expand-chevron ${expanded ? "open" : ""}`}>⌄</span></span>
+                    <span className="host-player-score">{displayScore.toFixed(2)} <small>pts</small><span className={`expand-chevron ${expanded ? "open" : ""}`}>⌄</span></span>
                   </button>
                   {expanded && <div className="host-player-details">
                     <div className="host-accuracy-line"><span>ACCURACY RATE: <strong>{stats.accuracy == null ? "N/A" : `${accuracy.toFixed(0)}%`}</strong></span><span>BASE: <strong>{Number(stats.basePoints || 0).toFixed(2)} pts</strong> + SPEED BONUS: <strong className="host-player-correct">+{Number(stats.speedBonus || 0).toFixed(2)} pts</strong></span></div>
