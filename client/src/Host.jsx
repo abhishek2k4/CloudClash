@@ -41,12 +41,17 @@ export default function Host({ onHome, onActivityChange }) {
   const [question, setQuestion] = useState(null);
   const [seconds, setSeconds] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [resultsRevealed, setResultsRevealed] = useState(false);
+  const [leaderboardView, setLeaderboardView] = useState("overall");
+  const [leaderboardRound, setLeaderboardRound] = useState(1);
+  const [expandedPlayerId, setExpandedPlayerId] = useState(null);
   const [roundElimination, setRoundElimination] = useState(null);
   const [eliminationsConfirmed, setEliminationsConfirmed] = useState(true);
   const [questions, setQuestions] = useState([blankQuestion()]);
   const [error, setError] = useState("");
   const [importStatus, setImportStatus] = useState("");
   const [roundUploads, setRoundUploads] = useState({});
+  const [roundFilenames, setRoundFilenames] = useState({});
   const [copied, setCopied] = useState(false);
 
   const apply = useCallback((response) => {
@@ -59,7 +64,7 @@ export default function Host({ onHome, onActivityChange }) {
     // A finished quiz belongs to the previous host session. A new visit to
     // /host should start with a clean setup screen, not reopen its leaderboard.
     // Active/waiting rooms still restore their control dashboard for host recovery.
-    if (response.status === "finished") {
+    if (response.status === "finished" && !response.roomCode) {
       setRoomCode("");
       setRoomName("");
       setStatus("idle");
@@ -94,6 +99,8 @@ export default function Host({ onHome, onActivityChange }) {
     setRound(response.round || 0);
     setQuestion(response.question || null);
     setLeaderboard(response.leaderboard || []);
+    setResultsRevealed(Boolean(response.resultsRevealed));
+    setExpandedPlayerId(response.leaderboard?.[0]?.id || null);
     setEliminationsConfirmed(response.eliminationsConfirmed ?? true);
     if (response.status === "round_break") {
       const pending = response.pendingEliminationIds || [];
@@ -128,6 +135,7 @@ export default function Host({ onHome, onActivityChange }) {
     };
     const onBreak = (d) => {
       setLeaderboard(d.leaderboard || []);
+      setExpandedPlayerId(d.leaderboard?.[0]?.id || null);
       setRoundElimination(d);
       setEliminationsConfirmed(d.eliminationsConfirmed ?? true);
       setStatus("round_break");
@@ -139,9 +147,15 @@ export default function Host({ onHome, onActivityChange }) {
       setRoundElimination((current) => current ? { ...current, eliminatedCandidates: [], advancingCount: d.advancingCount } : current);
     };
     const onFinish = (d) => {
-      setLeaderboard(d.leaderboard || []);
+      setLeaderboard([]);
+      setResultsRevealed(false);
       setStatus("finished");
       setQuestion(null);
+    };
+    const onRevealFinal = (d) => {
+      setLeaderboard(d.leaderboard || []);
+      setResultsRevealed(true);
+      setExpandedPlayerId(d.leaderboard?.[0]?.id || null);
     };
 
     socket.on("connect", connect);
@@ -155,6 +169,7 @@ export default function Host({ onHome, onActivityChange }) {
     socket.on("round_finished", onBreak);
     socket.on("eliminations_confirmed", onEliminationsConfirmed);
     socket.on("competition_finished", onFinish);
+    socket.on("final_leaderboard_revealed", onRevealFinal);
     socket.connect();
 
     return () => {
@@ -169,6 +184,7 @@ export default function Host({ onHome, onActivityChange }) {
       socket.off("round_finished", onBreak);
       socket.off("eliminations_confirmed", onEliminationsConfirmed);
       socket.off("competition_finished", onFinish);
+      socket.off("final_leaderboard_revealed", onRevealFinal);
       socket.disconnect();
     };
   }, [apply]);
@@ -344,12 +360,9 @@ export default function Host({ onHome, onActivityChange }) {
       const csv = await file.text();
       action("import_round_questions", { round: n, csv }, (r) => {
         setCounts(r.counts);
-        setRoundUploads((s) => ({ ...s, [n]: `${r.counts[n]} questions verified` }));
+        setRoundFilenames((s) => ({ ...s, [n]: file.name }));
+        setRoundUploads((s) => ({ ...s, [n]: "" }));
         setImportStatus(`Round ${n} question bank uploaded.`);
-        if (Array.from({ length: rounds }, (_, i) => i + 1).every((k) => (r.counts[k] || 0) > 0)) {
-          setStatus("waiting");
-          setStage("lobby");
-        }
       }, () => {
         setRoundUploads((s) => ({ ...s, [n]: "Upload failed — check the CSV headers and format" }));
       });
@@ -358,6 +371,20 @@ export default function Host({ onHome, onActivityChange }) {
       setRoundUploads((s) => ({ ...s, [n]: "Upload failed" }));
     }
     e.target.value = "";
+  };
+
+  const discardRoundUpload = (n) => {
+    if (!window.confirm(`Discard all ${counts[n] || 0} questions uploaded for Round ${n}?`)) return;
+    setError("");
+    setRoundUploads((s) => ({ ...s, [n]: "Discarding..." }));
+    action("discard_round_questions", { round: n }, (r) => {
+      setCounts(r.counts);
+      setRoundUploads((s) => ({ ...s, [n]: "" }));
+      setRoundFilenames((s) => ({ ...s, [n]: "" }));
+      setImportStatus(`Round ${n} upload discarded.`);
+    }, () => {
+      setRoundUploads((s) => ({ ...s, [n]: "Could not discard upload. Please try again." }));
+    });
   };
 
   const copyCode = () => {
@@ -668,6 +695,9 @@ export default function Host({ onHome, onActivityChange }) {
   if (stage === "method") {
     return (
       <main className="app-shell">
+        <button className="back-link" onClick={() => setStage("lobby")}>
+          ← Back to Host Dashboard
+        </button>
         <header style={{ marginBottom: 24 }}>
           <p className="eyebrow">STEP 02 · QUESTION AUTHORING</p>
           <h1>{roomName}</h1>
@@ -769,24 +799,64 @@ export default function Host({ onHome, onActivityChange }) {
                   </p>
                   <h2>Round {n} Bank</h2>
                 </div>
-                <span className="status-chip">{counts[n] || 0} loaded</span>
+                <span className="status-chip">
+                  {counts[n] > 0 ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#22c55e" }}>
+                      <span aria-hidden="true" style={{ fontWeight: 800, fontSize: "1rem" }}>✓</span>
+                      {counts[n]} loaded
+                    </span>
+                  ) : "0 loaded"}
+                </span>
               </div>
 
               <label className="upload-dropzone">
-                <span>Upload Round {n} CSV</span>
+                <span>{counts[n] > 0 ? `Replace Round ${n} CSV` : `Upload Round ${n} CSV`}</span>
                 <input type="file" accept=".csv,text/csv" onChange={(e) => uploadRound(e, n)} />
               </label>
 
-              {roundUploads[n] && (
-                <p className="muted" style={{ marginTop: 12, fontSize: "0.8rem" }}>
-                  {roundUploads[n]}
+              {counts[n] > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-danger btn-full"
+                  style={{ marginTop: 10 }}
+                  disabled={roundUploads[n] === "Discarding..."}
+                  onClick={() => discardRoundUpload(n)}
+                >
+                  {roundUploads[n] === "Discarding..." ? "Discarding..." : "Discard uploaded questions"}
+                </button>
+              )}
+
+              {roundFilenames[n] && counts[n] > 0 && (
+                <p className="muted" style={{ marginTop: 12, fontSize: "0.8rem", overflowWrap: "anywhere" }}>
+                  <span style={{ color: "var(--text-muted, #94a3b8)" }}>File: </span>
+                  {roundFilenames[n]}
                 </p>
               )}
+
             </section>
           ))}
         </div>
 
         {error && <div className="error-banner">{error}</div>}
+
+        <div className="sticky-footer">
+          <div className="sticky-footer-inner">
+            <span className="mono muted">
+              {Array.from({ length: rounds }, (_, i) => i + 1).filter((n) => (counts[n] || 0) > 0).length}/{rounds} ROUNDS READY
+            </span>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={Array.from({ length: rounds }, (_, i) => i + 1).some((n) => (counts[n] || 0) < 1)}
+              onClick={() => {
+                setStatus("waiting");
+                setStage("lobby");
+              }}
+            >
+              Continue to Host Dashboard →
+            </button>
+          </div>
+        </div>
       </main>
     );
   }
@@ -1244,42 +1314,58 @@ export default function Host({ onHome, onActivityChange }) {
         </section>
       )}
 
-      {(status === "round_break" || status === "finished") && (
-        <section className="surface-card">
-          <p className="eyebrow">TELEMETRY STANDINGS</p>
-          <h2>{status === "finished" ? "Final Podium & Leaderboard" : "Current Leaderboard"}</h2>
-
-          {leaderboard.length >= 3 && (
-            <div className="podium-grid">
-              {[leaderboard[1], leaderboard[0], leaderboard[2]].map((p, idx) => {
-                const actualRank = idx === 0 ? 2 : idx === 1 ? 1 : 3;
-                return (
-                  <div className={`podium-slot rank-${actualRank}`} key={p.id}>
-                    <span className="podium-rank">#{String(actualRank).padStart(2, "0")}</span>
-                    <span className="avatar-monogram">{getInitials(p.name)}</span>
-                    <span className="podium-name">{p.name}</span>
-                    <span className="podium-score">{Number(p.score).toFixed(2)} pts</span>
-                  </div>
-                );
-              })}
+      {status === "finished" && resultsRevealed && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
+      {status === "finished" && !resultsRevealed && (
+        <section className="surface-card final-reveal-card">
+          <p className="eyebrow">FINAL ROUND COMPLETE</p>
+          <h2>Results are locked.</h2>
+          <p className="muted">The final standings are hidden from everyone. Reveal them when you're ready to announce the winners.</p>
+          <button type="button" className="btn btn-primary btn-full" onClick={() => action("reveal_final_leaderboard")}>👑 Reveal Final Leaderboard</button>
+        </section>
+      )}
+      {(status === "round_break" || (status === "finished" && resultsRevealed)) && (
+        <section className="surface-card host-leaderboard">
+          <div className="section-header host-leaderboard-heading">
+            <div><p className="eyebrow">TELEMETRY STANDINGS</p><h2>{status === "finished" ? "Final Leaderboard" : "Current Leaderboard"}</h2></div>
+            <div className="leaderboard-view-controls">
+              <button type="button" className={leaderboardView === "overall" ? "round-tab active" : "round-tab"} onClick={() => setLeaderboardView("overall")}>Overall</button>
+              <button type="button" className={leaderboardView === "round" ? "round-tab active" : "round-tab"} onClick={() => setLeaderboardView("round")}>Round-wise</button>
+              {leaderboardView === "round" && <select className="input-control leaderboard-round-select" value={leaderboardRound} onChange={(e) => setLeaderboardRound(Number(e.target.value))}>{Array.from({ length: rounds }, (_, i) => <option key={i + 1} value={i + 1}>Round {i + 1}</option>)}</select>}
             </div>
-          )}
-
-          <div className="standings-list">
-            {leaderboard.map((p) => (
-              <div className="standing-row" key={p.id}>
-                <div className="standing-left">
-                  <span className="standing-rank">#{String(p.rank).padStart(2, "0")}</span>
-                  <span className="avatar-monogram">{getInitials(p.name)}</span>
-                  <strong>{p.name} {p.eliminated ? "(Eliminated)" : ""}</strong>
-                </div>
-                <span className="standing-score">{Number(p.score).toFixed(2)} pts</span>
-              </div>
-            ))}
+          </div>
+          <div className="leaderboard-column-head"><span>PLAYER</span><span>ATTEMPTED</span><span>CORRECT</span><span>WRONG</span><span>SCORE</span></div>
+          <div className="host-leaderboard-list">
+            {leaderboard.map((p) => {
+              const stats = leaderboardView === "round" ? (p.roundStats?.[leaderboardRound] || {}) : (p.stats || {});
+              const questionTotal = leaderboardView === "round" ? Number(counts[leaderboardRound] || 0) : Object.values(counts).reduce((sum, n) => sum + Number(n || 0), 0);
+              const expanded = expandedPlayerId === p.id;
+              const accuracy = Number(stats.accuracy || 0);
+              const displayScore = leaderboardView === "round" ? Number(stats.basePoints || 0) + Number(stats.speedBonus || 0) : Number(p.score || 0);
+              return (
+                <article className={`host-player-card ${expanded ? "expanded" : ""} ${p.eliminated ? "is-eliminated" : ""}`} key={p.id}>
+                  <button type="button" className="host-player-summary" onClick={() => setExpandedPlayerId(expanded ? null : p.id)} aria-expanded={expanded}>
+                    <span className="host-player-identity"><span className="host-player-rank">#{String(p.rank).padStart(2, "0")}</span><span className="avatar-monogram">{getInitials(p.name)}</span><span className="host-player-name">{p.rank === 1 ? "👑 " : ""}{p.name}{p.eliminated ? <small>ELIMINATED</small> : null}</span></span>
+                    <span className="host-player-attempted">{stats.attempted || 0}/{questionTotal}</span><span className="host-player-correct">{stats.correct || 0} ✓</span><span className="host-player-wrong">{stats.wrong || 0} ✕</span>
+                    <span className="host-player-score">{displayScore.toFixed(2)} <small>pts</small><span className={`expand-chevron ${expanded ? "open" : ""}`}>⌄</span></span>
+                  </button>
+                  {expanded && <div className="host-player-details">
+                    <div className="host-accuracy-line"><span>ACCURACY RATE: <strong>{stats.accuracy == null ? "N/A" : `${accuracy.toFixed(0)}%`}</strong></span><span>BASE: <strong>{Number(stats.basePoints || 0).toFixed(2)} pts</strong> + SPEED BONUS: <strong className="host-player-correct">+{Number(stats.speedBonus || 0).toFixed(2)} pts</strong></span></div>
+                    <div className="host-accuracy-track"><span style={{ width: `${accuracy}%` }} /><i style={{ width: `${stats.attempted ? (stats.wrong / stats.attempted) * 100 : 0}%` }} /></div>
+                    <div className="host-player-stat-grid">
+                      <div><small>ATTEMPTED</small><strong>{stats.attempted || 0} of {questionTotal} Qs</strong></div>
+                      <div><small>CORRECT / WRONG</small><strong><em>{stats.correct || 0} Correct</em> / <b>{stats.wrong || 0} Wrong</b></strong></div>
+                      <div><small>AVG RESPONSE</small><strong>{stats.avgResponseMs == null ? "—" : `${(stats.avgResponseMs / 1000).toFixed(2)}s / Q`}</strong></div>
+                      <div><small>BEST STREAK</small><strong className="host-streak">{stats.bestStreak || 0} in a row</strong></div>
+                    </div>
+                    {leaderboardView === "overall" && <div className="host-round-breakdown">{Object.entries(p.roundStats || {}).map(([roundNo, data]) => <span key={roundNo}>R{roundNo}: {data.correct || 0}/{data.attempted || 0} correct · {Number(data.speedBonus || 0).toFixed(2)} bonus</span>)}</div>}
+                  </div>}
+                </article>
+              );
+            })}
+            {!leaderboard.length && <p className="muted">No participant scores yet.</p>}
           </div>
         </section>
       )}
-
       {status === "finished" && (
         <button
           type="button"

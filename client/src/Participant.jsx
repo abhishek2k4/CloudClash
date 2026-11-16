@@ -23,12 +23,17 @@ export default function Participant({
   const [participant, setParticipant] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [question, setQuestion] = useState(null);
+  const [round, setRound] = useState(0);
   const [seconds, setSeconds] = useState(0);
   const [totalSeconds, setTotalSeconds] = useState(20);
   const [selected, setSelected] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [personalReport, setPersonalReport] = useState(null);
+  const [personalRoundReport, setPersonalRoundReport] = useState(null);
+  const [resultsRevealed, setResultsRevealed] = useState(false);
+  const [expandedRoundReport, setExpandedRoundReport] = useState(false);
   const [status, setStatus] = useState("waiting");
   const [eliminated, setEliminated] = useState(false);
   const [error, setError] = useState("");
@@ -43,7 +48,11 @@ export default function Participant({
     setParticipant(p);
     setParticipants(r.snapshot?.participants || []);
     setStatus(r.snapshot?.status || "waiting");
+    setRound(r.snapshot?.round || 0);
     setLeaderboard(r.snapshot?.leaderboard || []);
+    setPersonalReport(r.snapshot?.personalReport || null);
+    setPersonalRoundReport(r.snapshot?.personalRoundReport || null);
+    setResultsRevealed(Boolean(r.snapshot?.resultsRevealed));
     setEliminated(Boolean(r.snapshot?.eliminated));
     const snapQ = r.snapshot?.question || null;
     setQuestion(snapQ);
@@ -70,6 +79,7 @@ export default function Participant({
     };
     const onQuestion = (q) => {
       if (participantRef.current?.eliminated) return;
+      setRound(q.round || 0);
       setQuestion(q);
       setSelected(null);
       setSubmitted(false);
@@ -85,13 +95,16 @@ export default function Participant({
       setSubmitted(true);
     };
     const onRound = (d) => {
+      setRound(d.round || 0);
       setStatus("running");
       setResult({ message: "Round " + d.round + " is starting" });
     };
     const onBreak = (d) => {
+      setRound(d.round || 0);
       setStatus("round_break");
       setQuestion(null);
-      setLeaderboard(d.leaderboard || []);
+      setLeaderboard([]);
+      setPersonalRoundReport(null);
       setResult({ message: "Round complete" });
     };
     const onEliminationsConfirmed = (d) => {
@@ -104,8 +117,15 @@ export default function Participant({
     };
     const onFinish = (d) => {
       setStatus("finished");
-      setLeaderboard(d.leaderboard || []);
+      setLeaderboard([]);
+      setResultsRevealed(false);
       setQuestion(null);
+    };
+    const onPersonalFinalReport = (d) => setPersonalReport(d.report || null);
+    const onPersonalRoundReport = (d) => setPersonalRoundReport(d || null);
+    const onFinalLeaderboardRevealed = (d) => {
+      setLeaderboard(d.leaderboard || []);
+      setResultsRevealed(true);
     };
     const onCancelled = () => {
       participantRef.current = null;
@@ -124,6 +144,9 @@ export default function Participant({
     socket.on("round_finished", onBreak);
     socket.on("eliminations_confirmed", onEliminationsConfirmed);
     socket.on("competition_finished", onFinish);
+    socket.on("personal_final_report", onPersonalFinalReport);
+    socket.on("personal_round_report", onPersonalRoundReport);
+    socket.on("final_leaderboard_revealed", onFinalLeaderboardRevealed);
     socket.on("competition_cancelled", onCancelled);
 
     const connect = () => {
@@ -150,6 +173,9 @@ export default function Participant({
       socket.off("round_finished", onBreak);
       socket.off("eliminations_confirmed", onEliminationsConfirmed);
       socket.off("competition_finished", onFinish);
+      socket.off("personal_final_report", onPersonalFinalReport);
+      socket.off("personal_round_report", onPersonalRoundReport);
+      socket.off("final_leaderboard_revealed", onFinalLeaderboardRevealed);
       socket.off("competition_cancelled", onCancelled);
       socket.off("connect", connect);
       socket.disconnect();
@@ -392,7 +418,7 @@ export default function Participant({
           </div>
 
           {selected !== null && !submitted && !result && (
-            <div className="success-banner">Option {String.fromCharCode(65 + selected)} selected. You can change it until the timer ends.</div>
+            <div className="selection-notice">Option {String.fromCharCode(65 + selected)} selected. You can change it until the timer ends.</div>
           )}
           {result?.correctOption !== undefined && result.explanation && (
             <div className="surface-card" style={{ marginTop: 14 }}>
@@ -447,17 +473,60 @@ export default function Participant({
       )}
 
       {status === "round_break" && (
-        <section className="surface-card">
-          <p className="eyebrow">INTERMISSION</p>
-          <h2>{eliminated ? "You're out of the competition" : "Round Complete"}</h2>
-          <p className="muted" style={{ marginTop: 6 }}>
-            {eliminated
-              ? "You can stay connected and watch the remaining rounds and leaderboard, but you can no longer answer questions."
-              : "Standings updated. The host will initiate the next round shortly."}
-          </p>
+        <section className="surface-card personal-report">
+          <p className="eyebrow">ROUND {String(personalRoundReport?.round || round).padStart(2, "0")} COMPLETE</p>
+          <h2>{eliminated ? "Your run is complete" : "Your round report"}</h2>
+          {personalRoundReport?.report ? (
+            <>
+              <div className="personal-report-score"><strong>{Number(personalRoundReport.roundScore || 0).toFixed(2)}</strong><span>ROUND POINTS</span></div>
+              <div className="personal-report-grid">
+                <div><small>ATTEMPTED</small><strong>{personalRoundReport.report.attempted || 0}</strong></div>
+                <div><small>CORRECT</small><strong className="host-player-correct">{personalRoundReport.report.correct || 0}</strong></div>
+                <div><small>WRONG</small><strong className="host-player-wrong">{personalRoundReport.report.wrong || 0}</strong></div>
+                <div><small>ACCURACY</small><strong>{personalRoundReport.report.accuracy == null ? "N/A" : `${personalRoundReport.report.accuracy.toFixed(1)}%`}</strong></div>
+                <div><small>AVG RESPONSE</small><strong>{personalRoundReport.report.avgResponseMs == null ? "—" : `${(personalRoundReport.report.avgResponseMs / 1000).toFixed(2)}s`}</strong></div>
+                <div><small>FASTEST CORRECT</small><strong>{personalRoundReport.report.fastestCorrectMs == null ? "—" : `${(personalRoundReport.report.fastestCorrectMs / 1000).toFixed(2)}s`}</strong></div>
+                <div><small>SPEED BONUS</small><strong className="personal-bonus">+{Number(personalRoundReport.report.speedBonus || 0).toFixed(2)}</strong></div>
+                <div><small>BEST STREAK</small><strong>{personalRoundReport.report.bestStreak || 0} in a row</strong></div>
+              </div>
+            </>
+          ) : <p className="muted">No answers were recorded for this round.</p>}
+          <p className="muted" style={{marginTop:14}}>{eliminated ? "Your competition has ended. Your completed-round stats are saved." : "Stand by. The host will start the next round shortly."}</p>
         </section>
       )}
 
+      {status === "finished" && !resultsRevealed && (
+        <section className="surface-card results-waiting-card">
+          <div className="results-spinner" />
+          <p className="eyebrow">FINAL RESULTS SEALED</p>
+          <h2>Waiting for the reveal…</h2>
+          <p className="muted">The host is getting ready to reveal the final standings. Hold tight.</p>
+        </section>
+      )}
+      {status === "finished" && resultsRevealed && (() => {
+        const mine = personalReport || leaderboard.find((entry) => entry.id === participant?.id);
+        const stats = mine?.stats || {};
+        return (
+          <section className="surface-card personal-report">
+            <div className="personal-report-heading"><div><p className="eyebrow">YOUR FINAL PERFORMANCE</p><h2>Personal Report</h2></div><div className="personal-rank">#{String(mine?.rank || "—").padStart(2, "0")}<small>FINAL RANK</small></div></div>
+            <div className="personal-report-score"><strong>{Number(mine?.score || 0).toFixed(2)}</strong><span>POINTS</span></div>
+            <div className="personal-report-grid">
+              <div><small>ATTEMPTED</small><strong>{stats.attempted || 0}</strong></div><div><small>CORRECT</small><strong className="host-player-correct">{stats.correct || 0}</strong></div>
+              <div><small>WRONG</small><strong className="host-player-wrong">{stats.wrong || 0}</strong></div><div><small>ACCURACY</small><strong>{stats.accuracy == null ? "N/A" : `${stats.accuracy.toFixed(1)}%`}</strong></div>
+              <div><small>AVG RESPONSE</small><strong>{stats.avgResponseMs == null ? "—" : `${(stats.avgResponseMs / 1000).toFixed(2)}s`}</strong></div>
+              <div><small>FASTEST CORRECT</small><strong>{stats.fastestCorrectMs == null ? "—" : `${(stats.fastestCorrectMs / 1000).toFixed(2)}s`}</strong></div>
+              <div><small>SPEED BONUS</small><strong className="personal-bonus">+{Number(stats.speedBonus || 0).toFixed(2)}</strong></div><div><small>BEST STREAK</small><strong>{stats.bestStreak || 0} in a row</strong></div>
+            </div>
+            <button type="button" className="personal-round-toggle" onClick={() => setExpandedRoundReport((value) => !value)} aria-expanded={expandedRoundReport}>Round-wise performance <span>{expandedRoundReport ? "−" : "+"}</span></button>
+            {expandedRoundReport && <div className="personal-round-list">{Object.entries(mine?.roundStats || {}).map(([roundNo, data]) => (
+              <div className="personal-round-card" key={roundNo}>
+                <div className="personal-round-title"><strong>Round {roundNo}</strong><b>{(Number(data.basePoints || 0) + Number(data.speedBonus || 0)).toFixed(2)} pts</b></div>
+                <div className="personal-round-metrics"><span>{data.attempted || 0} attempted</span><span>{data.correct || 0} correct</span><span>{data.wrong || 0} wrong</span><span>{data.accuracy == null ? "N/A" : `${data.accuracy.toFixed(0)}% accuracy`}</span><span>Avg {data.avgResponseMs == null ? "—" : `${(data.avgResponseMs / 1000).toFixed(2)}s`}</span><span>Fastest {data.fastestCorrectMs == null ? "—" : `${(data.fastestCorrectMs / 1000).toFixed(2)}s`}</span><span>Bonus +{Number(data.speedBonus || 0).toFixed(2)}</span></div>
+              </div>
+            ))}</div>}
+          </section>
+        );
+      })()}
       {status === "finished" && (
         <section className="surface-card">
           <p className="eyebrow">FINAL TELEMETRY</p>
@@ -468,7 +537,8 @@ export default function Participant({
         </section>
       )}
 
-      {(status === "round_break" || status === "finished") && (
+      {status === "finished" && resultsRevealed && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
+      {(status === "round_break" || (status === "finished" && resultsRevealed)) && (
         <section className="surface-card">
           <p className="eyebrow">SCOREBOARD</p>
           <h2>{status === "finished" ? "Final Standings" : "Current Standings"}</h2>
@@ -481,7 +551,7 @@ export default function Participant({
                   <div className={`podium-slot rank-${actualRank}`} key={p.id}>
                     <span className="podium-rank">#{String(actualRank).padStart(2, "0")}</span>
                     <span className="avatar-monogram">{getInitials(p.name)}</span>
-                    <span className="podium-name">{p.name}</span>
+                    <span className="podium-name">{actualRank === 1 ? "👑 " : ""}{p.name}</span>
                     <span className="podium-score">{Number(p.score).toFixed(2)} pts</span>
                   </div>
                 );
@@ -496,7 +566,7 @@ export default function Participant({
                   <span className="standing-rank">#{String(p.rank).padStart(2, "0")}</span>
                   <span className="avatar-monogram">{getInitials(p.name)}</span>
                   <strong>
-                    {p.name} {p.id === participant.id ? "(You)" : ""} {p.eliminated ? "(Eliminated)" : ""}
+                    {p.rank === 1 ? "👑 " : ""}{p.name} {p.id === participant.id ? "(You)" : ""} {p.eliminated ? "(Eliminated)" : ""}
                   </strong>
                 </div>
                 <span className="standing-score">{Number(p.score).toFixed(2)} pts</span>
