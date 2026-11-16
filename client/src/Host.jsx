@@ -152,6 +152,11 @@ export default function Host({ onHome, onActivityChange }) {
       setStatus("finished");
       setQuestion(null);
     };
+    const onRevealFinal = (d) => {
+      setLeaderboard(d.leaderboard || []);
+      setResultsRevealed(true);
+      setExpandedPlayerId(d.leaderboard?.[0]?.id || null);
+    };
 
     socket.on("connect", connect);
     socket.on("disconnect", disconnect);
