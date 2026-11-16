@@ -77,6 +77,8 @@ export default function App() {
 
   const handleAuthenticated = (nextSession) => {
     setSession(nextSession);
+    setProfile(getProfile(nextSession));
+    setPrefillJoin((current) => ({ ...current, name: getProfile(nextSession).gameName || current.name }));
     navigate(path === "/host" ? "/host" : "/");
   };
 
@@ -85,11 +87,22 @@ export default function App() {
       await signOut(session);
     } finally {
       socket.auth = {};
-      setSession(null);\n      setProfile({ gameName: "", bio: "" });
+      setSession(null);
+      setProfile({ gameName: "", bio: "" });
     }
   };
 
-  const handleProfileUpdated = (nextSession, nextProfile) => {\n    setSession(nextSession);\n    setProfile(nextProfile);\n    setPrefillJoin((current) => ({ ...current, name: nextProfile.gameName || current.name }));\n  };\n\n  useEffect(() => {\n    if (profile.gameName) setPrefillJoin((current) => current.name ? current : { ...current, name: profile.gameName });\n  }, [profile.gameName]);\n\n  const handleQuickJoin = (e) => {
+  const handleProfileUpdated = (nextSession, nextProfile) => {
+    setSession(nextSession);
+    setProfile(nextProfile);
+    setPrefillJoin((current) => ({ ...current, name: nextProfile.gameName || current.name }));
+  };
+
+  useEffect(() => {
+    if (profile.gameName) setPrefillJoin((current) => current.name ? current : { ...current, name: profile.gameName });
+  }, [profile.gameName]);
+
+  const handleQuickJoin = (e) => {
     e.preventDefault();
     navigate("/join");
   };
@@ -100,7 +113,13 @@ export default function App() {
     return <Host onHome={() => navigate("/")} onActivityChange={setActiveSession} />;
   }
 
-  if (path === "/profile") {\n    if (!authReady) return <main className="app-shell narrow"><section className="surface-card">Loading account...</section></main>;\n    if (!session) return <Account onAuthenticated={handleAuthenticated} onBack={() => navigate("/")} />;\n    return <Profile session={session} onBack={() => navigate("/")} onProfileUpdated={handleProfileUpdated} />;\n  }\n\n  if (path === "/account" || path === "/account/signup") {
+  if (path === "/profile") {
+    if (!authReady) return <main className="app-shell narrow"><section className="surface-card">Loading account...</section></main>;
+    if (!session) return <Account onAuthenticated={handleAuthenticated} onBack={() => navigate("/")} />;
+    return <Profile session={session} onBack={() => navigate("/")} onProfileUpdated={handleProfileUpdated} />;
+  }
+
+  if (path === "/account" || path === "/account/signup") {
     return <Account initialMode={path.endsWith("signup") ? "signup" : "login"} onAuthenticated={handleAuthenticated} onBack={() => navigate("/")} />;
   }
 
@@ -140,6 +159,7 @@ export default function App() {
           <span className="telemetry-pill"><span className="pulse-dot" />LIVE ARENA</span>
           {session ? (
             <div className="account-header">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/profile")}>Profile</button>
               <span title={session.user?.email}>{session.user?.email || "Account"}</span>
               <button type="button" className="btn btn-secondary btn-sm" onClick={handleSignOut}>Sign out</button>
             </div>
