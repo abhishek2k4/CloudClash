@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Host from "./Host";
 import Participant from "./Participant";
+import Account from "./Account";
+import Profile from "./Profile";
+import { getProfile, getSession, signOut } from "./auth";
+import { socket } from "./socket";
 import "./App.css";
 
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
   const [prefillJoin, setPrefillJoin] = useState({ name: "", code: "" });
   const activeSessionRef = useRef(false);
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState({ gameName: "", bio: "" });
+  const [authReady, setAuthReady] = useState(false);
+  const [authToast, setAuthToast] = useState(null);
 
   const setActiveSession = useCallback((active) => {
     activeSessionRef.current = active;
@@ -16,6 +24,39 @@ export default function App() {
     window.history.pushState({}, "", next);
     setPath(next);
   };
+
+  useEffect(() => {
+    // Supabase redirects successful email confirmations back with an auth
+    // fragment. Read the result before cleaning the URL so users get feedback.
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const queryParams = new URLSearchParams(window.location.search);
+    const hasHashAuthResult = hashParams.has("type") || hashParams.has("error") || hashParams.has("error_code");
+    const params = hasHashAuthResult ? hashParams : queryParams;
+    const confirmationType = params.get("type");
+    const hasConfirmationToken = params.has("access_token") || params.has("token_hash");
+
+    if (confirmationType === "signup" && hasConfirmationToken) {
+      setAuthToast({
+        type: "success",
+        message: "Email confirmed successfully. You can now sign in to your CloudClash account."
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.has("error") || params.has("error_code")) {
+      setAuthToast({
+        type: "error",
+        message: "That confirmation link is invalid or has expired. Please request a new one and try again."
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    getSession().then((current) => { setSession(current); setProfile(getProfile(current)); }).catch(() => { setSession(null); setProfile({ gameName: "", bio: "" }); }).finally(() => setAuthReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (!authToast) return;
+    const timeout = window.setTimeout(() => setAuthToast(null), 6500);
+    return () => window.clearTimeout(timeout);
+  }, [authToast]);
 
   useEffect(() => {
     const back = () => {
@@ -34,13 +75,53 @@ export default function App() {
     return () => window.removeEventListener("popstate", back);
   }, [path]);
 
+  const handleAuthenticated = (nextSession) => {
+    setSession(nextSession);
+    setProfile(getProfile(nextSession));
+    setPrefillJoin((current) => ({ ...current, name: getProfile(nextSession).gameName || current.name }));
+    navigate(path === "/host" ? "/host" : "/");
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(session);
+    } finally {
+      socket.auth = {};
+      setSession(null);
+      setProfile({ gameName: "", bio: "" });
+      setPrefillJoin((current) => ({ ...current, name: "" }));
+    }
+  };
+
+  const handleProfileUpdated = (nextSession, nextProfile) => {
+    setSession(nextSession);
+    setProfile(nextProfile);
+    setPrefillJoin((current) => ({ ...current, name: nextProfile.gameName }));
+  };
+
+  useEffect(() => {
+    if (profile.gameName) setPrefillJoin((current) => current.name ? current : { ...current, name: profile.gameName });
+  }, [profile.gameName]);
+
   const handleQuickJoin = (e) => {
     e.preventDefault();
     navigate("/join");
   };
 
   if (path === "/host") {
+    if (!authReady) return <main className="app-shell narrow"><section className="surface-card">Loading account...</section></main>;
+    if (!session) return <Account onAuthenticated={handleAuthenticated} onBack={() => navigate("/")} />;
     return <Host onHome={() => navigate("/")} onActivityChange={setActiveSession} />;
+  }
+
+  if (path === "/profile") {
+    if (!authReady) return <main className="app-shell narrow"><section className="surface-card">Loading account...</section></main>;
+    if (!session) return <Account onAuthenticated={handleAuthenticated} onBack={() => navigate("/")} />;
+    return <Profile session={session} onBack={() => navigate("/")} onProfileUpdated={handleProfileUpdated} />;
+  }
+
+  if (path === "/account" || path === "/account/signup") {
+    return <Account initialMode={path.endsWith("signup") ? "signup" : "login"} onAuthenticated={handleAuthenticated} onBack={() => navigate("/")} />;
   }
 
   if (path === "/join") {
@@ -59,6 +140,13 @@ export default function App() {
 
   return (
     <main className="landing-shell">
+      {authToast && (
+        <div className={`auth-toast ${authToast.type}`} role="status" aria-live="polite">
+          <span className="auth-toast-icon" aria-hidden="true">{authToast.type === "success" ? "✓" : "!"}</span>
+          <span>{authToast.message}</span>
+          <button type="button" aria-label="Dismiss notification" onClick={() => setAuthToast(null)}>×</button>
+        </div>
+      )}
       <header className="brand-bar">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true">
@@ -68,10 +156,18 @@ export default function App() {
           </span>
           <span className="brand-name">CLOUD CLASH</span>
         </div>
-        <span className="telemetry-pill">
-          <span className="pulse-dot" />
-          LIVE ARENA
-        </span>
+        <div className="landing-header-actions">
+          <span className="telemetry-pill"><span className="pulse-dot" />LIVE ARENA</span>
+          {session ? (
+            <div className="account-header">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/profile")}>Profile</button>
+              <span title={session.user?.email}>{session.user?.email || "Account"}</span>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={handleSignOut}>Sign out</button>
+            </div>
+          ) : (
+            <><button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/account")}>Sign in</button><button type="button" className="btn btn-primary btn-sm" onClick={() => navigate("/account/signup")}>Create account</button></>
+          )}
+        </div>
       </header>
 
       <section className="landing-main">
@@ -109,23 +205,19 @@ export default function App() {
                 placeholder="CODE"
                 maxLength={12}
                 value={prefillJoin.code}
-                onChange={(e) =>
-                  setPrefillJoin((s) => ({ ...s, code: e.target.value.toUpperCase() }))
-                }
+                onChange={(e) => setPrefillJoin((state) => ({ ...state, code: e.target.value.toUpperCase() }))}
               />
             </div>
 
             <div className="field-group">
-              <label className="field-label" htmlFor="landing-name">Display Name</label>
+              <label className="field-label" htmlFor="landing-name">{profile.gameName ? "Saved game name" : "Display Name"}</label>
               <input
                 id="landing-name"
                 className="input-control"
                 placeholder="Enter your name"
                 maxLength={40}
                 value={prefillJoin.name}
-                onChange={(e) =>
-                  setPrefillJoin((s) => ({ ...s, name: e.target.value }))
-                }
+                onChange={(e) => setPrefillJoin((state) => ({ ...state, name: e.target.value }))}
               />
             </div>
 
@@ -150,7 +242,7 @@ export default function App() {
               <div>
                 <h3 style={{ fontSize: "1.05rem", marginBottom: 2 }}>Host a new quiz</h3>
                 <p className="muted" style={{ fontSize: "0.82rem" }}>
-                  Configure custom rounds, upload CSV templates, and control live pacing
+                  {session ? "Create and control your own quiz room" : "Sign in to configure rounds, upload CSV templates, and control live pacing"}
                 </p>
               </div>
             </div>

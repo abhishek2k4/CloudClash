@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
+import { getSession } from "./auth";
 import "./App.css";
 
 const getInitials = (name = "") =>
@@ -18,6 +19,10 @@ export default function Participant({
 }) {
   const [name, setName] = useState(initialName);
   const [code, setCode] = useState(initialCode);
+
+  useEffect(() => {
+    if (!participantRef.current && initialName) setName(initialName);
+  }, [initialName]);
   const participantRef = useRef(null);
 
   const [participant, setParticipant] = useState(null);
@@ -69,6 +74,9 @@ export default function Participant({
   }, []);
 
   useEffect(() => {
+    socket.auth = (callback) => {
+      getSession().then((current) => callback(current?.accessToken ? { accessToken: current.accessToken } : {})).catch(() => callback({}));
+    };
     const people = setParticipants;
     const onStatus = (nextStatus) => {
       setStatus(nextStatus);
@@ -160,7 +168,9 @@ export default function Participant({
       }
     };
 
+    const onConnectError = (err) => setError(err?.message || "Could not connect to the quiz server.");
     socket.on("connect", connect);
+    socket.on("connect_error", onConnectError);
     socket.connect();
 
     return () => {
@@ -178,7 +188,9 @@ export default function Participant({
       socket.off("final_leaderboard_revealed", onFinalLeaderboardRevealed);
       socket.off("competition_cancelled", onCancelled);
       socket.off("connect", connect);
+      socket.off("connect_error", onConnectError);
       socket.disconnect();
+      socket.auth = {};
     };
   }, [apply]);
 

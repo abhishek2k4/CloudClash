@@ -21,7 +21,9 @@ npm install
 ```
 
 Create `server/.env` from `server/.env.example` and set:
-- `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`: server-side Supabase credentials when persistence is required
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_ANON_KEY`: Supabase publishable/anon key used by the backend to verify user access tokens
+- `SUPABASE_SERVICE_ROLE_KEY`: server-only Secret/service-role key for persisted competition snapshots; never expose this to the frontend
 - `CLIENT_ORIGIN`: frontend origin
 
 Local development is memory-only by default. Set `PERSISTENCE_ENABLED=true` only when intentionally testing persisted state. Production enables persistence by default when credentials exist.
@@ -35,19 +37,21 @@ cd client
 npm install
 ```
 
-Create `client/.env` from `client/.env.example` and set `VITE_SERVER_URL=http://localhost:5000`. Run `npm run dev`.
+Create `client/.env` from `client/.env.example` and set:\n- `VITE_SERVER_URL=http://localhost:5000`\n- `VITE_SUPABASE_URL`: the same Supabase project URL\n- `VITE_SUPABASE_ANON_KEY`: the Supabase publishable/anon key (never the Secret/service-role key)\n\nEnable the Email provider in Supabase Authentication. If email confirmation is enabled, users must confirm their address before signing in. Run `npm run dev`.
 
-Open the frontend root URL. The landing page provides **Create quiz** and **Join quiz**.
+Open the frontend root URL. The landing page provides guest **Join a room**, **Host a new quiz**, and account sign-in.
 
 ## User flow
 
-1. Anyone can choose **Create quiz**, enter a room name, configure rounds, points and timers, then create the room without an account or password.
-2. The host chooses to import a CSV question bank or add questions manually in the free question builder.
-3. The server creates a room and returns a generated room code. The host shares it with players.
-5. Players join from the landing page using a display name and room code.
-6. Host starts the quiz. Questions advance automatically when their server timer expires.
-7. Host can pause and resume the active question. Pause freezes the remaining time and blocks answer submissions; resume continues the same question with the remaining time.
-8. At each round break, the host starts the next round. The final round ends the quiz and shows the leaderboard.
+1. Anyone can join a room as a guest using a display name and room code. Guest players do not need an account.
+2. Anyone can create a CloudClash account with an email address and password.
+3. A signed-in account can edit a player profile with a game name and bio, join as a participant, or open **Host a new quiz** to create and control a room.\n4. When a signed-in user has saved a game name, CloudClash pre-fills it on room entry; guests and users without a saved game name enter one manually.
+4. Hosting actions are verified by the backend. Only the account that owns the active room can control it.
+5. The host chooses to import a CSV question bank or add questions manually in the free question builder.
+6. The server creates a room and returns a generated room code. The host shares it with players.
+7. Host starts the quiz. Questions advance automatically when their server timer expires.
+8. Host can pause and resume the active question. Pause freezes the remaining time and blocks answer submissions; resume continues the same question with the remaining time.
+9. At each round break, the host starts the next round. The final round ends the quiz and shows the leaderboard.
 
 Only one active room is supported at a time. A host can create a new room after the previous quiz has finished.
 
@@ -76,7 +80,15 @@ Use round numbers from 1 through the number configured during quiz creation. Cor
 
 The backend stores a JSON snapshot in Supabase when persistence is enabled. Use one backend instance only; this is a single-room event application, not a horizontally scaled multi-room service. During a live event, confirm Supabase health and run a complete rehearsal.
 
-Local memory-only mode resets the room when the backend restarts. Production persistence restores the saved room and active timer state. There is no host authentication: anyone who opens the host page can create and control the active quiz. Share the host page only with trusted organizers. Keep the Supabase Secret key server-side only.
+Local memory-only mode resets the room when the backend restarts. Production persistence restores the saved room and active timer state. Email/password accounts are managed by Supabase Auth. The backend verifies access tokens with the Supabase Auth user endpoint, and stores the account ID that owns the active room. A different account cannot take over an active room. Signed-in participant sessions are associated with their account ID; guest sessions remain available without login. Quiz archives and cross-quiz personal history are not included yet. Keep the Supabase Secret/service-role key server-side only.
+
+## Quiz archives
+
+Completed quizzes are automatically saved to the host account. Each account keeps its five most recent completed quizzes; older archives are pruned automatically. Hosts can expand an archived quiz in the host dashboard to review its final leaderboard.
+
+Before deploying this feature, run the SQL migration in `server/supabase/quiz-archives.sql` in the Supabase SQL Editor. The backend uses the existing server-only `SUPABASE_SERVICE_ROLE_KEY` to write and read archive rows. The frontend never receives that key. The archive API verifies the caller's Supabase access token and filters results to that account.
+
+Archives are separate from the active competition snapshot. A quiz is archived when it finishes, including when the host ends it early. Cancelled rooms that never started are not archived.
 
 ## Load test
 
@@ -95,13 +107,13 @@ The simulator creates a fresh two-round room, imports synthetic questions, joins
 - Root directory: `server`
 - Build: `npm install`
 - Start: `npm start`
-- Configure `CLIENT_ORIGIN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `NODE_ENV=production`
+- Configure `CLIENT_ORIGIN`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `NODE_ENV=production`
 - Keep a single backend instance
 
 ### Frontend (Vercel)
 - Root directory: `client`
 - Build: `npm run build`
 - Output: `dist`
-- Set `VITE_SERVER_URL` to the deployed backend URL
+- Set `VITE_SERVER_URL` to the deployed backend URL\n- Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for the same Supabase project
 
 Before the event, rehearse player joining, question import, start/pause/resume, each round transition, ending the quiz, reconnects, and final leaderboard.
