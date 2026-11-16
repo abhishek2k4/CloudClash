@@ -65,3 +65,30 @@ export async function saveCompetitionState(state) {
     }),
   });
 }
+
+
+export async function archiveCompletedQuiz(archive) {
+  if (!hasCredentials) throw new Error("Supabase credentials are required for quiz archives.");
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/archive_completed_quiz`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ archive_payload: archive }),
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Could not archive completed quiz (${response.status}): ${detail}`);
+  }
+  return response.json();
+}
+
+export async function listQuizArchives(hostUserId) {
+  if (!hasCredentials) throw new Error("Quiz archives are not configured on the server.");
+  const query = new URLSearchParams({
+    host_user_id: `eq.${hostUserId}`,
+    select: "id,room_name,room_code,rounds,completed_at,participant_count,leaderboard",
+    order: "completed_at.desc",
+    limit: "5",
+  });
+  const response = await request(`quiz_archives?${query.toString()}`);
+  return response.json();
+}
