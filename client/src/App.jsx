@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Host from "./Host";
 import Participant from "./Participant";
 import Account from "./Account";
-import { getSession, signOut } from "./auth";
+import Profile from "./Profile";
+import { getProfile, getSession, signOut } from "./auth";
 import { socket } from "./socket";
 import "./App.css";
 
@@ -11,6 +12,7 @@ export default function App() {
   const [prefillJoin, setPrefillJoin] = useState({ name: "", code: "" });
   const activeSessionRef = useRef(false);
   const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState({ gameName: "", bio: "" });
   const [authReady, setAuthReady] = useState(false);
   const [authToast, setAuthToast] = useState(null);
 
@@ -47,7 +49,7 @@ export default function App() {
       window.history.replaceState({}, "", window.location.pathname);
     }
 
-    getSession().then(setSession).catch(() => setSession(null)).finally(() => setAuthReady(true));
+    getSession().then((current) => { setSession(current); setProfile(getProfile(current)); }).catch(() => { setSession(null); setProfile({ gameName: "", bio: "" }); }).finally(() => setAuthReady(true));
   }, []);
 
   useEffect(() => {
@@ -83,11 +85,11 @@ export default function App() {
       await signOut(session);
     } finally {
       socket.auth = {};
-      setSession(null);
+      setSession(null);\n      setProfile({ gameName: "", bio: "" });
     }
   };
 
-  const handleQuickJoin = (e) => {
+  const handleProfileUpdated = (nextSession, nextProfile) => {\n    setSession(nextSession);\n    setProfile(nextProfile);\n    setPrefillJoin((current) => ({ ...current, name: nextProfile.gameName || current.name }));\n  };\n\n  useEffect(() => {\n    if (profile.gameName) setPrefillJoin((current) => current.name ? current : { ...current, name: profile.gameName });\n  }, [profile.gameName]);\n\n  const handleQuickJoin = (e) => {
     e.preventDefault();
     navigate("/join");
   };
@@ -98,7 +100,7 @@ export default function App() {
     return <Host onHome={() => navigate("/")} onActivityChange={setActiveSession} />;
   }
 
-  if (path === "/account" || path === "/account/signup") {
+  if (path === "/profile") {\n    if (!authReady) return <main className="app-shell narrow"><section className="surface-card">Loading account...</section></main>;\n    if (!session) return <Account onAuthenticated={handleAuthenticated} onBack={() => navigate("/")} />;\n    return <Profile session={session} onBack={() => navigate("/")} onProfileUpdated={handleProfileUpdated} />;\n  }\n\n  if (path === "/account" || path === "/account/signup") {
     return <Account initialMode={path.endsWith("signup") ? "signup" : "login"} onAuthenticated={handleAuthenticated} onBack={() => navigate("/")} />;
   }
 
@@ -187,7 +189,7 @@ export default function App() {
             </div>
 
             <div className="field-group">
-              <label className="field-label" htmlFor="landing-name">Display Name</label>
+              <label className="field-label" htmlFor="landing-name">{profile.gameName ? "Saved game name" : "Display Name"}</label>
               <input
                 id="landing-name"
                 className="input-control"
