@@ -89,13 +89,14 @@ export default function App() {
       socket.auth = {};
       setSession(null);
       setProfile({ gameName: "", bio: "" });
+      setPrefillJoin((current) => ({ ...current, name: "" }));
     }
   };
 
   const handleProfileUpdated = (nextSession, nextProfile) => {
     setSession(nextSession);
     setProfile(nextProfile);
-    setPrefillJoin((current) => ({ ...current, name: nextProfile.gameName || current.name }));
+    setPrefillJoin((current) => ({ ...current, name: nextProfile.gameName }));
   };
 
   useEffect(() => {
