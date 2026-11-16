@@ -105,7 +105,7 @@ export default function App() {
               <button type="button" className="btn btn-secondary btn-sm" onClick={handleSignOut}>Sign out</button>
             </div>
           ) : (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/account")}>Sign in</button>
+            <><button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/account")}>Sign in</button><button type="button" className="btn btn-primary btn-sm" onClick={() => navigate("/account/signup")}>Create account</button></>
           )}
         </div>
       </header>
@@ -182,7 +182,7 @@ export default function App() {
               <div>
                 <h3 style={{ fontSize: "1.05rem", marginBottom: 2 }}>Host a new quiz</h3>
                 <p className="muted" style={{ fontSize: "0.82rem" }}>
-                  Sign in to configure rounds, upload CSV templates, and control live pacing
+                  {session ? "Create and control your own quiz room" : "Sign in to configure rounds, upload CSV templates, and control live pacing"}
                 </p>
               </div>
             </div>
