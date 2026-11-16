@@ -498,7 +498,7 @@ export default function Participant({
           <p className="muted">The host is getting ready to reveal the final standings. Hold tight.</p>
         </section>
       )}
-      {status === "finished" && (() => {
+      {status === "finished" && resultsRevealed && (() => {
         const mine = personalReport || leaderboard.find((entry) => entry.id === participant?.id);
         const stats = mine?.stats || {};
         return (
