@@ -41,6 +41,9 @@ export default function Host({ onHome, onActivityChange }) {
   const [question, setQuestion] = useState(null);
   const [seconds, setSeconds] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboardView, setLeaderboardView] = useState("overall");
+  const [leaderboardRound, setLeaderboardRound] = useState(1);
+  const [expandedPlayerId, setExpandedPlayerId] = useState(null);
   const [roundElimination, setRoundElimination] = useState(null);
   const [eliminationsConfirmed, setEliminationsConfirmed] = useState(true);
   const [questions, setQuestions] = useState([blankQuestion()]);
@@ -60,7 +63,7 @@ export default function Host({ onHome, onActivityChange }) {
     // A finished quiz belongs to the previous host session. A new visit to
     // /host should start with a clean setup screen, not reopen its leaderboard.
     // Active/waiting rooms still restore their control dashboard for host recovery.
-    if (response.status === "finished") {
+    if (response.status === "finished" && !response.roomCode) {
       setRoomCode("");
       setRoomName("");
       setStatus("idle");
@@ -1300,41 +1303,47 @@ export default function Host({ onHome, onActivityChange }) {
       )}
 
       {(status === "round_break" || status === "finished") && (
-        <section className="surface-card">
-          <p className="eyebrow">TELEMETRY STANDINGS</p>
-          <h2>{status === "finished" ? "Final Podium & Leaderboard" : "Current Leaderboard"}</h2>
-
-          {leaderboard.length >= 3 && (
-            <div className="podium-grid">
-              {[leaderboard[1], leaderboard[0], leaderboard[2]].map((p, idx) => {
-                const actualRank = idx === 0 ? 2 : idx === 1 ? 1 : 3;
-                return (
-                  <div className={`podium-slot rank-${actualRank}`} key={p.id}>
-                    <span className="podium-rank">#{String(actualRank).padStart(2, "0")}</span>
-                    <span className="avatar-monogram">{getInitials(p.name)}</span>
-                    <span className="podium-name">{p.name}</span>
-                    <span className="podium-score">{Number(p.score).toFixed(2)} pts</span>
-                  </div>
-                );
-              })}
+        <section className="surface-card host-leaderboard">
+          <div className="section-header host-leaderboard-heading">
+            <div><p className="eyebrow">TELEMETRY STANDINGS</p><h2>{status === "finished" ? "Final Leaderboard" : "Current Leaderboard"}</h2></div>
+            <div className="leaderboard-view-controls">
+              <button type="button" className={leaderboardView === "overall" ? "round-tab active" : "round-tab"} onClick={() => setLeaderboardView("overall")}>Overall</button>
+              <button type="button" className={leaderboardView === "round" ? "round-tab active" : "round-tab"} onClick={() => setLeaderboardView("round")}>Round-wise</button>
+              {leaderboardView === "round" && <select className="input-control leaderboard-round-select" value={leaderboardRound} onChange={(e) => setLeaderboardRound(Number(e.target.value))}>{Array.from({ length: rounds }, (_, i) => <option key={i + 1} value={i + 1}>Round {i + 1}</option>)}</select>}
             </div>
-          )}
-
-          <div className="standings-list">
-            {leaderboard.map((p) => (
-              <div className="standing-row" key={p.id}>
-                <div className="standing-left">
-                  <span className="standing-rank">#{String(p.rank).padStart(2, "0")}</span>
-                  <span className="avatar-monogram">{getInitials(p.name)}</span>
-                  <strong>{p.name} {p.eliminated ? "(Eliminated)" : ""}</strong>
-                </div>
-                <span className="standing-score">{Number(p.score).toFixed(2)} pts</span>
-              </div>
-            ))}
+          </div>
+          <div className="leaderboard-column-head"><span>PLAYER</span><span>ATTEMPTED</span><span>CORRECT</span><span>WRONG</span><span>SCORE</span></div>
+          <div className="host-leaderboard-list">
+            {leaderboard.map((p) => {
+              const stats = leaderboardView === "round" ? (p.roundStats?.[leaderboardRound] || {}) : (p.stats || {});
+              const questionTotal = leaderboardView === "round" ? Number(counts[leaderboardRound] || 0) : Object.values(counts).reduce((sum, n) => sum + Number(n || 0), 0);
+              const expanded = expandedPlayerId === p.id;
+              const accuracy = Number(stats.accuracy || 0);
+              return (
+                <article className={`host-player-card ${expanded ? "expanded" : ""} ${p.eliminated ? "is-eliminated" : ""}`} key={p.id}>
+                  <button type="button" className="host-player-summary" onClick={() => setExpandedPlayerId(expanded ? null : p.id)} aria-expanded={expanded}>
+                    <span className="host-player-identity"><span className="host-player-rank">#{String(p.rank).padStart(2, "0")}</span><span className="avatar-monogram">{getInitials(p.name)}</span><span className="host-player-name">{p.name}{p.eliminated ? <small>ELIMINATED</small> : null}</span></span>
+                    <span className="host-player-attempted">{stats.attempted || 0}/{questionTotal}</span><span className="host-player-correct">{stats.correct || 0} ✓</span><span className="host-player-wrong">{stats.wrong || 0} ✕</span>
+                    <span className="host-player-score">{Number(p.score).toFixed(2)} <small>pts</small><span className={`expand-chevron ${expanded ? "open" : ""}`}>⌄</span></span>
+                  </button>
+                  {expanded && <div className="host-player-details">
+                    <div className="host-accuracy-line"><span>ACCURACY RATE: <strong>{stats.accuracy == null ? "N/A" : `${accuracy.toFixed(0)}%`}</strong></span><span>BASE: <strong>{Number(stats.basePoints || 0).toFixed(2)} pts</strong> + SPEED BONUS: <strong className="host-player-correct">+{Number(stats.speedBonus || 0).toFixed(2)} pts</strong></span></div>
+                    <div className="host-accuracy-track"><span style={{ width: `${accuracy}%` }} /><i style={{ width: `${stats.attempted ? (stats.wrong / stats.attempted) * 100 : 0}%` }} /></div>
+                    <div className="host-player-stat-grid">
+                      <div><small>ATTEMPTED</small><strong>{stats.attempted || 0} of {questionTotal} Qs</strong></div>
+                      <div><small>CORRECT / WRONG</small><strong><em>{stats.correct || 0} Correct</em> / <b>{stats.wrong || 0} Wrong</b></strong></div>
+                      <div><small>AVG RESPONSE</small><strong>{stats.avgResponseMs == null ? "—" : `${(stats.avgResponseMs / 1000).toFixed(2)}s / Q`}</strong></div>
+                      <div><small>BEST STREAK</small><strong className="host-streak">{stats.bestStreak || 0} in a row</strong></div>
+                    </div>
+                    {leaderboardView === "overall" && <div className="host-round-breakdown">{Object.entries(p.roundStats || {}).map(([roundNo, data]) => <span key={roundNo}>R{roundNo}: {data.correct || 0}/{data.attempted || 0} correct · {Number(data.speedBonus || 0).toFixed(2)} bonus</span>)}</div>}
+                  </div>}
+                </article>
+              );
+            })}
+            {!leaderboard.length && <p className="muted">No participant scores yet.</p>}
           </div>
         </section>
       )}
-
       {status === "finished" && (
         <button
           type="button"
