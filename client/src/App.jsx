@@ -1,16 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Host from "./Host";
 import Participant from "./Participant";
+import Account from "./Account";
+import { getSession, signOut } from "./auth";
 import "./App.css";
 
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
   const [prefillJoin, setPrefillJoin] = useState({ name: "", code: "" });
   const activeSessionRef = useRef(false);
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
   const setActiveSession = useCallback((active) => {
     activeSessionRef.current = active;
   }, []);
+
+  useEffect(() => {
+    getSession().then(setSession).catch(() => setSession(null)).finally(() => setAuthReady(true));
+  }, []);
+
+  const handleAuthenticated = (nextSession) => {
+    setSession(nextSession);
+    navigate(path === "/host" ? "/host" : "/");
+  };
+
+  const handleSignOut = async () => {
+    await signOut(session);
+    setSession(null);
+  };
 
   const navigate = (next) => {
     window.history.pushState({}, "", next);
