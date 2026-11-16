@@ -1321,3 +1321,11 @@ p {
 @keyframes cloudclash-confetti { 0% { translate:0 -5vh; rotate:0deg; } 100% { translate:var(--confetti-drift, 30px) 110vh; rotate:720deg; } }
 @media (max-width:680px) { .personal-report-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (prefers-reduced-motion: reduce) { .confetti-overlay { display:none; } }
+
+
+/* Final-results suspense state */
+.results-waiting-card { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:230px; text-align:center; gap:10px; }
+.results-waiting-card h2 { margin:0; }
+.results-spinner { width:38px; height:38px; margin-bottom:8px; border:3px solid var(--border-hairline); border-top-color:var(--accent-cyan); border-radius:50%; animation:results-spin .85s linear infinite; }
+@keyframes results-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .results-spinner { animation:none; border-top-color:var(--accent-cyan); } }
