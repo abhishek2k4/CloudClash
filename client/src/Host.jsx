@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { socket } from "./socket";
+import { getSession } from "./auth";
 import "./App.css";
 
 const blankQuestion = (round = 1) => ({
@@ -19,7 +20,7 @@ const getInitials = (name = "") =>
     .map((part) => part[0]?.toUpperCase() || "")
     .join("") || "PL";
 
-export default function Host({ onHome, onActivityChange, accessToken }) {
+export default function Host({ onHome, onActivityChange }) {
   const [connected, setConnected] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [stage, setStage] = useState("room");
@@ -112,6 +113,9 @@ export default function Host({ onHome, onActivityChange, accessToken }) {
   }, []);
 
   useEffect(() => {
+    socket.auth = (callback) => {
+      getSession().then((current) => callback(current?.accessToken ? { accessToken: current.accessToken } : {})).catch(() => callback({}));
+    };
     const connect = () => {
       setConnected(true);
       socket.emit("host_login", apply);
@@ -186,6 +190,7 @@ export default function Host({ onHome, onActivityChange, accessToken }) {
       socket.off("competition_finished", onFinish);
       socket.off("final_leaderboard_revealed", onRevealFinal);
       socket.disconnect();
+      socket.auth = {};
     };
   }, [apply]);
 
@@ -1067,13 +1072,15 @@ export default function Host({ onHome, onActivityChange, accessToken }) {
         <section className="surface-card">
           <p className="eyebrow">HOST CONTROL ROOM</p>
           <h1>Ready for a new session.</h1>
+          {error && <div className="error-banner" style={{ marginTop: 16 }}>{error}</div>}
           <button
             type="button"
             className="btn btn-primary btn-full"
             style={{ marginTop: 18 }}
+            disabled={!authenticated}
             onClick={() => setStage("room")}
           >
-            Create Room
+            {authenticated ? "Create Room" : "Verifying account..."}
           </button>
         </section>
       </main>
