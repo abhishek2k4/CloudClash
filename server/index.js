@@ -13,7 +13,7 @@ const SUPABASE_ANON_KEY=process.env.SUPABASE_ANON_KEY;
 
 app.use(cors({origin:allowedOrigins})); app.use(express.json());
 async function requireAccount(req,res,next){
- const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+ const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
  if(!token||!SUPABASE_URL||!SUPABASE_ANON_KEY)return res.status(401).json({error:"Sign in to view your quiz archives."});
  try{
   const response=await fetch(SUPABASE_URL+"/auth/v1/user",{headers:{apikey:SUPABASE_ANON_KEY,Authorization:"Bearer "+token}});
