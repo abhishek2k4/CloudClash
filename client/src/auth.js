@@ -93,3 +93,39 @@ export async function signOut(session) {
     saveSession(null);
   }
 }
+
+
+export function getProfile(session) {
+  const metadata = session?.user?.user_metadata || {};
+  return {
+    gameName: typeof metadata.game_name === "string" ? metadata.game_name : "",
+    bio: typeof metadata.bio === "string" ? metadata.bio : ""
+  };
+}
+
+export async function updateProfile({ gameName, bio }) {
+  const session = await getSession();
+  if (!session?.accessToken) throw new Error("Please sign in again to update your profile.");
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session.accessToken}`
+    },
+    body: JSON.stringify({
+      data: {
+        ...(session.user?.user_metadata || {}),
+        game_name: String(gameName || "").trim().slice(0, 40),
+        bio: String(bio || "").trim().slice(0, 240)
+      }
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.msg || data.message || data.error_description || "Could not save your profile.");
+  }
+  const updatedSession = { ...session, user: data };
+  saveSession(updatedSession);
+  return { session: updatedSession, profile: getProfile(updatedSession) };
+}
