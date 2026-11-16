@@ -733,7 +733,7 @@ export default function Host({ onHome, onActivityChange }) {
 
         <header style={{ marginBottom: 24 }}>
           <p className="eyebrow">STEP 03 · ROUND CSV IMPORT</p>
-          <h1>Upload round-wise templates.</h1>
+          <h1>Upload questions by round.</h1>
           <p className="muted" style={{ marginTop: 6 }}>
             Download the shared CSV template, then upload a completed file separately for each round. Once all rounds have questions, you will advance to the lobby.
           </p>
