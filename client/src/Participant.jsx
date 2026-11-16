@@ -30,6 +30,7 @@ export default function Participant({
   const [result, setResult] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [personalReport, setPersonalReport] = useState(null);
+  const [personalRoundReport, setPersonalRoundReport] = useState(null);
   const [resultsRevealed, setResultsRevealed] = useState(false);
   const [expandedRoundReport, setExpandedRoundReport] = useState(false);
   const [status, setStatus] = useState("waiting");
@@ -48,6 +49,7 @@ export default function Participant({
     setStatus(r.snapshot?.status || "waiting");
     setLeaderboard(r.snapshot?.leaderboard || []);
     setPersonalReport(r.snapshot?.personalReport || null);
+    setPersonalRoundReport(r.snapshot?.personalRoundReport || null);
     setResultsRevealed(Boolean(r.snapshot?.resultsRevealed));
     setEliminated(Boolean(r.snapshot?.eliminated));
     const snapQ = r.snapshot?.question || null;
@@ -96,7 +98,8 @@ export default function Participant({
     const onBreak = (d) => {
       setStatus("round_break");
       setQuestion(null);
-      setLeaderboard(d.leaderboard || []);
+      setLeaderboard([]);
+      setPersonalRoundReport(null);
       setResult({ message: "Round complete" });
     };
     const onEliminationsConfirmed = (d) => {
@@ -114,6 +117,7 @@ export default function Participant({
       setQuestion(null);
     };
     const onPersonalFinalReport = (d) => setPersonalReport(d.report || null);
+    const onPersonalRoundReport = (d) => setPersonalRoundReport(d || null);
     const onFinalLeaderboardRevealed = (d) => {
       setLeaderboard(d.leaderboard || []);
       setResultsRevealed(true);
@@ -136,6 +140,7 @@ export default function Participant({
     socket.on("eliminations_confirmed", onEliminationsConfirmed);
     socket.on("competition_finished", onFinish);
     socket.on("personal_final_report", onPersonalFinalReport);
+    socket.on("personal_round_report", onPersonalRoundReport);
     socket.on("final_leaderboard_revealed", onFinalLeaderboardRevealed);
     socket.on("competition_cancelled", onCancelled);
 
@@ -164,6 +169,7 @@ export default function Participant({
       socket.off("eliminations_confirmed", onEliminationsConfirmed);
       socket.off("competition_finished", onFinish);
       socket.off("personal_final_report", onPersonalFinalReport);
+      socket.off("personal_round_report", onPersonalRoundReport);
       socket.off("final_leaderboard_revealed", onFinalLeaderboardRevealed);
       socket.off("competition_cancelled", onCancelled);
       socket.off("connect", connect);
@@ -462,17 +468,36 @@ export default function Participant({
       )}
 
       {status === "round_break" && (
-        <section className="surface-card">
-          <p className="eyebrow">INTERMISSION</p>
-          <h2>{eliminated ? "You're out of the competition" : "Round Complete"}</h2>
-          <p className="muted" style={{ marginTop: 6 }}>
-            {eliminated
-              ? "You can stay connected and watch the remaining rounds and leaderboard, but you can no longer answer questions."
-              : "Standings updated. The host will initiate the next round shortly."}
-          </p>
+        <section className="surface-card personal-report">
+          <p className="eyebrow">ROUND {String(personalRoundReport?.round || round).padStart(2, "0")} COMPLETE</p>
+          <h2>{eliminated ? "Your run is complete" : "Your round report"}</h2>
+          {personalRoundReport?.report ? (
+            <>
+              <div className="personal-report-score"><strong>{Number(personalRoundReport.roundScore || 0).toFixed(2)}</strong><span>ROUND POINTS</span></div>
+              <div className="personal-report-grid">
+                <div><small>ATTEMPTED</small><strong>{personalRoundReport.report.attempted || 0}</strong></div>
+                <div><small>CORRECT</small><strong className="host-player-correct">{personalRoundReport.report.correct || 0}</strong></div>
+                <div><small>WRONG</small><strong className="host-player-wrong">{personalRoundReport.report.wrong || 0}</strong></div>
+                <div><small>ACCURACY</small><strong>{personalRoundReport.report.accuracy == null ? "N/A" : `${personalRoundReport.report.accuracy.toFixed(1)}%`}</strong></div>
+                <div><small>AVG RESPONSE</small><strong>{personalRoundReport.report.avgResponseMs == null ? "—" : `${(personalRoundReport.report.avgResponseMs / 1000).toFixed(2)}s`}</strong></div>
+                <div><small>FASTEST CORRECT</small><strong>{personalRoundReport.report.fastestCorrectMs == null ? "—" : `${(personalRoundReport.report.fastestCorrectMs / 1000).toFixed(2)}s`}</strong></div>
+                <div><small>SPEED BONUS</small><strong className="personal-bonus">+{Number(personalRoundReport.report.speedBonus || 0).toFixed(2)}</strong></div>
+                <div><small>BEST STREAK</small><strong>{personalRoundReport.report.bestStreak || 0} in a row</strong></div>
+              </div>
+            </>
+          ) : <p className="muted">No answers were recorded for this round.</p>}
+          <p className="muted" style={{marginTop:14}}>{eliminated ? "Your competition has ended. Your completed-round stats are saved." : "Stand by. The host will start the next round shortly."}</p>
         </section>
       )}
 
+      {status === "finished" && !resultsRevealed && (
+        <section className="surface-card results-waiting-card">
+          <div className="results-spinner" />
+          <p className="eyebrow">FINAL RESULTS SEALED</p>
+          <h2>Waiting for the reveal…</h2>
+          <p className="muted">The host is getting ready to reveal the final standings. Hold tight.</p>
+        </section>
+      )}
       {status === "finished" && (() => {
         const mine = personalReport || leaderboard.find((entry) => entry.id === participant?.id);
         const stats = mine?.stats || {};
