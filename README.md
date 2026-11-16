@@ -82,6 +82,14 @@ The backend stores a JSON snapshot in Supabase when persistence is enabled. Use 
 
 Local memory-only mode resets the room when the backend restarts. Production persistence restores the saved room and active timer state. Email/password accounts are managed by Supabase Auth. The backend verifies access tokens with the Supabase Auth user endpoint, and stores the account ID that owns the active room. A different account cannot take over an active room. Signed-in participant sessions are associated with their account ID; guest sessions remain available without login. Quiz archives and cross-quiz personal history are not included yet. Keep the Supabase Secret/service-role key server-side only.
 
+## Quiz archives
+
+Completed quizzes are automatically saved to the host account. Each account keeps its five most recent completed quizzes; older archives are pruned automatically. Hosts can expand an archived quiz in the host dashboard to review its final leaderboard.
+
+Before deploying this feature, run the SQL migration in `server/supabase/quiz-archives.sql` in the Supabase SQL Editor. The backend uses the existing server-only `SUPABASE_SERVICE_ROLE_KEY` to write and read archive rows. The frontend never receives that key. The archive API verifies the caller's Supabase access token and filters results to that account.
+
+Archives are separate from the active competition snapshot. A quiz is archived when it finishes, including when the host ends it early. Cancelled rooms that never started are not archived.
+
 ## Load test
 
 With the backend running locally:
