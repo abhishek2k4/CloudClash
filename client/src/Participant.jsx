@@ -392,7 +392,7 @@ export default function Participant({
           </div>
 
           {selected !== null && !submitted && !result && (
-            <div className="success-banner">Option {String.fromCharCode(65 + selected)} selected. You can change it until the timer ends.</div>
+            <div className="selection-notice">Option {String.fromCharCode(65 + selected)} selected. You can change it until the timer ends.</div>
           )}
           {result?.correctOption !== undefined && result.explanation && (
             <div className="surface-card" style={{ marginTop: 14 }}>
