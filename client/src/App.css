@@ -114,6 +114,16 @@ p {
   font-size: 0.85rem;
 }
 
+.selection-notice {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-hairline);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
 /* Inputs */
 .field-group {
   display: flex;
