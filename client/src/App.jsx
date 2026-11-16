@@ -12,35 +12,19 @@ export default function App() {
   const activeSessionRef = useRef(false);
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
-  const [session, setSession] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
 
   const setActiveSession = useCallback((active) => {
     activeSessionRef.current = active;
-  }, []);
-
-  useEffect(() => {
-    getSession().then(setSession).catch(() => setSession(null)).finally(() => setAuthReady(true));
-  }, []);
-
-  const handleAuthenticated = (nextSession) => {
-    setSession(nextSession);
-    navigate(path === "/host" ? "/host" : "/");
-  };
-
-  const handleSignOut = async () => {
-    await signOut(session);
-    setSession(null);
-  };
-
-  useEffect(() => {
-    getSession().then(setSession).catch(() => setSession(null)).finally(() => setAuthReady(true));
   }, []);
 
   const navigate = (next) => {
     window.history.pushState({}, "", next);
     setPath(next);
   };
+
+  useEffect(() => {
+    getSession().then(setSession).catch(() => setSession(null)).finally(() => setAuthReady(true));
+  }, []);
 
   useEffect(() => {
     const back = () => {
@@ -65,8 +49,9 @@ export default function App() {
   };
 
   const handleSignOut = async () => {
-    try { await signOut(session); }
-    finally {
+    try {
+      await signOut(session);
+    } finally {
       socket.auth = {};
       setSession(null);
     }
@@ -160,9 +145,7 @@ export default function App() {
                 placeholder="CODE"
                 maxLength={12}
                 value={prefillJoin.code}
-                onChange={(e) =>
-                  setPrefillJoin((s) => ({ ...s, code: e.target.value.toUpperCase() }))
-                }
+                onChange={(e) => setPrefillJoin((state) => ({ ...state, code: e.target.value.toUpperCase() }))}
               />
             </div>
 
@@ -174,9 +157,7 @@ export default function App() {
                 placeholder="Enter your name"
                 maxLength={40}
                 value={prefillJoin.name}
-                onChange={(e) =>
-                  setPrefillJoin((s) => ({ ...s, name: e.target.value }))
-                }
+                onChange={(e) => setPrefillJoin((state) => ({ ...state, name: e.target.value }))}
               />
             </div>
 
