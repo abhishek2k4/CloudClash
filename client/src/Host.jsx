@@ -326,11 +326,11 @@ export default function Host({ onHome, onActivityChange }) {
     );
   };
 
-  const downloadRoundTemplate = (n) => {
-    const csv = "question,option_a,option_b,option_c,option_d,correct_option,explanation\r\n";
+  const downloadRoundTemplate = () => {
+    const csv = "question,option_a,option_b,option_c,option_d,correct_option,explanation\\r\\n";
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv" }));
-    a.download = "cloud-clash-round-" + n + "-questions.csv";
+    a.href = URL.createObjectURL(new Blob(["\\uFEFF" + csv], { type: "text/csv" }));
+    a.download = "cloud-clash-questions-template.csv";
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -735,9 +735,29 @@ export default function Host({ onHome, onActivityChange }) {
           <p className="eyebrow">STEP 03 · ROUND CSV IMPORT</p>
           <h1>Upload round-wise templates.</h1>
           <p className="muted" style={{ marginTop: 6 }}>
-            Download the formatted CSV template for each round and upload the completed file. Once all rounds have questions, you will advance to the lobby.
+            Download the shared CSV template, then upload a completed file separately for each round. Once all rounds have questions, you will advance to the lobby.
           </p>
         </header>
+
+        <section className="surface-card" style={{ marginBottom: 18 }}>
+          <div className="section-header" style={{ marginBottom: 12 }}>
+            <div>
+              <p className="eyebrow" style={{ marginBottom: 2 }}>SHARED FORMAT</p>
+              <h2>CSV Question Template</h2>
+            </div>
+            <span className="status-chip">All rounds</span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-full"
+            onClick={downloadRoundTemplate}
+          >
+            Download CSV Template
+          </button>
+          <p className="muted" style={{ marginTop: 12, fontSize: "0.8rem" }}>
+            Columns: question, option_a, option_b, option_c, option_d, correct_option, explanation
+          </p>
+        </section>
 
         <div className="round-upload-list">
           {Array.from({ length: rounds }, (_, i) => i + 1).map((n) => (
@@ -752,24 +772,16 @@ export default function Host({ onHome, onActivityChange }) {
                 <span className="status-chip">{counts[n] || 0} loaded</span>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-full"
-                  onClick={() => downloadRoundTemplate(n)}
-                >
-                  Download Round {n} CSV Template
-                </button>
-                <label className="upload-dropzone">
-                  <span>Upload Round {n} CSV</span>
-                  <input type="file" accept=".csv,text/csv" onChange={(e) => uploadRound(e, n)} />
-                </label>
-              </div>
+              <label className="upload-dropzone">
+                <span>Upload Round {n} CSV</span>
+                <input type="file" accept=".csv,text/csv" onChange={(e) => uploadRound(e, n)} />
+              </label>
 
-              <p className="muted" style={{ marginTop: 12, fontSize: "0.8rem" }}>
-                {roundUploads[n] ||
-                  "Columns: question, option_a, option_b, option_c, option_d, correct_option, explanation"}
-              </p>
+              {roundUploads[n] && (
+                <p className="muted" style={{ marginTop: 12, fontSize: "0.8rem" }}>
+                  {roundUploads[n]}
+                </p>
+              )}
             </section>
           ))}
         </div>
