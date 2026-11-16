@@ -12,6 +12,7 @@ export default function App() {
   const activeSessionRef = useRef(false);
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  const [authToast, setAuthToast] = useState(null);
 
   const setActiveSession = useCallback((active) => {
     activeSessionRef.current = active;
@@ -23,8 +24,36 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Supabase redirects successful email confirmations back with an auth
+    // fragment. Read the result before cleaning the URL so users get feedback.
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const queryParams = new URLSearchParams(window.location.search);
+    const params = hashParams.has("type") ? hashParams : queryParams;
+    const confirmationType = params.get("type");
+    const hasConfirmationToken = params.has("access_token") || params.has("token_hash");
+
+    if (confirmationType === "signup" && hasConfirmationToken) {
+      setAuthToast({
+        type: "success",
+        message: "Email confirmed successfully. You can now sign in to your CloudClash account."
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.has("error") || params.has("error_code")) {
+      setAuthToast({
+        type: "error",
+        message: "That confirmation link is invalid or has expired. Please request a new one and try again."
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
     getSession().then(setSession).catch(() => setSession(null)).finally(() => setAuthReady(true));
   }, []);
+
+  useEffect(() => {
+    if (!authToast) return;
+    const timeout = window.setTimeout(() => setAuthToast(null), 6500);
+    return () => window.clearTimeout(timeout);
+  }, [authToast]);
 
   useEffect(() => {
     const back = () => {
@@ -88,6 +117,13 @@ export default function App() {
 
   return (
     <main className="landing-shell">
+      {authToast && (
+        <div className={`auth-toast ${authToast.type}`} role="status" aria-live="polite">
+          <span className="auth-toast-icon" aria-hidden="true">{authToast.type === "success" ? "✓" : "!"}</span>
+          <span>{authToast.message}</span>
+          <button type="button" aria-label="Dismiss notification" onClick={() => setAuthToast(null)}>×</button>
+        </div>
+      )}
       <header className="brand-bar">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true">
