@@ -29,6 +29,7 @@ export default function Participant({
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [expandedRoundReport, setExpandedRoundReport] = useState(false);
   const [status, setStatus] = useState("waiting");
   const [eliminated, setEliminated] = useState(false);
   const [error, setError] = useState("");
@@ -458,6 +459,30 @@ export default function Participant({
         </section>
       )}
 
+      {status === "finished" && (() => {
+        const mine = leaderboard.find((entry) => entry.id === participant?.id);
+        const stats = mine?.stats || {};
+        return (
+          <section className="surface-card personal-report">
+            <div className="personal-report-heading"><div><p className="eyebrow">YOUR FINAL PERFORMANCE</p><h2>Personal Report</h2></div><div className="personal-rank">#{String(mine?.rank || "—").padStart(2, "0")}<small>FINAL RANK</small></div></div>
+            <div className="personal-report-score"><strong>{Number(mine?.score || 0).toFixed(2)}</strong><span>POINTS</span></div>
+            <div className="personal-report-grid">
+              <div><small>ATTEMPTED</small><strong>{stats.attempted || 0}</strong></div><div><small>CORRECT</small><strong className="host-player-correct">{stats.correct || 0}</strong></div>
+              <div><small>WRONG</small><strong className="host-player-wrong">{stats.wrong || 0}</strong></div><div><small>ACCURACY</small><strong>{stats.accuracy == null ? "N/A" : `${stats.accuracy.toFixed(1)}%`}</strong></div>
+              <div><small>AVG RESPONSE</small><strong>{stats.avgResponseMs == null ? "—" : `${(stats.avgResponseMs / 1000).toFixed(2)}s`}</strong></div>
+              <div><small>FASTEST CORRECT</small><strong>{stats.fastestCorrectMs == null ? "—" : `${(stats.fastestCorrectMs / 1000).toFixed(2)}s`}</strong></div>
+              <div><small>SPEED BONUS</small><strong className="personal-bonus">+{Number(stats.speedBonus || 0).toFixed(2)}</strong></div><div><small>BEST STREAK</small><strong>{stats.bestStreak || 0} in a row</strong></div>
+            </div>
+            <button type="button" className="personal-round-toggle" onClick={() => setExpandedRoundReport((value) => !value)} aria-expanded={expandedRoundReport}>Round-wise performance <span>{expandedRoundReport ? "−" : "+"}</span></button>
+            {expandedRoundReport && <div className="personal-round-list">{Object.entries(mine?.roundStats || {}).map(([roundNo, data]) => (
+              <div className="personal-round-card" key={roundNo}>
+                <div className="personal-round-title"><strong>Round {roundNo}</strong><b>{(Number(data.basePoints || 0) + Number(data.speedBonus || 0)).toFixed(2)} pts</b></div>
+                <div className="personal-round-metrics"><span>{data.attempted || 0} attempted</span><span>{data.correct || 0} correct</span><span>{data.wrong || 0} wrong</span><span>{data.accuracy == null ? "N/A" : `${data.accuracy.toFixed(0)}% accuracy`}</span><span>Avg {data.avgResponseMs == null ? "—" : `${(data.avgResponseMs / 1000).toFixed(2)}s`}</span><span>Fastest {data.fastestCorrectMs == null ? "—" : `${(data.fastestCorrectMs / 1000).toFixed(2)}s`}</span><span>Bonus +{Number(data.speedBonus || 0).toFixed(2)}</span></div>
+              </div>
+            ))}</div>}
+          </section>
+        );
+      })()}
       {status === "finished" && (
         <section className="surface-card">
           <p className="eyebrow">FINAL TELEMETRY</p>
@@ -468,6 +493,7 @@ export default function Participant({
         </section>
       )}
 
+      {status === "finished" && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
       {(status === "round_break" || status === "finished") && (
         <section className="surface-card">
           <p className="eyebrow">SCOREBOARD</p>
@@ -481,7 +507,7 @@ export default function Participant({
                   <div className={`podium-slot rank-${actualRank}`} key={p.id}>
                     <span className="podium-rank">#{String(actualRank).padStart(2, "0")}</span>
                     <span className="avatar-monogram">{getInitials(p.name)}</span>
-                    <span className="podium-name">{p.name}</span>
+                    <span className="podium-name">{actualRank === 1 ? "👑 " : ""}{p.name}</span>
                     <span className="podium-score">{Number(p.score).toFixed(2)} pts</span>
                   </div>
                 );
@@ -496,7 +522,7 @@ export default function Participant({
                   <span className="standing-rank">#{String(p.rank).padStart(2, "0")}</span>
                   <span className="avatar-monogram">{getInitials(p.name)}</span>
                   <strong>
-                    {p.name} {p.id === participant.id ? "(You)" : ""} {p.eliminated ? "(Eliminated)" : ""}
+                    {p.rank === 1 ? "👑 " : ""}{p.name} {p.id === participant.id ? "(You)" : ""} {p.eliminated ? "(Eliminated)" : ""}
                   </strong>
                 </div>
                 <span className="standing-score">{Number(p.score).toFixed(2)} pts</span>
