@@ -1,6 +1,7 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, "");
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const STORAGE_KEY = "cloudclash.auth.session";
+let refreshPromise = null;
 
 function ensureConfigured() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -67,16 +68,22 @@ export async function getSession() {
   if (!stored?.accessToken || !stored?.refreshToken) return null;
   if (Number(stored.expiresAt) > Math.floor(Date.now() / 1000) + 60) return stored;
 
-  try {
-    const data = await authRequest("token?grant_type=refresh_token", { refresh_token: stored.refreshToken });
-    const refreshed = normalizeSession(data);
-    if (!refreshed) throw new Error("Session refresh failed.");
-    saveSession(refreshed);
-    return refreshed;
-  } catch {
-    saveSession(null);
-    return null;
-  }
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const data = await authRequest("token?grant_type=refresh_token", { refresh_token: stored.refreshToken });
+      const refreshed = normalizeSession(data);
+      if (!refreshed) throw new Error("Session refresh failed.");
+      saveSession(refreshed);
+      return refreshed;
+    } catch {
+      saveSession(null);
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
 }
 
 export async function signOut(session) {
