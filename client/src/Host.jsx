@@ -1305,6 +1305,7 @@ export default function Host({ onHome, onActivityChange }) {
         </section>
       )}
 
+      {status === "finished" && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
       {(status === "round_break" || status === "finished") && (
         <section className="surface-card host-leaderboard">
           <div className="section-header host-leaderboard-heading">
@@ -1326,7 +1327,7 @@ export default function Host({ onHome, onActivityChange }) {
               return (
                 <article className={`host-player-card ${expanded ? "expanded" : ""} ${p.eliminated ? "is-eliminated" : ""}`} key={p.id}>
                   <button type="button" className="host-player-summary" onClick={() => setExpandedPlayerId(expanded ? null : p.id)} aria-expanded={expanded}>
-                    <span className="host-player-identity"><span className="host-player-rank">#{String(p.rank).padStart(2, "0")}</span><span className="avatar-monogram">{getInitials(p.name)}</span><span className="host-player-name">{p.name}{p.eliminated ? <small>ELIMINATED</small> : null}</span></span>
+                    <span className="host-player-identity"><span className="host-player-rank">#{String(p.rank).padStart(2, "0")}</span><span className="avatar-monogram">{getInitials(p.name)}</span><span className="host-player-name">{p.rank === 1 ? "👑 " : ""}{p.name}{p.eliminated ? <small>ELIMINATED</small> : null}</span></span>
                     <span className="host-player-attempted">{stats.attempted || 0}/{questionTotal}</span><span className="host-player-correct">{stats.correct || 0} ✓</span><span className="host-player-wrong">{stats.wrong || 0} ✕</span>
                     <span className="host-player-score">{displayScore.toFixed(2)} <small>pts</small><span className={`expand-chevron ${expanded ? "open" : ""}`}>⌄</span></span>
                   </button>
