@@ -58,6 +58,7 @@ export default function Host({ onHome, onActivityChange }) {
   const [archivesLoading, setArchivesLoading] = useState(false);
   const [archivesError, setArchivesError] = useState("");
   const [expandedArchiveId, setExpandedArchiveId] = useState(null);
+  const [archivesVersion, setArchivesVersion] = useState(0);
 
   const apply = useCallback((response) => {
     if (!response?.success) {
@@ -158,6 +159,8 @@ export default function Host({ onHome, onActivityChange }) {
       setEliminationsConfirmed(true);
       setRoundElimination((current) => current ? { ...current, eliminatedCandidates: [], advancingCount: d.advancingCount } : current);
     };
+    const onArchiveSaved = () => setArchivesVersion((v) => v + 1);
+    const onArchiveError = (d) => setArchivesError(d?.message || "Could not save this quiz to your archive.");
     const onFinish = (d) => {
       setLeaderboard([]);
       setResultsRevealed(false);
@@ -182,6 +185,8 @@ export default function Host({ onHome, onActivityChange }) {
     socket.on("round_finished", onBreak);
     socket.on("eliminations_confirmed", onEliminationsConfirmed);
     socket.on("competition_finished", onFinish);
+    socket.on("quiz_archived", onArchiveSaved);
+    socket.on("quiz_archive_error", onArchiveError);
     socket.on("final_leaderboard_revealed", onRevealFinal);
     socket.connect();
 
@@ -198,6 +203,8 @@ export default function Host({ onHome, onActivityChange }) {
       socket.off("round_finished", onBreak);
       socket.off("eliminations_confirmed", onEliminationsConfirmed);
       socket.off("competition_finished", onFinish);
+      socket.off("quiz_archived", onArchiveSaved);
+      socket.off("quiz_archive_error", onArchiveError);
       socket.off("final_leaderboard_revealed", onRevealFinal);
       socket.disconnect();
       socket.auth = {};
@@ -223,7 +230,7 @@ export default function Host({ onHome, onActivityChange }) {
       if (!cancelled) setArchivesLoading(false);
     });
     return () => { cancelled = true; };
-  }, [authenticated]);
+  }, [authenticated, archivesVersion]);
 
   useEffect(() => {
     setError("");
