@@ -45,7 +45,7 @@ Open the frontend root URL. The landing page provides guest **Join a room**, **H
 
 1. Anyone can join a room as a guest using a display name and room code. Guest players do not need an account.
 2. Anyone can create a CloudClash account with an email address and password.
-3. A signed-in account can join as a participant or open **Host a new quiz** to create and control a room.
+3. A signed-in account can edit a player profile with a game name and bio, join as a participant, or open **Host a new quiz** to create and control a room.\n4. When a signed-in user has saved a game name, CloudClash pre-fills it on room entry; guests and users without a saved game name enter one manually.
 4. Hosting actions are verified by the backend. Only the account that owns the active room can control it.
 5. The host chooses to import a CSV question bank or add questions manually in the free question builder.
 6. The server creates a room and returns a generated room code. The host shares it with players.
