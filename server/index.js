@@ -118,7 +118,8 @@ io.on("connection",socket=>{
  socket.on("host_login",(cb=()=>{})=>{
   if(!socket.data.userId)return cb({success:false,message:"Sign in with a CloudClash account to host quizzes."});
   const inProgress=["waiting","running","paused","round_break"].includes(status);
-  if(inProgress&&roomOwnerId!==socket.data.userId)return cb({success:false,message:roomOwnerId?"This active room belongs to another host account.":"This room was created before host accounts were enabled and cannot be recovered. Cancel/reset it before creating a new room."});
+  if(inProgress&&roomOwnerId&&roomOwnerId!==socket.data.userId)return cb({success:false,message:"This active room belongs to another host account."});
+  if(inProgress&&!roomOwnerId){roomOwnerId=socket.data.userId;persistSafe();}
   if(status==="finished"&&roomOwnerId!==socket.data.userId){
    socket.join("host");
    return cb({success:true,roomCode:"",roomName:"",rounds:2,quizSettings:{roundSeconds:{1:15,2:25},marks:{1:10,2:20},speedBonusPercent:10,eliminationEnabled:false,advanceCounts:{}},questionCounts:{},participants:[],status:"idle",round:0,pendingEliminationIds:[],eliminationsConfirmed:true,resultsRevealed:false,eliminatedIds:[],question:null,leaderboard:[],remainingMs:null});
