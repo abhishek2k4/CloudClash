@@ -36,7 +36,7 @@ function participantAnalytics(id,roundFilter=null){
 function leaderboard(){
  return [...participants.values()].map(p=>{
   const t=totalStats.get(p.id)||{score:0,correct:0,timeMs:0};
-  const roundBreakdown=Object.fromEntries(Array.from({length:rounds},(_,i)=>[i+1,participantAnalytics(p.id,i+1)]));
+  const roundBreakdown=Object.fromEntries(Array.from({length:rounds},(_,i)=>[i+1,participantAnalytics(p.id,i+1)]).filter(([,stats])=>stats.attempted>0));
   return {id:p.id,name:p.name,score:t.score,correct:t.correct,timeMs:t.timeMs,eliminated:eliminated.has(p.id),stats:participantAnalytics(p.id),roundStats:roundBreakdown};
  }).sort((a,b)=>compareStanding(a,b)||a.name.localeCompare(b.name)).map((p,i)=>({rank:i+1,...p}));
 }
