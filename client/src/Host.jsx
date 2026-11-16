@@ -98,6 +98,7 @@ export default function Host({ onHome, onActivityChange }) {
     setRound(response.round || 0);
     setQuestion(response.question || null);
     setLeaderboard(response.leaderboard || []);
+    setExpandedPlayerId(response.leaderboard?.[0]?.id || null);
     setEliminationsConfirmed(response.eliminationsConfirmed ?? true);
     if (response.status === "round_break") {
       const pending = response.pendingEliminationIds || [];
@@ -132,6 +133,7 @@ export default function Host({ onHome, onActivityChange }) {
     };
     const onBreak = (d) => {
       setLeaderboard(d.leaderboard || []);
+      setExpandedPlayerId(d.leaderboard?.[0]?.id || null);
       setRoundElimination(d);
       setEliminationsConfirmed(d.eliminationsConfirmed ?? true);
       setStatus("round_break");
@@ -144,6 +146,7 @@ export default function Host({ onHome, onActivityChange }) {
     };
     const onFinish = (d) => {
       setLeaderboard(d.leaderboard || []);
+      setExpandedPlayerId(d.leaderboard?.[0]?.id || null);
       setStatus("finished");
       setQuestion(null);
     };
