@@ -808,11 +808,7 @@ export default function Host({ onHome, onActivityChange }) {
                 </button>
               )}
 
-              {roundUploads[n] && roundUploads[n] !== "Discarding..." && (
-                <p className="muted" style={{ marginTop: 12, fontSize: "0.8rem" }}>
-                  {roundUploads[n]}
-                </p>
-              )}
+
             </section>
           ))}
         </div>
