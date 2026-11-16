@@ -23,7 +23,23 @@ const answerKey=(r,q,id)=>`${r}:${q}:${id}`;
 const publicParticipant=p=>({id:p.id,name:p.name,eliminated:eliminated.has(p.id)});
 const safeQuestion=()=>{const q=roundQuestions(currentRound)[questionIndex];return q?{round:currentRound,questionNumber:questionIndex+1,totalQuestions:roundQuestions(currentRound).length,text:q.text,options:q.options,endsAt:questionEndsAt,marks:quizSettings.marks[currentRound]}:null;};
 function compareStanding(a,b){return b.score-a.score||b.correct-a.correct||a.timeMs-b.timeMs;}
-function leaderboard(){return [...participants.values()].map(p=>{const t=totalStats.get(p.id)||{score:0,correct:0,timeMs:0};return{id:p.id,name:p.name,score:t.score,correct:t.correct,timeMs:t.timeMs,eliminated:eliminated.has(p.id)};}).sort((a,b)=>compareStanding(a,b)||a.name.localeCompare(b.name)).map((p,i)=>({rank:i+1,...p}));}
+function participantAnalytics(id,roundFilter=null){
+ const entries=[...answers.entries()].map(([key,value])=>{const [r,q,pid]=key.split(":");return pid===id&&(roundFilter===null||Number(r)===roundFilter)?{round:Number(r),question:Number(q),...value}:null;}).filter(Boolean).sort((a,b)=>a.round-b.round||a.question-b.question);
+ const attempted=entries.length,correct=entries.filter(a=>a.correct).length,wrong=attempted-correct;
+ const responseTotal=entries.reduce((sum,a)=>sum+(Number(a.elapsed)||0),0);
+ const correctEntries=entries.filter(a=>a.correct);
+ let streak=0,bestStreak=0;for(const a of entries){streak=a.correct?streak+1:0;bestStreak=Math.max(bestStreak,streak);}
+ const base=correctEntries.reduce((sum,a)=>sum+Number(quizSettings.marks[a.round]||0),0);
+ const awarded=correctEntries.reduce((sum,a)=>sum+Number(a.pointsAwarded||0),0);
+ return {attempted,correct,wrong,accuracy:attempted?correct/attempted*100:null,avgResponseMs:attempted?responseTotal/attempted:null,fastestCorrectMs:correctEntries.length?Math.min(...correctEntries.map(a=>a.elapsed)):null,basePoints:roundScore(base),speedBonus:roundScore(awarded-base),bestStreak};
+}
+function leaderboard(){
+ return [...participants.values()].map(p=>{
+  const t=totalStats.get(p.id)||{score:0,correct:0,timeMs:0};
+  const roundBreakdown=Object.fromEntries(Array.from({length:rounds},(_,i)=>[i+1,participantAnalytics(p.id,i+1)]));
+  return {id:p.id,name:p.name,score:t.score,correct:t.correct,timeMs:t.timeMs,eliminated:eliminated.has(p.id),stats:participantAnalytics(p.id),roundStats:roundBreakdown};
+ }).sort((a,b)=>compareStanding(a,b)||a.name.localeCompare(b.name)).map((p,i)=>({rank:i+1,...p}));
+}
 function roundEliminationSummary(){const active=leaderboard().filter(p=>!p.eliminated);const keepCount=Number(quizSettings.advanceCounts?.[currentRound]||0);if(!quizSettings.eliminationEnabled||currentRound>=rounds||keepCount<=0||active.length<=keepCount)return{keepCount:keepCount||null,advancingCount:active.length,eliminatedCandidates:[]};const cutoff=active[keepCount-1];const tiedIds=new Set(active.filter(p=>compareStanding(p,cutoff)===0).map(p=>p.id));const candidates=active.slice(keepCount).filter(p=>!tiedIds.has(p.id));return{keepCount,advancingCount:active.length-candidates.length,eliminatedCandidates:candidates};}
 function snapshot(){return{version:2,roomCode,roomName,rounds,quizSettings,activeQuestions,participants:[...participants],answers:[...answers],roundStats:[...roundStats],totalStats:[...totalStats],eliminatedIds:[...eliminated],pendingEliminationIds,eliminationsConfirmed,status,currentRound,questionIndex,questionEndsAt,remainingMs,questionLocked};}
 function persist(){if(!persistenceEnabled)return Promise.resolve();const s=persistenceQueue.then(()=>saveCompetitionState(snapshot()));persistenceQueue=s.then(()=>{lastPersistenceSuccessAt=new Date().toISOString();lastPersistenceError=null;}).catch(e=>{lastPersistenceError=e.message;console.error("Persistence failed:",e.message);});return s;}
