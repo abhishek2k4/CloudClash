@@ -19,7 +19,7 @@ const getInitials = (name = "") =>
     .map((part) => part[0]?.toUpperCase() || "")
     .join("") || "PL";
 
-export default function Host({ onHome, onActivityChange }) {
+export default function Host({ onHome, onActivityChange, accessToken }) {
   const [connected, setConnected] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [stage, setStage] = useState("room");
