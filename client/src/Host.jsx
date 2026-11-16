@@ -54,6 +54,10 @@ export default function Host({ onHome, onActivityChange }) {
   const [roundUploads, setRoundUploads] = useState({});
   const [roundFilenames, setRoundFilenames] = useState({});
   const [copied, setCopied] = useState(false);
+  const [archives, setArchives] = useState([]);
+  const [archivesLoading, setArchivesLoading] = useState(false);
+  const [archivesError, setArchivesError] = useState("");
+  const [expandedArchiveId, setExpandedArchiveId] = useState(null);
 
   const apply = useCallback((response) => {
     if (!response?.success) {
@@ -199,6 +203,27 @@ export default function Host({ onHome, onActivityChange }) {
       socket.auth = {};
     };
   }, [apply]);
+
+  useEffect(() => {
+    if (!authenticated) return;
+    let cancelled = false;
+    setArchivesLoading(true);
+    setArchivesError("");
+    getSession().then(async (current) => {
+      if (!current?.accessToken) throw new Error("Please sign in again to load your quiz archives.");
+      const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/api/archives`, {
+        headers: { Authorization: `Bearer ${current.accessToken}` }
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Could not load quiz archives.");
+      if (!cancelled) setArchives(Array.isArray(payload.archives) ? payload.archives : []);
+    }).catch((err) => {
+      if (!cancelled) setArchivesError(err.message || "Could not load quiz archives.");
+    }).finally(() => {
+      if (!cancelled) setArchivesLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [authenticated]);
 
   useEffect(() => {
     setError("");
@@ -1078,16 +1103,43 @@ export default function Host({ onHome, onActivityChange }) {
         <section className="surface-card">
           <p className="eyebrow">HOST CONTROL ROOM</p>
           <h1>Ready for a new session.</h1>
+          <p className="muted" style={{ marginTop: 8 }}>Create a fresh room or revisit the results of one of your five most recent quizzes.</p>
           {error && <div className="error-banner" style={{ marginTop: 16 }}>{error}</div>}
-          <button
-            type="button"
-            className="btn btn-primary btn-full"
-            style={{ marginTop: 18 }}
-            disabled={!authenticated}
-            onClick={() => setStage("room")}
-          >
+          <button type="button" className="btn btn-primary btn-full" style={{ marginTop: 18 }} disabled={!authenticated} onClick={() => setStage("room")}>
             {authenticated ? "Create Room" : "Verifying account..."}
           </button>
+        </section>
+        <section className="surface-card" style={{ marginTop: 18 }}>
+          <div className="section-header">
+            <div><p className="eyebrow">YOUR HISTORY</p><h2>Previous quizzes</h2></div>
+            <span className="status-chip">{archives.length}/5 saved</span>
+          </div>
+          {archivesLoading && <p className="muted">Loading your quiz archives...</p>}
+          {archivesError && <div className="error-banner">{archivesError}</div>}
+          {!archivesLoading && !archivesError && archives.length === 0 && <p className="muted">Completed quizzes will appear here. Your five most recent quizzes are kept automatically.</p>}
+          <div className="standings-list">
+            {archives.map((archive) => {
+              const expanded = expandedArchiveId === archive.id;
+              const board = Array.isArray(archive.leaderboard) ? archive.leaderboard : [];
+              return (
+                <article key={archive.id} style={{ padding: "14px 0", borderBottom: "1px solid var(--border-subtle, rgba(255,255,255,.08))" }}>
+                  <button type="button" onClick={() => setExpandedArchiveId(expanded ? null : archive.id)} aria-expanded={expanded}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, color: "inherit", background: "transparent", border: 0, textAlign: "left", cursor: "pointer" }}>
+                    <span><strong>{archive.room_name || "Untitled quiz"}</strong><span className="muted" style={{ display: "block", fontSize: "0.78rem", marginTop: 4 }}>{new Date(archive.completed_at).toLocaleDateString()} · {archive.rounds} rounds · {archive.participant_count} players</span></span>
+                    <span className="muted">{expanded ? "−" : "+"}</span>
+                  </button>
+                  {expanded && <div style={{ marginTop: 12 }}>
+                    {board.length ? board.map((player) => (
+                      <div key={player.id} className="standing-row" style={{ padding: "7px 0" }}>
+                        <span><strong>#{player.rank}</strong> {player.name}{player.eliminated ? " · Eliminated" : ""}</span>
+                        <span className="standing-score">{Number(player.score || 0).toFixed(2)} pts</span>
+                      </div>
+                    )) : <p className="muted">No leaderboard was recorded for this quiz.</p>}
+                  </div>}
+                </article>
+              );
+            })}
+          </div>
         </section>
       </main>
     );
