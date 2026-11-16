@@ -3,12 +3,15 @@ import Host from "./Host";
 import Participant from "./Participant";
 import Account from "./Account";
 import { getSession, signOut } from "./auth";
+import { socket } from "./socket";
 import "./App.css";
 
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
   const [prefillJoin, setPrefillJoin] = useState({ name: "", code: "" });
   const activeSessionRef = useRef(false);
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
 
@@ -29,6 +32,10 @@ export default function App() {
     await signOut(session);
     setSession(null);
   };
+
+  useEffect(() => {
+    getSession().then(setSession).catch(() => setSession(null)).finally(() => setAuthReady(true));
+  }, []);
 
   const navigate = (next) => {
     window.history.pushState({}, "", next);
@@ -52,13 +59,30 @@ export default function App() {
     return () => window.removeEventListener("popstate", back);
   }, [path]);
 
+  const handleAuthenticated = (nextSession) => {
+    setSession(nextSession);
+    navigate(path === "/host" ? "/host" : "/");
+  };
+
+  const handleSignOut = async () => {
+    await signOut(session);
+    socket.auth = {};
+    setSession(null);
+  };
+
   const handleQuickJoin = (e) => {
     e.preventDefault();
     navigate("/join");
   };
 
   if (path === "/host") {
+    if (!authReady) return <main className="app-shell narrow"><section className="surface-card">Loading account...</section></main>;
+    if (!session) return <Account onAuthenticated={handleAuthenticated} onBack={() => navigate("/")} />;
     return <Host onHome={() => navigate("/")} onActivityChange={setActiveSession} />;
+  }
+
+  if (path === "/account" || path === "/account/signup") {
+    return <Account initialMode={path.endsWith("signup") ? "signup" : "login"} onAuthenticated={handleAuthenticated} onBack={() => navigate("/")} />;
   }
 
   if (path === "/join") {
@@ -86,10 +110,17 @@ export default function App() {
           </span>
           <span className="brand-name">CLOUD CLASH</span>
         </div>
-        <span className="telemetry-pill">
-          <span className="pulse-dot" />
-          LIVE ARENA
-        </span>
+        <div className="landing-header-actions">
+          <span className="telemetry-pill"><span className="pulse-dot" />LIVE ARENA</span>
+          {session ? (
+            <div className="account-header">
+              <span title={session.user?.email}>{session.user?.email || "Account"}</span>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={handleSignOut}>Sign out</button>
+            </div>
+          ) : (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/account")}>Sign in</button>
+          )}
+        </div>
       </header>
 
       <section className="landing-main">
@@ -168,7 +199,7 @@ export default function App() {
               <div>
                 <h3 style={{ fontSize: "1.05rem", marginBottom: 2 }}>Host a new quiz</h3>
                 <p className="muted" style={{ fontSize: "0.82rem" }}>
-                  Configure custom rounds, upload CSV templates, and control live pacing
+                  Sign in to configure rounds, upload CSV templates, and control live pacing
                 </p>
               </div>
             </div>
