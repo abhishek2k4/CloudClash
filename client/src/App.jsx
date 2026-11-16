@@ -28,7 +28,8 @@ export default function App() {
     // fragment. Read the result before cleaning the URL so users get feedback.
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const queryParams = new URLSearchParams(window.location.search);
-    const params = hashParams.has("type") ? hashParams : queryParams;
+    const hasHashAuthResult = hashParams.has("type") || hashParams.has("error") || hashParams.has("error_code");
+    const params = hasHashAuthResult ? hashParams : queryParams;
     const confirmationType = params.get("type");
     const hasConfirmationToken = params.has("access_token") || params.has("token_hash");
 
