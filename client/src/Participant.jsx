@@ -23,6 +23,7 @@ export default function Participant({
   const [participant, setParticipant] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [question, setQuestion] = useState(null);
+  const [round, setRound] = useState(0);
   const [seconds, setSeconds] = useState(0);
   const [totalSeconds, setTotalSeconds] = useState(20);
   const [selected, setSelected] = useState(null);
@@ -47,6 +48,7 @@ export default function Participant({
     setParticipant(p);
     setParticipants(r.snapshot?.participants || []);
     setStatus(r.snapshot?.status || "waiting");
+    setRound(r.snapshot?.round || 0);
     setLeaderboard(r.snapshot?.leaderboard || []);
     setPersonalReport(r.snapshot?.personalReport || null);
     setPersonalRoundReport(r.snapshot?.personalRoundReport || null);
@@ -77,6 +79,7 @@ export default function Participant({
     };
     const onQuestion = (q) => {
       if (participantRef.current?.eliminated) return;
+      setRound(q.round || 0);
       setQuestion(q);
       setSelected(null);
       setSubmitted(false);
@@ -92,10 +95,12 @@ export default function Participant({
       setSubmitted(true);
     };
     const onRound = (d) => {
+      setRound(d.round || 0);
       setStatus("running");
       setResult({ message: "Round " + d.round + " is starting" });
     };
     const onBreak = (d) => {
+      setRound(d.round || 0);
       setStatus("round_break");
       setQuestion(null);
       setLeaderboard([]);
