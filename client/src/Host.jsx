@@ -1472,17 +1472,23 @@ export default function Host({ onHome, onActivityChange }) {
         </section>
       )}
       {status === "finished" && (
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => {
-            setRoomCode("");
-            setStatus("idle");
-            setStage("room");
-          }}
-        >
-          Create Another Quiz
-        </button>
+        <div className="button-group" style={{ marginTop: 18 }}>
+          <button type="button" className="btn btn-secondary" onClick={requestHome}>
+            ← Back to Home
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setRoomCode("");
+              setRoomName("");
+              setStatus("idle");
+              setStage("room");
+            }}
+          >
+            Create Another Quiz
+          </button>
+        </div>
       )}
 
       {error && <div className="error-banner">{error}</div>}
