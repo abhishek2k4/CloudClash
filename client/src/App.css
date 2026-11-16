@@ -1400,3 +1400,11 @@ p {
 @media (prefers-reduced-motion: reduce) {
   .auth-toast { animation: none; }
 }
+
+
+/* Player profile */
+.profile-card { width: min(100%, 520px); }
+.profile-avatar { width: 58px; height: 58px; display:grid; place-items:center; margin: 0 0 20px; border-radius: 17px; background:var(--accent-cyan-dim); border:1px solid var(--accent-cyan-border); color:var(--accent-cyan); font:800 1.5rem var(--font-mono); }
+.profile-hint { color:var(--text-muted); font-size:.72rem; line-height:1.5; }
+.profile-counter { color:var(--text-muted); font: .65rem var(--font-mono); text-align:right; }
+.profile-card textarea { resize:vertical; min-height:110px; }
