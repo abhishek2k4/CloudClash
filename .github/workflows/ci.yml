@@ -1,7 +1,7 @@
 name: Cloud Clash CI
 on:
   push:
-    branches: [main, feat/event-ready-quiz-platform]
+    branches: [main, feat/event-ready-quiz-platform, feat/shared-account-auth]
   pull_request:
     branches: [main]
 jobs:
@@ -20,6 +20,7 @@ jobs:
         run: |
           cd server
           node --check index.js
+          node --check persistence.js
           node --check load-test/simulate.js
       - name: Build frontend
         run: |
