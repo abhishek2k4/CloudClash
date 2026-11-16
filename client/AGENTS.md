@@ -2,13 +2,23 @@
 
 Read the repository root `AGENTS.md` first. This file adds frontend-specific constraints.
 
+## Source layout
+
+- `src/app/`: application bootstrap and top-level navigation.
+- `src/features/`: feature-owned screens and UI (host, participant, account, profile).
+- `src/services/`: external integrations such as Supabase Auth and Socket.IO.
+- `src/styles/global.css`: existing application-wide styles during the incremental CSS migration.
+- `src/index.css`: baseline reset and root sizing.
+
+Keep new feature-specific components and styles inside their owning feature. Use CSS Modules for component-scoped styles as components are extracted; do not move existing selectors blindly when ownership is shared.
+
 ## Responsibilities and boundaries
 
-- `App.jsx` owns top-level navigation, auth bootstrap, the current signed-in session/profile state and the shared join prefill.
-- `Host.jsx` owns the host-facing setup, question authoring/import, archive display, room controls, round transitions and host leaderboard presentation.
-- `Participant.jsx` owns guest/signed-in participant entry, live question interaction, round/final reports and participant-side status.
-- `Account.jsx` and `Profile.jsx` are UI surfaces; auth and profile network/session logic belongs in `auth.js`.
-- `socket.js` exports the shared Socket.IO client used by the application.
+- `app/App.jsx` owns top-level navigation, auth bootstrap, the current signed-in session/profile state and the shared join prefill.
+- `features/host/Host.jsx` owns the host-facing setup, question authoring/import, archive display, room controls, round transitions and host leaderboard presentation.
+- `features/participant/Participant.jsx` owns guest/signed-in participant entry, live question interaction, round/final reports and participant-side status.
+- `features/account/Account.jsx` and `features/profile/Profile.jsx` are UI surfaces; auth and profile network/session logic belongs in `services/auth.js`.
+- `services/socket.js` exports the shared Socket.IO client used by the application.
 
 Follow the existing structure unless a task requires a deliberate refactor. Avoid splitting files or introducing state-management libraries just to make a narrow change.
 
