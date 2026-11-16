@@ -346,10 +346,6 @@ export default function Host({ onHome, onActivityChange }) {
         setCounts(r.counts);
         setRoundUploads((s) => ({ ...s, [n]: `${r.counts[n]} questions verified` }));
         setImportStatus(`Round ${n} question bank uploaded.`);
-        if (Array.from({ length: rounds }, (_, i) => i + 1).every((k) => (r.counts[k] || 0) > 0)) {
-          setStatus("waiting");
-          setStage("lobby");
-        }
       }, () => {
         setRoundUploads((s) => ({ ...s, [n]: "Upload failed — check the CSV headers and format" }));
       });
@@ -668,6 +664,9 @@ export default function Host({ onHome, onActivityChange }) {
   if (stage === "method") {
     return (
       <main className="app-shell">
+        <button className="back-link" onClick={() => setStage("lobby")}>
+          ← Back to Host Dashboard
+        </button>
         <header style={{ marginBottom: 24 }}>
           <p className="eyebrow">STEP 02 · QUESTION AUTHORING</p>
           <h1>{roomName}</h1>
@@ -787,6 +786,25 @@ export default function Host({ onHome, onActivityChange }) {
         </div>
 
         {error && <div className="error-banner">{error}</div>}
+
+        <div className="sticky-footer">
+          <div className="sticky-footer-inner">
+            <span className="mono muted">
+              {Array.from({ length: rounds }, (_, i) => i + 1).filter((n) => (counts[n] || 0) > 0).length}/{rounds} ROUNDS READY
+            </span>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={Array.from({ length: rounds }, (_, i) => i + 1).some((n) => (counts[n] || 0) < 1)}
+              onClick={() => {
+                setStatus("waiting");
+                setStage("lobby");
+              }}
+            >
+              Continue to Host Dashboard →
+            </button>
+          </div>
+        </div>
       </main>
     );
   }
