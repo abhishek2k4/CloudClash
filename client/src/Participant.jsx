@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
+import { getSession } from "./auth";
 import "./App.css";
 
 const getInitials = (name = "") =>
@@ -69,6 +70,9 @@ export default function Participant({
   }, []);
 
   useEffect(() => {
+    socket.auth = (callback) => {
+      getSession().then((current) => callback(current?.accessToken ? { accessToken: current.accessToken } : {})).catch(() => callback({}));
+    };
     const people = setParticipants;
     const onStatus = (nextStatus) => {
       setStatus(nextStatus);
@@ -179,6 +183,7 @@ export default function Participant({
       socket.off("competition_cancelled", onCancelled);
       socket.off("connect", connect);
       socket.disconnect();
+      socket.auth = {};
     };
   }, [apply]);
 
