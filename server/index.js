@@ -90,7 +90,7 @@ function finishQuiz(){
  const board=leaderboard();
  if(roomOwnerId&&roomCode){
   const archive={host_user_id:roomOwnerId,room_name:roomName,room_code:roomCode,rounds,completed_at:new Date().toISOString(),participant_count:participants.size,leaderboard:board,quiz_settings:quizSettings,question_counts:Object.fromEntries(Array.from({length:rounds},(_,i)=>[i+1,roundQuestions(i+1).length]))};
-  archiveCompletedQuiz(archive).then(()=>console.log("Archived completed quiz",roomCode)).catch(e=>console.error("Could not archive completed quiz:",e.message));
+  archiveCompletedQuiz(archive).then(()=>{console.log("Archived completed quiz",roomCode);io.to("host").emit("quiz_archived");}).catch(e=>{console.error("Could not archive completed quiz:",e.message);io.to("host").emit("quiz_archive_error",{message:"This quiz could not be saved to your archive. Check the server Supabase configuration."});});
  }
  io.to("host").emit("competition_finished",{resultsRevealed:false});
  for(const client of io.of("/").sockets.values()){if(client.rooms.has("competition")){const own=board.find(p=>p.id===client.data.participantId);client.emit("competition_finished",{resultsRevealed:false});client.emit("personal_final_report",{report:own||null});}}
