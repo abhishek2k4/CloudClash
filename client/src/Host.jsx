@@ -41,6 +41,7 @@ export default function Host({ onHome, onActivityChange }) {
   const [question, setQuestion] = useState(null);
   const [seconds, setSeconds] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [resultsRevealed, setResultsRevealed] = useState(false);
   const [leaderboardView, setLeaderboardView] = useState("overall");
   const [leaderboardRound, setLeaderboardRound] = useState(1);
   const [expandedPlayerId, setExpandedPlayerId] = useState(null);
@@ -98,6 +99,7 @@ export default function Host({ onHome, onActivityChange }) {
     setRound(response.round || 0);
     setQuestion(response.question || null);
     setLeaderboard(response.leaderboard || []);
+    setResultsRevealed(Boolean(response.resultsRevealed));
     setExpandedPlayerId(response.leaderboard?.[0]?.id || null);
     setEliminationsConfirmed(response.eliminationsConfirmed ?? true);
     if (response.status === "round_break") {
@@ -145,8 +147,8 @@ export default function Host({ onHome, onActivityChange }) {
       setRoundElimination((current) => current ? { ...current, eliminatedCandidates: [], advancingCount: d.advancingCount } : current);
     };
     const onFinish = (d) => {
-      setLeaderboard(d.leaderboard || []);
-      setExpandedPlayerId(d.leaderboard?.[0]?.id || null);
+      setLeaderboard([]);
+      setResultsRevealed(false);
       setStatus("finished");
       setQuestion(null);
     };
@@ -162,6 +164,7 @@ export default function Host({ onHome, onActivityChange }) {
     socket.on("round_finished", onBreak);
     socket.on("eliminations_confirmed", onEliminationsConfirmed);
     socket.on("competition_finished", onFinish);
+    socket.on("final_leaderboard_revealed", onRevealFinal);
     socket.connect();
 
     return () => {
@@ -176,6 +179,7 @@ export default function Host({ onHome, onActivityChange }) {
       socket.off("round_finished", onBreak);
       socket.off("eliminations_confirmed", onEliminationsConfirmed);
       socket.off("competition_finished", onFinish);
+      socket.off("final_leaderboard_revealed", onRevealFinal);
       socket.disconnect();
     };
   }, [apply]);
@@ -1305,8 +1309,16 @@ export default function Host({ onHome, onActivityChange }) {
         </section>
       )}
 
-      {status === "finished" && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
-      {(status === "round_break" || status === "finished") && (
+      {status === "finished" && resultsRevealed && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
+      {status === "finished" && !resultsRevealed && (
+        <section className="surface-card final-reveal-card">
+          <p className="eyebrow">FINAL ROUND COMPLETE</p>
+          <h2>Results are locked.</h2>
+          <p className="muted">The final standings are hidden from everyone. Reveal them when you're ready to announce the winners.</p>
+          <button type="button" className="btn btn-primary btn-full" onClick={() => action("reveal_final_leaderboard")}>👑 Reveal Final Leaderboard</button>
+        </section>
+      )}
+      {(status === "round_break" || (status === "finished" && resultsRevealed)) && (
         <section className="surface-card host-leaderboard">
           <div className="section-header host-leaderboard-heading">
             <div><p className="eyebrow">TELEMETRY STANDINGS</p><h2>{status === "finished" ? "Final Leaderboard" : "Current Leaderboard"}</h2></div>
