@@ -29,6 +29,8 @@ export default function Participant({
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [personalReport, setPersonalReport] = useState(null);
+  const [resultsRevealed, setResultsRevealed] = useState(false);
   const [expandedRoundReport, setExpandedRoundReport] = useState(false);
   const [status, setStatus] = useState("waiting");
   const [eliminated, setEliminated] = useState(false);
@@ -45,6 +47,8 @@ export default function Participant({
     setParticipants(r.snapshot?.participants || []);
     setStatus(r.snapshot?.status || "waiting");
     setLeaderboard(r.snapshot?.leaderboard || []);
+    setPersonalReport(r.snapshot?.personalReport || null);
+    setResultsRevealed(Boolean(r.snapshot?.resultsRevealed));
     setEliminated(Boolean(r.snapshot?.eliminated));
     const snapQ = r.snapshot?.question || null;
     setQuestion(snapQ);
@@ -105,8 +109,14 @@ export default function Participant({
     };
     const onFinish = (d) => {
       setStatus("finished");
-      setLeaderboard(d.leaderboard || []);
+      setLeaderboard([]);
+      setResultsRevealed(false);
       setQuestion(null);
+    };
+    const onPersonalFinalReport = (d) => setPersonalReport(d.report || null);
+    const onFinalLeaderboardRevealed = (d) => {
+      setLeaderboard(d.leaderboard || []);
+      setResultsRevealed(true);
     };
     const onCancelled = () => {
       participantRef.current = null;
@@ -125,6 +135,8 @@ export default function Participant({
     socket.on("round_finished", onBreak);
     socket.on("eliminations_confirmed", onEliminationsConfirmed);
     socket.on("competition_finished", onFinish);
+    socket.on("personal_final_report", onPersonalFinalReport);
+    socket.on("final_leaderboard_revealed", onFinalLeaderboardRevealed);
     socket.on("competition_cancelled", onCancelled);
 
     const connect = () => {
@@ -151,6 +163,8 @@ export default function Participant({
       socket.off("round_finished", onBreak);
       socket.off("eliminations_confirmed", onEliminationsConfirmed);
       socket.off("competition_finished", onFinish);
+      socket.off("personal_final_report", onPersonalFinalReport);
+      socket.off("final_leaderboard_revealed", onFinalLeaderboardRevealed);
       socket.off("competition_cancelled", onCancelled);
       socket.off("connect", connect);
       socket.disconnect();
@@ -460,7 +474,7 @@ export default function Participant({
       )}
 
       {status === "finished" && (() => {
-        const mine = leaderboard.find((entry) => entry.id === participant?.id);
+        const mine = personalReport || leaderboard.find((entry) => entry.id === participant?.id);
         const stats = mine?.stats || {};
         return (
           <section className="surface-card personal-report">
@@ -493,8 +507,8 @@ export default function Participant({
         </section>
       )}
 
-      {status === "finished" && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
-      {(status === "round_break" || status === "finished") && (
+      {status === "finished" && resultsRevealed && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
+      {(status === "round_break" || (status === "finished" && resultsRevealed)) && (
         <section className="surface-card">
           <p className="eyebrow">SCOREBOARD</p>
           <h2>{status === "finished" ? "Final Standings" : "Current Standings"}</h2>
