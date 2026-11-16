@@ -164,7 +164,9 @@ export default function Participant({
       }
     };
 
+    const onConnectError = (err) => setError(err?.message || "Could not connect to the quiz server.");
     socket.on("connect", connect);
+    socket.on("connect_error", onConnectError);
     socket.connect();
 
     return () => {
@@ -182,6 +184,7 @@ export default function Participant({
       socket.off("final_leaderboard_revealed", onFinalLeaderboardRevealed);
       socket.off("competition_cancelled", onCancelled);
       socket.off("connect", connect);
+      socket.off("connect_error", onConnectError);
       socket.disconnect();
       socket.auth = {};
     };
