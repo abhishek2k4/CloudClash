@@ -168,7 +168,7 @@ export default function App() {
           <p className="eyebrow"><span className="eyebrow-dot" /> THE LIVE QUIZ ARENA</p>
           <h1>Think fast.<br /><span>Clash<br />harder.</span><img className="headline-underline" src="/assets/cloudclash/underline.svg" alt="" aria-hidden="true" /></h1>
           <p className="landing-hero-description">Big-brain questions. Split-second decisions. One leaderboard that keeps everyone on their toes.</p>
-          <div className="hero-proof"><span>✳</span> No installs. Just bring your competitive side.</div>
+          <div className="hero-proof"><span>⚡︎</span> No installs. Just bring your competitive side.</div>
         </div>
 
         <div className="landing-entry-stack">

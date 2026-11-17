@@ -1627,6 +1627,7 @@ body:has(.landing-shell) #root { background: #f5efe4; }
 .landing-hero-copy h1 .headline-underline {
   display:block; width:min(230px,42%); height:auto; margin:-4px 0 0 8px;
   transform:rotate(-3deg);
+  filter: brightness(0);
 }
 .hero-artwork { position:absolute; z-index:1; inset:0; pointer-events:none; overflow:visible; }
 .hero-art-trophy {
