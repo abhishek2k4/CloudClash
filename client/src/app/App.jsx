@@ -166,7 +166,7 @@ export default function App() {
       <section className="landing-hero-section">
         <div className="landing-hero-copy">
           <p className="eyebrow"><span className="eyebrow-dot" /> THE LIVE QUIZ ARENA</p>
-          <h1>Think fast.<br /><span>Clash harder.</span></h1>
+          <h1>Think fast.<br /><span>Clash harder.</span><img className="headline-underline" src="/assets/cloudclash/underline.svg" alt="" aria-hidden="true" /></h1>
           <p className="landing-hero-description">Big-brain questions. Split-second decisions. One leaderboard that keeps everyone on their toes.</p>
           <div className="hero-proof"><span>✳</span> No installs. Just bring your competitive side.</div>
         </div>
@@ -196,7 +196,12 @@ export default function App() {
           </button>
         </div>
 
-        <div className="hero-stamp" aria-hidden="true"><span>FAST</span><span>THINKING</span><b>ONLY</b></div>
+        <div className="hero-artwork" aria-hidden="true">
+          <img className="hero-art-explosion" src="/assets/cloudclash/explosion.svg" alt="" />
+          <img className="hero-art-trophy" src="/assets/cloudclash/trophy.svg" alt="" />
+          <img className="hero-art-lightning" src="/assets/cloudclash/lightning-bolt.svg" alt="" />
+          <img className="hero-art-strokes" src="/assets/cloudclash/accent-strokes.svg" alt="" />
+        </div>
       </section>
 
       <section className="showcase-section" aria-labelledby="showcase-title">
@@ -205,31 +210,20 @@ export default function App() {
           <h2 id="showcase-title">More than a quiz.<br /><em>It's game time.</em></h2>
           <p>Every second counts. Every point matters. Watch the room come alive as the leaderboard shifts.</p>
         </div>
-        <div className="arena-preview" aria-label="Illustrative preview of a live CloudClash quiz room">
-          <div className="preview-topbar"><span className="preview-brand">✳ CLOUDCLASH</span><span className="preview-live"><i /> LIVE ROUND 02</span><span className="preview-room">ROOM / A7K2Q</span></div>
-          <div className="preview-content">
-            <div className="preview-question">
-              <span className="preview-label">QUESTION 08 <b>·</b> SCIENCE & TECH</span>
-              <h3>Which protocol powers the modern web?</h3>
-              <div className="preview-options"><span><b>A</b> FTP</span><span className="preview-correct"><b>B</b> HTTP</span><span><b>C</b> SMTP</span><span><b>D</b> SSH</span></div>
-            </div>
-            <div className="preview-side">
-              <div className="preview-timer"><small>TIME LEFT</small><strong>00:12</strong><span>SECONDS</span></div>
-              <div className="preview-leaderboard"><div className="preview-board-title">TOP PLAYERS <span>↗</span></div><div><b>01</b><span>PixelPilot</span><strong>2,450</strong></div><div><b>02</b><span>byte_me</span><strong>2,180</strong></div><div><b>03</b><span>Nova.exe</span><strong>1,960</strong></div></div>
-            </div>
-          </div>
-          <div className="preview-bottom"><span>⚡ REAL-TIME SCORING</span><span>● 32 PLAYERS IN THE ROOM</span><span>ROUND 2 / 3</span></div>
+        <div className="feature-ribbon">
+          <article><span><img src="/assets/cloudclash/icons/live.svg" alt="" /></span><div><h3>Live & interactive</h3><p>Questions, timers and results in real time.</p></div></article>
+          <article><span><img src="/assets/cloudclash/icons/scoring.svg" alt="" /></span><div><h3>Smart scoring</h3><p>Fast answers. Weighted points. Real stakes.</p></div></article>
+          <article><span><img src="/assets/cloudclash/icons/events.svg" alt="" /></span><div><h3>Built for events</h3><p>Bring a room full of people into the game.</p></div></article>
         </div>
-        <p className="showcase-caption">A live-room concept preview · Actual gameplay UI may vary by screen and quiz state.</p>
       </section>
 
       <section className="built-for-section" id="built-for">
         <div className="section-kicker">MADE FOR THE MOMENT</div>
         <div className="built-for-heading"><h2>Bring your people.<br /><em>Bring the pressure.</em></h2><p>From a quick team face-off to a full-on campus showdown, CloudClash keeps the energy moving.</p></div>
         <div className="use-case-grid">
-          <article className="use-case-card use-case-orange"><span className="use-case-number">01</span><span className="use-case-icon">✳</span><h3>Campus events</h3><p>Turn your college crowd into a live, competitive arena.</p><span className="use-case-tag">STUDENT CLUBS · FESTS</span></article>
-          <article className="use-case-card use-case-yellow"><span className="use-case-number">02</span><span className="use-case-icon">⌁</span><h3>Team battles</h3><p>Get teams thinking together and competing for the top spot.</p><span className="use-case-tag">OFFICES · COMMUNITIES</span></article>
-          <article className="use-case-card use-case-ink"><span className="use-case-number">03</span><span className="use-case-icon">↗</span><h3>Just for fun</h3><p>Make your next hangout a little more interesting.</p><span className="use-case-tag">FRIENDS · GAME NIGHTS</span></article>
+          <article className="use-case-card use-case-orange"><span className="use-case-number">01</span><span className="use-case-icon"><img src="/assets/cloudclash/icons/college.svg" alt="" /></span><h3>Campus events</h3><p>Turn your college crowd into a live, competitive arena.</p><span className="use-case-tag">STUDENT CLUBS · FESTS</span></article>
+          <article className="use-case-card use-case-yellow"><span className="use-case-number">02</span><span className="use-case-icon"><img src="/assets/cloudclash/icons/workshop.svg" alt="" /></span><h3>Team battles</h3><p>Get teams thinking together and competing for the top spot.</p><span className="use-case-tag">OFFICES · COMMUNITIES</span></article>
+          <article className="use-case-card use-case-ink"><span className="use-case-number">03</span><span className="use-case-icon"><img src="/assets/cloudclash/icons/party.svg" alt="" /></span><h3>Just for fun</h3><p>Make your next hangout a little more interesting.</p><span className="use-case-tag">FRIENDS · GAME NIGHTS</span></article>
         </div>
       </section>
 
