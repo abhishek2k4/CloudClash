@@ -2051,3 +2051,158 @@ body:has(.landing-shell) #root { background:#f5efe4 !important; }
   }
   .landing-shell .quick-join-card { box-shadow:7px 7px 0 #f5b82e !important; }
 }
+
+
+/* Mobile landing page: intentional single-column composition */
+@media (max-width:760px) {
+  .landing-shell {
+    width:100%;
+    max-width:100%;
+    padding:0 20px;
+    overflow:hidden;
+  }
+  .landing-shell .brand-bar.landing-nav {
+    min-height:auto;
+    padding:16px 0 0;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .landing-shell .brand-lockup { flex:0 0 auto; }
+  .landing-shell .landing-header-actions {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-left:auto;
+  }
+  .landing-shell .landing-header-actions .account-header {
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .landing-shell .landing-header-actions .btn {
+    padding:8px 10px;
+    font-size:.72rem;
+  }
+  .landing-shell .header-account-email,
+  .live-arena-pill { display:none !important; }
+  .landing-nav-links {
+    order:3;
+    display:flex;
+    width:100%;
+    gap:24px;
+    margin:0;
+    padding:0;
+    overflow-x:auto;
+    scrollbar-width:none;
+    border-top:1px solid rgba(23,23,23,.12);
+  }
+  .landing-nav-links::-webkit-scrollbar { display:none; }
+  .landing-nav-links a {
+    flex:0 0 auto;
+    padding:13px 0 14px;
+    font-size:.76rem;
+  }
+  .landing-nav-links a.is-active::after { bottom:6px; }
+  .landing-hero-section {
+    display:flex !important;
+    flex-direction:column;
+    align-items:stretch;
+    gap:26px;
+    min-height:0;
+    padding:42px 0 48px;
+    background:#f5efe4 !important;
+    background-image:none !important;
+  }
+  .landing-hero-copy {
+    width:100%;
+    max-width:none;
+    align-self:auto;
+  }
+  .landing-shell .landing-hero-copy > .eyebrow { margin-bottom:13px; }
+  .hero-display-title {
+    display:flex !important;
+    width:100%;
+    margin:16px 0 22px !important;
+    gap:2px !important;
+    font-size:clamp(3.1rem,11.5vw,4.4rem) !important;
+    line-height:.84 !important;
+    letter-spacing:-.035em !important;
+    transform:rotate(-1.4deg) skewX(-2deg) !important;
+  }
+  .landing-shell .hero-display-title .hero-title-light {
+    width:max-content;
+    max-width:100%;
+    margin:0 0 4px;
+    padding-left:4px;
+    white-space:nowrap;
+  }
+  .landing-shell .hero-display-title .hero-title-highlight {
+    width:max-content;
+    max-width:100%;
+    margin-left:-4px;
+    padding:6px 12px 9px 10px;
+    white-space:nowrap;
+    font-size:inherit !important;
+    line-height:.88 !important;
+  }
+  .landing-shell .landing-hero-description {
+    max-width:470px;
+    margin-top:22px;
+    font-size:.94rem;
+    line-height:1.55;
+  }
+  .landing-shell .hero-proof {
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px 11px;
+    margin-top:19px;
+    white-space:normal;
+    font-size:.69rem;
+    line-height:1.5;
+  }
+  .landing-shell .hero-proof span { font-size:1rem; }
+  .landing-entry-stack {
+    width:100%;
+    max-width:none;
+    margin:0;
+    align-self:stretch;
+    gap:12px;
+  }
+  .landing-shell .quick-join-card {
+    width:100%;
+    padding:20px;
+    border-radius:14px;
+    box-shadow:7px 7px 0 #f5b82e !important;
+  }
+  .landing-shell .quick-join-header h2 { font-size:1.55rem; }
+  .landing-shell .host-launch-card {
+    width:100%;
+    min-height:76px;
+    padding:15px;
+  }
+  .landing-shell .host-launch-copy small { max-width:none; }
+  /* The desktop collage is deliberately omitted on narrow screens.
+     It must not sit underneath text or form controls. */
+  .landing-hero-section .hero-artwork { display:none !important; }
+  .landing-shell .showcase-section,
+  .landing-shell .how-section { padding:58px 0; }
+  .landing-shell .built-for-section {
+    margin-left:-20px;
+    margin-right:-20px;
+    padding-left:20px;
+    padding-right:20px;
+  }
+  .landing-shell .landing-cta { margin-left:-20px; margin-right:-20px; }
+}
+@media (max-width:430px) {
+  .landing-shell { padding-left:16px; padding-right:16px; }
+  .landing-shell .brand-name { font-size:.88rem; }
+  .landing-shell .brand-mark { width:32px; height:32px; }
+  .landing-shell .landing-header-actions .btn { padding:7px 9px; font-size:.66rem; }
+  .landing-nav-links { gap:19px; }
+  .hero-display-title { font-size:clamp(2.85rem,11.4vw,3.4rem) !important; }
+  .landing-shell .quick-join-card { padding:17px; }
+  .landing-shell .built-for-section { margin-left:-16px; margin-right:-16px; padding-left:16px; padding-right:16px; }
+  .landing-shell .landing-cta { margin-left:-16px; margin-right:-16px; }
+}
