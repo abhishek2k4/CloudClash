@@ -2267,3 +2267,26 @@ body:has(.landing-shell) #root { background:#f5efe4 !important; }
     z-index:1;
   }
 }
+
+
+/* SVG artwork intentionally removed; reserved space for user-supplied assets */
+.landing-hero-section {
+  background-image:none !important;
+  background-color:#f5efe4 !important;
+}
+.landing-hero-section .hero-artwork { display:none !important; }
+.landing-shell .brand-mark img,
+.landing-shell .feature-ribbon img,
+.landing-shell .use-case-icon img { display:none !important; }
+.landing-shell .brand-mark {
+  display:inline-block;
+  width:38px;
+  height:38px;
+  border-radius:10px;
+  background:#ff642e;
+}
+.landing-shell .feature-ribbon article>span,
+.landing-shell .use-case-icon { display:none !important; }
+@media (max-width:760px) {
+  .landing-hero-section { background-image:none !important; }
+}
