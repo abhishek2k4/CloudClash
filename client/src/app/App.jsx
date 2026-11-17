@@ -143,7 +143,7 @@ export default function App() {
 
       <header className="brand-bar landing-nav">
         <a className="brand-lockup" href="/" onClick={(event) => { event.preventDefault(); navigate("/"); }} aria-label="CloudClash home">
-          <span className="brand-mark"><img src="/assets/cloudclash/logo-mark.svg" alt="" /></span>
+          <span className="brand-mark" aria-hidden="true" />
           <span className="brand-name">CLOUD<span>CLASH</span></span>
         </a>
         <nav className="landing-nav-links" aria-label="Main navigation">
@@ -199,12 +199,6 @@ export default function App() {
           </button>
         </div>
 
-        <div className="hero-artwork" aria-hidden="true">
-          <img className="hero-art-explosion" src="/assets/cloudclash/explosion.svg" alt="" />
-          <img className="hero-art-trophy" src="/assets/cloudclash/trophy.svg" alt="" />
-          <img className="hero-art-lightning" src="/assets/cloudclash/lightning-bolt.svg" alt="" />
-          <img className="hero-art-strokes" src="/assets/cloudclash/accent-strokes.svg" alt="" />
-        </div>
       </section>
 
       <section className="showcase-section" id="features" aria-labelledby="showcase-title">
@@ -214,9 +208,9 @@ export default function App() {
           <p>Every second counts. Every point matters. Watch the room come alive as the leaderboard shifts.</p>
         </div>
         <div className="feature-ribbon">
-          <article><span><img src="/assets/cloudclash/icons/live.svg" alt="" /></span><div><h3>Live & interactive</h3><p>Questions, timers and results in real time.</p></div></article>
-          <article><span><img src="/assets/cloudclash/icons/scoring.svg" alt="" /></span><div><h3>Smart scoring</h3><p>Fast answers. Weighted points. Real stakes.</p></div></article>
-          <article><span><img src="/assets/cloudclash/icons/events.svg" alt="" /></span><div><h3>Built for events</h3><p>Bring a room full of people into the game.</p></div></article>
+          <article><div><h3>Live & interactive</h3><p>Questions, timers and results in real time.</p></div></article>
+          <article><div><h3>Smart scoring</h3><p>Fast answers. Weighted points. Real stakes.</p></div></article>
+          <article><div><h3>Built for events</h3><p>Bring a room full of people into the game.</p></div></article>
         </div>
       </section>
 
@@ -224,9 +218,9 @@ export default function App() {
         <div className="section-kicker">MADE FOR THE MOMENT</div>
         <div className="built-for-heading"><h2>Bring your people.<br /><em>Bring the pressure.</em></h2><p>From a quick team face-off to a full-on campus showdown, CloudClash keeps the energy moving.</p></div>
         <div className="use-case-grid">
-          <article className="use-case-card use-case-orange"><span className="use-case-number">01</span><span className="use-case-icon"><img src="/assets/cloudclash/icons/college.svg" alt="" /></span><h3>Campus events</h3><p>Turn your college crowd into a live, competitive arena.</p><span className="use-case-tag">STUDENT CLUBS · FESTS</span></article>
-          <article className="use-case-card use-case-yellow"><span className="use-case-number">02</span><span className="use-case-icon"><img src="/assets/cloudclash/icons/workshop.svg" alt="" /></span><h3>Team battles</h3><p>Get teams thinking together and competing for the top spot.</p><span className="use-case-tag">OFFICES · COMMUNITIES</span></article>
-          <article className="use-case-card use-case-ink"><span className="use-case-number">03</span><span className="use-case-icon"><img src="/assets/cloudclash/icons/party.svg" alt="" /></span><h3>Just for fun</h3><p>Make your next hangout a little more interesting.</p><span className="use-case-tag">FRIENDS · GAME NIGHTS</span></article>
+          <article className="use-case-card use-case-orange"><span className="use-case-number">01</span><h3>Campus events</h3><p>Turn your college crowd into a live, competitive arena.</p><span className="use-case-tag">STUDENT CLUBS · FESTS</span></article>
+          <article className="use-case-card use-case-yellow"><span className="use-case-number">02</span><h3>Team battles</h3><p>Get teams thinking together and competing for the top spot.</p><span className="use-case-tag">OFFICES · COMMUNITIES</span></article>
+          <article className="use-case-card use-case-ink"><span className="use-case-number">03</span><h3>Just for fun</h3><p>Make your next hangout a little more interesting.</p><span className="use-case-tag">FRIENDS · GAME NIGHTS</span></article>
         </div>
       </section>
 
