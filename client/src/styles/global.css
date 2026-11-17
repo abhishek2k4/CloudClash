@@ -1614,3 +1614,73 @@ body:has(.landing-shell) #root { background: #f5efe4; }
 @media (prefers-reduced-motion: reduce) {
   .landing-shell *, .landing-shell *::before, .landing-shell *::after { scroll-behavior:auto !important; transition:none !important; }
 }
+
+
+/* Original CloudClash SVG artwork integration */
+.landing-hero-section {
+  background-image: url("/assets/cloudclash/hero-background.svg");
+  background-repeat: no-repeat;
+  background-position: center 34%;
+  background-size: 100% 100%;
+}
+.landing-hero-copy h1 { max-width: 760px; }
+.landing-hero-copy h1 .headline-underline {
+  display:block; width:min(230px,42%); height:auto; margin:-4px 0 0 8px;
+  transform:rotate(-3deg);
+}
+.hero-artwork { position:absolute; z-index:1; inset:0; pointer-events:none; overflow:visible; }
+.hero-art-trophy {
+  position:absolute; width:clamp(145px,19vw,245px); height:auto;
+  left:39%; bottom:5%; z-index:2; filter:drop-shadow(7px 9px 0 rgba(23,23,23,.12));
+  transform:rotate(-8deg);
+}
+.hero-art-explosion {
+  position:absolute; width:clamp(190px,24vw,310px); height:auto;
+  left:37%; bottom:6%; z-index:1; transform:rotate(10deg);
+}
+.hero-art-lightning {
+  position:absolute; width:clamp(100px,13vw,165px); height:auto;
+  right:-2.5%; top:6%; z-index:0; transform:rotate(9deg); opacity:.92;
+}
+.hero-art-strokes {
+  position:absolute; width:clamp(90px,12vw,145px); height:auto;
+  left:43%; top:11%; z-index:1; transform:rotate(-12deg);
+}
+.landing-entry-stack { z-index:3; }
+.landing-hero-copy { position:relative; z-index:2; }
+.landing-hero-copy h1 { font-size:clamp(3.7rem,7vw,7.25rem); line-height:.9; }
+.feature-ribbon {
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0;
+  margin-top:38px; border-top:1px solid rgba(23,23,23,.16); border-bottom:1px solid rgba(23,23,23,.16);
+}
+.feature-ribbon article { display:flex; align-items:center; gap:15px; padding:24px 22px 24px 0; }
+.feature-ribbon article+article { padding-left:22px; border-left:1px solid rgba(23,23,23,.16); }
+.feature-ribbon article>span {
+  display:grid; place-items:center; flex:0 0 43px; width:43px; height:43px;
+  border:1px solid rgba(23,23,23,.18); border-radius:9px; background:#f5b82e;
+}
+.feature-ribbon img { width:23px; height:23px; display:block; }
+.feature-ribbon h3 { color:#171717; font-size:.9rem; letter-spacing:-.03em; }
+.feature-ribbon p { margin-top:4px; color:#625e57; font-size:.72rem; line-height:1.5; }
+.use-case-icon { display:grid; place-items:center; width:48px; height:48px; }
+.use-case-icon img { display:block; width:35px; height:35px; }
+.use-case-ink .use-case-icon img { filter:invert(1); }
+@media (max-width:900px) {
+  .hero-art-trophy { left:34%; bottom:2%; }
+  .hero-art-explosion { left:32%; bottom:3%; }
+  .hero-art-lightning { right:-3%; top:10%; }
+}
+@media (max-width:700px) {
+  .landing-hero-section { background-size:auto 100%; background-position:center; }
+  .landing-hero-copy h1 { max-width:100%; font-size:clamp(3.5rem,14vw,5.5rem); }
+  .landing-hero-copy h1 .headline-underline { width:145px; margin-top:-1px; }
+  .hero-artwork { inset:0; }
+  .hero-art-trophy { width:118px; left:auto; right:3px; bottom:8px; opacity:.96; }
+  .hero-art-explosion { width:150px; left:auto; right:-8px; bottom:3px; }
+  .hero-art-lightning { width:80px; right:-13px; top:4px; }
+  .hero-art-strokes { width:75px; left:auto; right:115px; top:41%; }
+  .landing-entry-stack { margin-bottom:30px; }
+  .feature-ribbon { grid-template-columns:1fr; margin-top:26px; }
+  .feature-ribbon article, .feature-ribbon article+article { padding:15px 0; border-left:0; }
+  .feature-ribbon article+article { border-top:1px solid rgba(23,23,23,.13); }
+}
