@@ -1684,3 +1684,23 @@ body:has(.landing-shell) #root { background: #f5efe4; }
   .feature-ribbon article, .feature-ribbon article+article { padding:15px 0; border-left:0; }
   .feature-ribbon article+article { border-top:1px solid rgba(23,23,23,.13); }
 }
+
+
+/* Desktop hero polish after visual review */
+.landing-hero-copy h1 { line-height:.82; letter-spacing:-.09em; }
+.landing-hero-copy h1 span { display:inline-block; }
+.landing-hero-copy h1 .headline-underline { margin-top:5px; width:190px; }
+.hero-art-trophy { width:clamp(155px,17vw,215px); left:39%; bottom:8%; }
+.hero-art-explosion { width:clamp(185px,21vw,270px); left:37%; bottom:7%; }
+.hero-art-lightning { width:clamp(80px,10vw,125px); right:-1%; top:0; transform:rotate(9deg); }
+.hero-art-strokes { left:42%; top:8%; }
+@media (max-width:1100px) and (min-width:701px) {
+  .landing-hero-copy h1 { font-size:clamp(3.6rem,6.8vw,6.1rem); }
+  .hero-art-trophy { left:35%; bottom:6%; width:175px; }
+  .hero-art-explosion { left:33%; bottom:5%; width:220px; }
+}
+@media (max-width:700px) {
+  .landing-hero-copy h1 { line-height:.86; }
+  .hero-art-trophy { width:108px; bottom:5px; }
+  .hero-art-explosion { width:140px; bottom:0; }
+}
