@@ -1476,7 +1476,7 @@ body:has(.landing-shell) #root { background: #f5efe4; }
 .landing-entry-stack { position:relative; z-index:2; display:flex; flex-direction:column; gap:12px; }
 .landing-shell .quick-join-card {
   padding:26px; gap:17px; border:1px solid rgba(23,23,23,.15); border-radius:12px;
-  background:#fffaf1; box-shadow:12px 12px 0 #f5b82e;
+  background:#fffaf1; box-shadow:8px 8px 0 #f5b82e;
 }
 .landing-shell .quick-join-header { align-items:flex-start; }
 .landing-shell .quick-join-header .eyebrow { margin-bottom:8px; }
@@ -1581,7 +1581,7 @@ body:has(.landing-shell) #root { background: #f5efe4; }
   .landing-hero-description { max-width:440px; font-size:.96rem; }
   .hero-proof { margin-top:20px; font-size:.74rem; }
   .landing-entry-stack { width:100%; max-width:480px; }
-  .landing-shell .quick-join-card { padding:21px; box-shadow:7px 7px 0 #f5b82e; }
+  .landing-shell .quick-join-card { padding:21px; box-shadow:8px 8px 0 #f5b82e; }
   .hero-stamp { right:10px; bottom:23px; width:76px; height:76px; font-size:.45rem; }
   .hero-stamp b { font-size:.6rem; }
   .showcase-section, .built-for-section, .how-section { padding:72px 0; }
@@ -1840,7 +1840,7 @@ body:has(.landing-shell) #root { background: #f5efe4; }
   .landing-shell .landing-hero-description { max-width:450px; margin-top:23px; font-size:.95rem; }
   .landing-shell .hero-proof { flex-wrap:wrap; white-space:normal; font-size:.72rem; }
   .landing-entry-stack { width:100%; max-width:500px; margin:0 auto 40px; }
-  .landing-shell .quick-join-card { padding:21px; box-shadow:0 10px 22px rgba(0,0,0,.28); }
+  .landing-shell .quick-join-card { padding:21px; box-shadow:8px 8px 0 #f5b82e; }
   .hero-art-trophy { width:108px; left:auto; right:12px; bottom:0; }
   .hero-art-explosion { width:145px; left:auto; right:0; bottom:-5px; }
   .hero-art-lightning { width:82px; right:-8px; top:50%; }
@@ -2000,7 +2000,7 @@ body:has(.landing-shell) #root { background:#f5efe4 !important; }
   background:#fffaf1 !important;
   color:#171717 !important;
   border-color:rgba(23,23,23,.15) !important;
-  box-shadow:12px 12px 0 #f5b82e !important;
+  box-shadow:8px 8px 0 #f5b82e !important;
 }
 .landing-shell .quick-join-header h2 { color:#171717 !important; }
 .landing-shell .quick-join-header .eyebrow { color:#ff642e !important; }
@@ -2049,7 +2049,7 @@ body:has(.landing-shell) #root { background:#f5efe4 !important; }
     background-size:auto 75% !important;
     background-position:right bottom !important;
   }
-  .landing-shell .quick-join-card { box-shadow:7px 7px 0 #f5b82e !important; }
+  .landing-shell .quick-join-card { box-shadow:8px 8px 0 #f5b82e !important; }
 }
 
 
@@ -2299,13 +2299,13 @@ body:has(.landing-shell) #root { background:#f5efe4 !important; }
 }
 .landing-shell .quick-join-card {
   width:100%;
-  box-shadow:12px 12px 0 #f5b82e, 12px 0 0 #f5b82e !important;
+  box-shadow:8px 8px 0 #f5b82e !important;
 }
 .landing-shell .host-launch-card {
   background:#fffaf1 !important;
   color:#171717 !important;
   border:1px solid rgba(23,23,23,.15) !important;
-  box-shadow:8px 8px 0 #f5b82e !important;
+  box-shadow:8px 8px 0 #171717 !important;
   border-radius:12px !important;
 }
 .landing-shell .host-launch-card:hover {
@@ -2323,25 +2323,8 @@ body:has(.landing-shell) #root { background:#f5efe4 !important; }
 @media (max-width:760px) {
   .landing-entry-stack { padding-right:9px; padding-bottom:9px; }
   .landing-shell .quick-join-card {
-    box-shadow:7px 7px 0 #f5b82e, 7px 0 0 #f5b82e !important;
-  }
-  .landing-shell .host-launch-card { box-shadow:6px 6px 0 #f5b82e !important; }
-}
-
-
-/* Consistent 8px offset shadows at every viewport */
-.landing-shell .quick-join-card {
-  box-shadow:8px 8px 0 #f5b82e !important;
-}
-.landing-shell .host-launch-card {
-  box-shadow:8px 8px 0 #171717 !important;
-}
-@media (max-width:760px) {
-  .landing-shell .quick-join-card,
-  .landing-shell .host-launch-card {
     box-shadow:8px 8px 0 #f5b82e !important;
   }
-  .landing-shell .host-launch-card {
-    box-shadow:8px 8px 0 #171717 !important;
-  }
+  .landing-shell .host-launch-card { box-shadow:8px 8px 0 #171717 !important; }
 }
+
