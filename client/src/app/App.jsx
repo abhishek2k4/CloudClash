@@ -143,7 +143,7 @@ export default function App() {
 
       <header className="brand-bar landing-nav">
         <a className="brand-lockup" href="/" onClick={(event) => { event.preventDefault(); navigate("/"); }} aria-label="CloudClash home">
-          <span className="brand-mark" aria-hidden="true">✳</span>
+          <span className="brand-mark"><img src="/assets/cloudclash/logo-mark.svg" alt="" /></span>
           <span className="brand-name">CLOUD<span>CLASH</span></span>
         </a>
         <nav className="landing-nav-links" aria-label="Main navigation">
@@ -244,7 +244,7 @@ export default function App() {
       </section>
 
       <footer className="landing-footer">
-        <a className="brand-lockup" href="/" onClick={(event) => { event.preventDefault(); navigate("/"); }}><span className="brand-mark">✳</span><span className="brand-name">CLOUD<span>CLASH</span></span></a>
+        <a className="brand-lockup" href="/" onClick={(event) => { event.preventDefault(); navigate("/"); }}><span className="brand-mark"><img src="/assets/cloudclash/logo-mark.svg" alt="" /></span><span className="brand-name">CLOUD<span>CLASH</span></span></a>
         <span>ONE ROOM · ONE WINNER · NO INSTALLATION</span>
         <span>MADE FOR THE CLASH.</span>
       </footer>
