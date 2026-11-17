@@ -1511,7 +1511,7 @@ body:has(.landing-shell) #root { background: #f5efe4; }
 }
 .showcase-heading h2 em, .built-for-heading h2 em, .how-heading h2 em, .landing-cta h2 em { color:#ff642e; font-style:normal; }
 .showcase-heading>p, .built-for-heading>p, .how-heading>p { max-width:340px; color:#625e57; line-height:1.7; font-size:.94rem; }
-.arena-preview { padding:20px; border-radius:13px; background:#171717; color:#f5efe4; box-shadow:16px 16px 0 #f5b82e; }
+.arena-preview { padding:20px; border-radius:13px; background:#171717; color:#f5efe4; box-shadow:8px 8px 0 #f5b82e; }
 .preview-topbar, .preview-bottom { display:flex; align-items:center; justify-content:space-between; gap:14px; color:#a8a198; font:700 .61rem var(--font-mono); letter-spacing:.1em; }
 .preview-brand { color:#fffaf1; }
 .preview-live { display:flex; align-items:center; gap:7px; color:#f5b82e; }
@@ -2173,7 +2173,7 @@ body:has(.landing-shell) #root { background:#f5efe4 !important; }
     width:100%;
     padding:20px;
     border-radius:14px;
-    box-shadow:7px 7px 0 #f5b82e !important;
+    box-shadow:8px 8px 0 #f5b82e !important;
   }
   .landing-shell .quick-join-header h2 { font-size:1.55rem; }
   .landing-shell .host-launch-card {
