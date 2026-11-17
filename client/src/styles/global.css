@@ -2290,3 +2290,40 @@ body:has(.landing-shell) #root { background:#f5efe4 !important; }
 @media (max-width:760px) {
   .landing-hero-section { background-image:none !important; }
 }
+
+
+/* Keep the join-card offset shadow visible and give host action matching treatment */
+.landing-entry-stack {
+  padding-right:16px;
+  padding-bottom:14px;
+}
+.landing-shell .quick-join-card {
+  width:100%;
+  box-shadow:12px 12px 0 #f5b82e, 12px 0 0 #f5b82e !important;
+}
+.landing-shell .host-launch-card {
+  background:#fffaf1 !important;
+  color:#171717 !important;
+  border:1px solid rgba(23,23,23,.15) !important;
+  box-shadow:8px 8px 0 #f5b82e !important;
+  border-radius:12px !important;
+}
+.landing-shell .host-launch-card:hover {
+  background:#fffdf8 !important;
+  border-color:rgba(23,23,23,.28) !important;
+  transform:translateY(-2px);
+}
+.landing-shell .host-launch-card .host-launch-copy strong { color:#171717 !important; }
+.landing-shell .host-launch-card .host-launch-copy small { color:#625e57 !important; }
+.landing-shell .host-launch-card .host-launch-symbol {
+  background:#ff642e !important;
+  color:#171717 !important;
+}
+.landing-shell .host-launch-card .host-launch-arrow { color:#ff642e !important; }
+@media (max-width:760px) {
+  .landing-entry-stack { padding-right:9px; padding-bottom:9px; }
+  .landing-shell .quick-join-card {
+    box-shadow:7px 7px 0 #f5b82e, 7px 0 0 #f5b82e !important;
+  }
+  .landing-shell .host-launch-card { box-shadow:6px 6px 0 #f5b82e !important; }
+}
