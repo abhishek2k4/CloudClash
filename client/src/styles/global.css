@@ -2327,3 +2327,21 @@ body:has(.landing-shell) #root { background:#f5efe4 !important; }
   }
   .landing-shell .host-launch-card { box-shadow:6px 6px 0 #f5b82e !important; }
 }
+
+
+/* Consistent 8px offset shadows at every viewport */
+.landing-shell .quick-join-card {
+  box-shadow:8px 8px 0 #f5b82e !important;
+}
+.landing-shell .host-launch-card {
+  box-shadow:8px 8px 0 #171717 !important;
+}
+@media (max-width:760px) {
+  .landing-shell .quick-join-card,
+  .landing-shell .host-launch-card {
+    box-shadow:8px 8px 0 #f5b82e !important;
+  }
+  .landing-shell .host-launch-card {
+    box-shadow:8px 8px 0 #171717 !important;
+  }
+}
