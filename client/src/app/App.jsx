@@ -147,27 +147,30 @@ export default function App() {
           <span className="brand-name">CLOUD<span>CLASH</span></span>
         </a>
         <nav className="landing-nav-links" aria-label="Main navigation">
+          <a className="is-active" href="#" onClick={(event) => { event.preventDefault(); navigate("/"); }}>Home</a>
+          <a href="#features">Features</a>
           <a href="#how-it-works">How it works</a>
-          <a href="#built-for">Built for</a>
+          <a href="#built-for">Use cases</a>
         </nav>
         <div className="landing-header-actions">
+          <span className="live-arena-pill"><i /> LIVE ARENA</span>
           {session ? (
             <div className="account-header">
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/profile")}>Profile</button>
-              <span title={session.user?.email}>{session.user?.email || "Account"}</span>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={handleSignOut}>Sign out</button>
+              <span className="header-account-email" title={session.user?.email}>{session.user?.email || "Account"}</span>
+              <button type="button" className="btn btn-primary btn-sm" onClick={handleSignOut}>Sign out</button>
             </div>
           ) : (
-            <><button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/account")}>Sign in</button><button type="button" className="btn btn-primary btn-sm" onClick={() => navigate("/account/signup")}>Create account <span aria-hidden="true">↗</span></button></>
+            <><button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/account")}>Sign in</button><button type="button" className="btn btn-primary btn-sm" onClick={() => navigate("/account/signup")}>Create account</button></>
           )}
         </div>
       </header>
 
       <section className="landing-hero-section">
         <div className="landing-hero-copy">
-          <p className="eyebrow"><span className="eyebrow-dot" /> THE LIVE QUIZ ARENA</p>
-          <h1>Think fast.<br /><span>Clash<br />harder.</span><img className="headline-underline" src="/assets/cloudclash/underline.svg" alt="" aria-hidden="true" /></h1>
-          <p className="landing-hero-description">Big-brain questions. Split-second decisions. One leaderboard that keeps everyone on their toes.</p>
+          <p className="eyebrow"><span className="eyebrow-dot" /> REAL-TIME QUIZ PLATFORM</p>
+          <h1 className="hero-display-title"><span className="hero-title-light">THINK FAST.</span><span className="hero-title-highlight">CLASH HARDER.</span></h1>
+          <p className="landing-hero-description">Host engaging, multi-round trivia quizzes for college fests, workshops, team events or just a fun game night.</p>
           <div className="hero-proof"><span>⚡︎</span> No installs. Just bring your competitive side.</div>
         </div>
 
@@ -204,7 +207,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="showcase-section" aria-labelledby="showcase-title">
+      <section className="showcase-section" id="features" aria-labelledby="showcase-title">
         <div className="section-kicker">THE GAME IS ON</div>
         <div className="showcase-heading">
           <h2 id="showcase-title">More than a quiz.<br /><em>It's game time.</em></h2>
