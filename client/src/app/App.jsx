@@ -171,13 +171,13 @@ export default function App() {
           <p className="eyebrow"><span className="eyebrow-dot" /> REAL-TIME QUIZ PLATFORM</p>
           <h1 className="hero-display-title"><span className="hero-title-light">THINK FAST.</span><span className="hero-title-highlight">CLASH HARDER.</span></h1>
           <p className="landing-hero-description">Host engaging, multi-round trivia quizzes for college fests, workshops, team events or just a fun game night.</p>
-          <div className="hero-proof"><span>⚡︎</span> No installs. Just bring your competitive side.</div>
+          <div className="hero-proof"><span>⚡</span> Live &amp; Interactive <b>▥</b> Smart Scoring <b>♧</b> Built for Events</div>
         </div>
 
         <div className="landing-entry-stack">
           <form className="quick-join-card" onSubmit={handleQuickJoin}>
             <div className="quick-join-header">
-              <div><p className="eyebrow">01 / PLAYER ENTRY</p><h2>Got a room code?</h2></div>
+              <div><p className="eyebrow">01 / PLAYER ENTRY</p><h2>Join a room</h2></div>
               <span className="entry-icon" aria-hidden="true">↗</span>
             </div>
             <div className="field-group">
@@ -185,8 +185,8 @@ export default function App() {
               <input id="landing-code" className="input-control input-code" placeholder="ENTER CODE" maxLength={12} value={prefillJoin.code} onChange={(e) => setPrefillJoin((state) => ({ ...state, code: e.target.value.toUpperCase() }))} />
             </div>
             <div className="field-group">
-              <label className="field-label" htmlFor="landing-name">{profile.gameName ? "Saved game name" : "Your name"}</label>
-              <input id="landing-name" className="input-control" placeholder="What should we call you?" maxLength={40} value={prefillJoin.name} onChange={(e) => setPrefillJoin((state) => ({ ...state, name: e.target.value }))} />
+              <label className="field-label" htmlFor="landing-name">{profile.gameName ? "Saved game name" : "Display name"}</label>
+              <input id="landing-name" className="input-control" placeholder="Enter your name" maxLength={40} value={prefillJoin.name} onChange={(e) => setPrefillJoin((state) => ({ ...state, name: e.target.value }))} />
             </div>
             <button type="submit" className="btn btn-primary btn-full">Enter the arena <span aria-hidden="true">→</span></button>
             <p className="entry-footnote">Joining as a player? No account needed.</p>
@@ -194,7 +194,7 @@ export default function App() {
 
           <button type="button" className="host-launch-card" onClick={() => navigate("/host")}>
             <span className="host-launch-symbol" aria-hidden="true">＋</span>
-            <span className="host-launch-copy"><strong>Hosting instead?</strong><small>{session ? "Set up your next quiz room" : "Build a quiz and run the room"}</small></span>
+            <span className="host-launch-copy"><strong>Host a new quiz</strong><small>Sign in to configure rounds, upload CSV templates, and control live pacing.</small></span>
             <span className="host-launch-arrow" aria-hidden="true">↗</span>
           </button>
         </div>
