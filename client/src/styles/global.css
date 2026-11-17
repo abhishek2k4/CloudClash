@@ -2206,3 +2206,64 @@ body:has(.landing-shell) #root { background:#f5efe4 !important; }
   .landing-shell .built-for-section { margin-left:-16px; margin-right:-16px; padding-left:16px; padding-right:16px; }
   .landing-shell .landing-cta { margin-left:-16px; margin-right:-16px; }
 }
+
+
+/* Desktop artwork composition: align every hero SVG to the hero grid */
+@media (min-width:761px) {
+  .landing-hero-section { overflow:hidden; }
+  .landing-hero-section .hero-artwork {
+    position:absolute;
+    inset:0;
+    z-index:1;
+    overflow:hidden;
+    pointer-events:none;
+  }
+  .landing-hero-section .hero-art-explosion {
+    position:absolute;
+    left:36.5% !important;
+    right:auto !important;
+    bottom:7% !important;
+    top:auto !important;
+    width:205px !important;
+    max-width:18%;
+    height:auto;
+    transform:rotate(7deg) !important;
+    z-index:1;
+  }
+  .landing-hero-section .hero-art-trophy {
+    position:absolute;
+    left:39.2% !important;
+    right:auto !important;
+    bottom:8% !important;
+    top:auto !important;
+    width:158px !important;
+    max-width:14%;
+    height:auto;
+    transform:rotate(-3deg) !important;
+    z-index:2;
+  }
+  .landing-hero-section .hero-art-strokes {
+    position:absolute;
+    left:38% !important;
+    right:auto !important;
+    top:10% !important;
+    bottom:auto !important;
+    width:82px !important;
+    height:auto;
+    transform:rotate(-8deg) !important;
+    z-index:1;
+  }
+  .landing-hero-section .hero-art-lightning {
+    position:absolute;
+    left:auto !important;
+    right:1.5% !important;
+    top:-3% !important;
+    bottom:auto !important;
+    width:94px !important;
+    max-width:9%;
+    height:auto;
+    transform:rotate(8deg) !important;
+    opacity:.96;
+    z-index:1;
+  }
+}
