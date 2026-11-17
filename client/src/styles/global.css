@@ -1946,3 +1946,108 @@ body:has(.landing-shell) #root { background: #f5efe4; }
   .hero-art-trophy { width:112px !important; left:auto !important; right:12px !important; bottom:0 !important; }
   .hero-art-explosion { width:145px !important; left:auto !important; right:0 !important; bottom:-4px !important; }
 }
+
+
+/* Restore the original light Tangerine Riot canvas */
+body:has(.landing-shell) {
+  background:#f5efe4 !important;
+  background-image:none !important;
+  color:#171717 !important;
+}
+body:has(.landing-shell) #root { background:#f5efe4 !important; }
+.landing-shell {
+  background:#f5efe4 !important;
+  color:#171717 !important;
+}
+.landing-shell .brand-bar.landing-nav {
+  background:#f5efe4 !important;
+  border-bottom:1px solid rgba(23,23,23,.14) !important;
+}
+.landing-shell .brand-name { color:#171717 !important; }
+.landing-nav-links a { color:#625e57 !important; }
+.landing-nav-links a:hover, .landing-nav-links a.is-active { color:#171717 !important; }
+.landing-nav-links a.is-active::after { background:#ff642e !important; }
+.live-arena-pill {
+  color:#171717 !important;
+  border-color:rgba(23,23,23,.25) !important;
+}
+.landing-shell .btn-secondary {
+  background:transparent !important;
+  border-color:rgba(23,23,23,.24) !important;
+  color:#171717 !important;
+}
+.landing-shell .btn-secondary:hover { background:#eee5d8 !important; }
+.landing-shell .header-account-email { color:#777067 !important; }
+.landing-hero-section {
+  background-color:#f5efe4 !important;
+  background-image:url("/assets/cloudclash/hero-background.svg") !important;
+  background-repeat:no-repeat !important;
+  background-position:right center !important;
+  background-size:58% 100% !important;
+}
+.landing-shell .hero-display-title .hero-title-light {
+  color:#171717 !important;
+  -webkit-text-fill-color:#171717 !important;
+}
+.landing-shell .hero-display-title .hero-title-highlight {
+  color:#171717 !important;
+  -webkit-text-fill-color:#171717 !important;
+  background:#ff642e !important;
+}
+.landing-shell .landing-hero-description { color:#625e57 !important; }
+.landing-shell .hero-proof { color:#625e57 !important; }
+.landing-shell .quick-join-card {
+  background:#fffaf1 !important;
+  color:#171717 !important;
+  border-color:rgba(23,23,23,.15) !important;
+  box-shadow:12px 12px 0 #f5b82e !important;
+}
+.landing-shell .quick-join-header h2 { color:#171717 !important; }
+.landing-shell .quick-join-header .eyebrow { color:#ff642e !important; }
+.landing-shell .field-label { color:#777067 !important; }
+.landing-shell .input-control {
+  background:#fffdf8 !important;
+  border-color:rgba(23,23,23,.17) !important;
+  color:#171717 !important;
+}
+.landing-shell .input-control::placeholder { color:#8c857a !important; }
+.landing-shell .entry-footnote { color:#8c857a !important; }
+.landing-shell .host-launch-card {
+  background:#171717 !important;
+  border-color:rgba(23,23,23,.18) !important;
+  color:#f5efe4 !important;
+  box-shadow:none !important;
+}
+.landing-shell .host-launch-card strong { color:#fffaf1 !important; }
+.landing-shell .host-launch-card small { color:#bcb4a8 !important; }
+.landing-shell .showcase-section,
+.landing-shell .how-section {
+  background:#f5efe4 !important;
+  color:#171717 !important;
+  border-color:rgba(23,23,23,.15) !important;
+}
+.landing-shell .showcase-heading h2,
+.landing-shell .how-heading h2 { color:#171717 !important; }
+.landing-shell .showcase-heading>p,
+.landing-shell .how-heading>p { color:#625e57 !important; }
+.landing-shell .feature-ribbon { border-color:rgba(23,23,23,.16) !important; }
+.landing-shell .feature-ribbon article+article { border-color:rgba(23,23,23,.16) !important; }
+.landing-shell .feature-ribbon h3 { color:#171717 !important; }
+.landing-shell .feature-ribbon p { color:#625e57 !important; }
+.landing-shell .how-steps article { border-color:#171717 !important; }
+.landing-shell .how-steps h3 { color:#171717 !important; }
+.landing-shell .how-steps p { color:#625e57 !important; }
+.landing-shell .landing-footer {
+  background:#f5efe4 !important;
+  color:#777067 !important;
+  border-color:rgba(23,23,23,.16) !important;
+}
+.landing-shell .landing-footer .brand-name { color:#171717 !important; }
+@media (max-width:760px) {
+  .landing-hero-section {
+    background-color:#f5efe4 !important;
+    background-size:auto 75% !important;
+    background-position:right bottom !important;
+  }
+  .landing-shell .quick-join-card { box-shadow:7px 7px 0 #f5b82e !important; }
+}
