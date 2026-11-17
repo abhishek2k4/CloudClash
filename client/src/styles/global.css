@@ -2324,14 +2324,32 @@ body:has(.landing-shell) #root {
   font-size: 1.2rem;
 }
 
-/* Reserved Artwork Slots (Hidden until assets supplied) */
-.hero-artwork,
-.landing-shell .brand-mark img,
-.landing-shell .feature-ribbon img,
-.landing-shell .use-case-icon img,
-.landing-shell .feature-ribbon article > span,
-.landing-shell .use-case-icon {
+/* Non-hero CloudClash asset integration */
+.hero-artwork {
   display: none;
+}
+
+.landing-shell .brand-mark img {
+  display: block;
+  width: 23px;
+  height: 23px;
+  object-fit: contain;
+}
+
+.landing-shell .feature-icon {
+  display: block;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.landing-shell .use-case-icon {
+  display: block;
+  width: 42px;
+  height: 42px;
+  margin: 18px 0 10px;
+  object-fit: contain;
 }
 
 .hero-stamp {
