@@ -2478,7 +2478,7 @@ body:has(.landing-shell) #root {
   color: var(--cc-ink);
   font-size: clamp(2.8rem, 5.4vw, 5rem);
   line-height: 0.98;
-  letter-spacing: -0.075em;
+  letter-spacing: -0.20rem;
   font-weight: 850;
 }
 
