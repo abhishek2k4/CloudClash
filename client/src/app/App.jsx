@@ -10,6 +10,7 @@ import "../styles/global.css";
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
   const [prefillJoin, setPrefillJoin] = useState({ name: "", code: "" });
+  const [isJoining, setIsJoining] = useState(false);
   const activeSessionRef = useRef(false);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState({ gameName: "", bio: "" });
@@ -98,7 +99,7 @@ export default function App() {
 
   const handleQuickJoin = (e) => {
     e.preventDefault();
-    navigate("/join");
+    setIsJoining(true);
   };
 
   if (path === "/host") {
@@ -117,14 +118,15 @@ export default function App() {
     return <Account initialMode={path.endsWith("signup") ? "signup" : "login"} onAuthenticated={handleAuthenticated} onBack={() => navigate("/")} />;
   }
 
-  if (path === "/join") {
+  if (isJoining) {
     return (
       <Participant
         initialName={prefillJoin.name}
         initialCode={prefillJoin.code}
+        autoJoin
         onHome={() => {
+          setIsJoining(false);
           setPrefillJoin({ name: "", code: "" });
-          navigate("/");
         }}
         onActivityChange={setActiveSession}
       />

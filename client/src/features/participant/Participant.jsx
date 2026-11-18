@@ -15,7 +15,8 @@ export default function Participant({
   onHome,
   onActivityChange,
   initialName = "",
-  initialCode = ""
+  initialCode = "",
+  autoJoin = false
 }) {
   const [name, setName] = useState(initialName);
   const [code, setCode] = useState(initialCode);
@@ -24,6 +25,7 @@ export default function Participant({
     if (!participantRef.current && initialName) setName(initialName);
   }, [initialName]);
   const participantRef = useRef(null);
+  const autoJoinAttemptedRef = useRef(false);
 
   const [participant, setParticipant] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -203,7 +205,7 @@ export default function Participant({
     return () => clearInterval(t);
   }, [question, status]);
 
-  const join = (e) => {
+  const join = useCallback((e) => {
     e?.preventDefault();
     if (!name.trim() || !code.trim()) return;
     setError("");
@@ -211,7 +213,13 @@ export default function Participant({
     socket.emit("join_competition", { name: name.trim(), code: cleanCode }, (r) =>
       apply(r, cleanCode)
     );
-  };
+  }, [name, code, apply]);
+
+  useEffect(() => {
+    if (!autoJoin || autoJoinAttemptedRef.current) return;
+    autoJoinAttemptedRef.current = true;
+    join();
+  }, [autoJoin, join]);
 
   useEffect(() => {
     onActivityChange?.(Boolean(participant) && !["finished", "cancelled"].includes(status));
