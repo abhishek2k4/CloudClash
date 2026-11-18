@@ -3916,7 +3916,7 @@ body:has(.landing-shell) #root {
   letter-spacing: -.065em;
 }
 .finished-title span { color: var(--cc-orange-live); }
-.results-waiting-card,
+ .results-waiting-card,
 .finished-telemetry-card,
 .participant-finished-screen .personal-report,
 .participant-finished-screen > .surface-card {
@@ -3982,4 +3982,13 @@ body:has(.landing-shell) #root {
   .finished-title { font-size: 34px; margin-bottom: 12px; }
   .results-waiting-card { min-height: 160px; padding: 20px 15px; }
   .finished-telemetry-card { padding: 17px 15px; }
+}
+
+.participant-finished-screen .results-waiting-card,
+.participant-finished-screen .finished-telemetry-card,
+.participant-finished-screen .personal-report,
+.participant-finished-screen > .surface-card {
+  width: min(100%, 780px);
+  margin-left: auto;
+  margin-right: auto;
 }

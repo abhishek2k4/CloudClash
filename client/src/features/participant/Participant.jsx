@@ -546,6 +546,7 @@ export default function Participant({
       {status === "finished" && (
         <section className="finished-content">
           <h1 className="finished-title">Match <span>Concluded.</span></h1>
+        </section>
       )}
       {status === "finished" && !resultsRevealed && (
         <section className="surface-card results-waiting-card">
@@ -589,7 +590,6 @@ export default function Participant({
         </section>
       )}
 
-      {status === "finished" && <div className="finished-content-end" />}
       {status === "finished" && resultsRevealed && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
       {(status === "round_break" || (status === "finished" && resultsRevealed)) && (
         <section className="surface-card">
