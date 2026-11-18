@@ -465,14 +465,21 @@ export default function Host({ onHome, onActivityChange }) {
   /* BASIC ROOM SETUP */
   if (stage === "room") {
     return (
-      <main className="app-shell narrow">
-        <button className="back-link" onClick={requestHome}>← Back to Home</button>
-        <header style={{ marginBottom: 22 }}>
-          <p className="eyebrow">STEP 01 · ROOM SETUP</p>
-          <h1>Create your quiz.</h1>
-          <p className="muted" style={{ marginTop: 6 }}>Set up the room first. You can configure quiz rules from the host dashboard after creating it.</p>
+      <main className="host-setup-screen">
+        <div className="host-flow-topbar">
+          <button className="host-flow-back" onClick={requestHome}>← Back to Home</button>
+          <a className="host-flow-brand" href="/" aria-label="CloudClash home" onClick={(event) => { event.preventDefault(); requestHome(); }}>
+            <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
+            <span>Cloud<span>Clash</span></span>
+          </a>
+        </div>
+        <div className="host-setup-content">
+        <header className="host-flow-heading">
+          <p className="host-flow-step">STEP 01 · ROOM SETUP</p>
+          <h1>Create your <span>quiz.</span></h1>
+          <p>Set up the room first. You can configure quiz rules from the host dashboard after creating it.</p>
         </header>
-        <section className="surface-card">
+        <section className="host-flow-card host-room-form">
           <div className="field-group">
             <label className="field-label" htmlFor="room-name-input">Room Title</label>
             <input id="room-name-input" className="input-control" autoFocus maxLength={60}
@@ -512,10 +519,10 @@ export default function Host({ onHome, onActivityChange }) {
           </button>
         </section>
 
-        <section className="surface-card" style={{ marginTop: 18 }}>
-          <div className="section-header">
-            <div><p className="eyebrow">YOUR HISTORY</p><h2>Previous quizzes</h2></div>
-            <span className="status-chip">{archives.length}/5 saved</span>
+        <section className="host-flow-card host-history-card">
+          <div className="host-history-heading">
+            <div><p className="host-flow-step">YOUR HISTORY</p><h2>Previous quizzes</h2></div>
+            <span className="host-history-count">{archives.length}/5 SAVED</span>
           </div>
           {archivesLoading && <p className="muted">Loading your quiz archives...</p>}
           {archivesError && <div className="error-banner">{archivesError}</div>}
@@ -525,11 +532,11 @@ export default function Host({ onHome, onActivityChange }) {
               const expanded = expandedArchiveId === archive.id;
               const board = Array.isArray(archive.leaderboard) ? archive.leaderboard : [];
               return (
-                <article key={archive.id} style={{ padding: "14px 0", borderBottom: "1px solid var(--border-subtle, rgba(255,255,255,.08))" }}>
+                <article key={archive.id} className="host-archive-item">
                   <button type="button" onClick={() => setExpandedArchiveId(expanded ? null : archive.id)} aria-expanded={expanded}
-                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, color: "inherit", background: "transparent", border: 0, textAlign: "left", cursor: "pointer" }}>
+                    className="host-archive-toggle">
                     <span><strong>{archive.room_name || "Untitled quiz"}</strong><span className="muted" style={{ display: "block", fontSize: "0.78rem", marginTop: 4 }}>{new Date(archive.completed_at).toLocaleDateString()} · {archive.rounds} rounds · {archive.participant_count} players</span></span>
-                    <span className="muted">{expanded ? "−" : "+"}</span>
+                    <span className="host-archive-expand">{expanded ? "−" : "+"}</span>
                   </button>
                   {expanded && <div style={{ marginTop: 12 }}>
                     {board.length ? board.map((player) => (
@@ -544,6 +551,7 @@ export default function Host({ onHome, onActivityChange }) {
             })}
           </div>
         </section>
+        </div>
       </main>
     );
   }
@@ -778,21 +786,24 @@ export default function Host({ onHome, onActivityChange }) {
   /* STAGE 02: AUTHORING METHOD */
   if (stage === "method") {
     return (
-      <main className="app-shell">
-        <button className="back-link" onClick={() => setStage("lobby")}>
-          ← Back to Host Dashboard
-        </button>
-        <header style={{ marginBottom: 24 }}>
-          <p className="eyebrow">STEP 02 · QUESTION AUTHORING</p>
-          <h1>{roomName}</h1>
-          <p className="muted" style={{ marginTop: 6 }}>
-            Room Code <strong className="mono" style={{ color: "#22d3ee" }}>{roomCode}</strong> is active. Choose how you want to populate your {rounds} round{rounds === 1 ? "" : "s"}.
-          </p>
+      <main className="host-method-screen">
+        <div className="host-flow-topbar">
+          <button className="host-flow-back" onClick={() => setStage("lobby")}>← Back to Host Dashboard</button>
+          <a className="host-flow-brand" href="/" aria-label="CloudClash home" onClick={(event) => { event.preventDefault(); requestHome(); }}>
+            <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
+            <span>Cloud<span>Clash</span></span>
+          </a>
+        </div>
+        <div className="host-method-content">
+        <header className="host-flow-heading host-method-heading">
+          <p className="host-flow-step">STEP 02 · QUESTION AUTHORING</p>
+          <h1>{roomName}<span className="host-title-period">.</span></h1>
+          <p>Room Code <strong className="host-room-code">{roomCode}</strong> is active. Choose how you want to populate your {rounds} round{rounds === 1 ? "" : "s"}.</p>
         </header>
 
-        <section className="method-grid">
+        <section className="host-method-grid">
           <button type="button" className="method-card" onClick={() => setStage("csv")}>
-            <div className="icon-badge">
+            <div className="host-method-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />
@@ -816,7 +827,7 @@ export default function Host({ onHome, onActivityChange }) {
               setStage("manual");
             }}
           >
-            <div className="icon-badge">
+            <div className="host-method-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 20h9" />
                 <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
@@ -833,6 +844,7 @@ export default function Host({ onHome, onActivityChange }) {
         </section>
 
         {error && <div className="error-banner">{error}</div>}
+        </div>
       </main>
     );
   }
@@ -840,20 +852,22 @@ export default function Host({ onHome, onActivityChange }) {
   /* STAGE 03A: CSV UPLOAD PER ROUND */
   if (stage === "csv") {
     return (
-      <main className="app-shell">
-        <button className="back-link" onClick={() => setStage("method")}>
-          ← Back to Authoring Method
-        </button>
-
-        <header style={{ marginBottom: 24 }}>
-          <p className="eyebrow">STEP 03 · ROUND CSV IMPORT</p>
-          <h1>Upload questions by round.</h1>
-          <p className="muted" style={{ marginTop: 6 }}>
-            Download the shared CSV template, then upload a completed file separately for each round. Once all rounds have questions, you will advance to the lobby.
-          </p>
+      <main className="host-csv-screen">
+        <div className="host-flow-topbar">
+          <button className="host-flow-back" onClick={() => setStage("method")}>← Back to Authoring Method</button>
+          <a className="host-flow-brand" href="/" aria-label="CloudClash home" onClick={(event) => { event.preventDefault(); requestHome(); }}>
+            <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
+            <span>Cloud<span>Clash</span></span>
+          </a>
+        </div>
+        <div className="host-csv-content">
+        <header className="host-flow-heading host-csv-heading">
+          <p className="host-flow-step">STEP 03 · ROUND CSV IMPORT</p>
+          <h1>Upload questions by <span>round.</span></h1>
+          <p>Download the shared CSV template, then upload a completed file separately for each round. Once all rounds have questions, you will advance to the lobby.</p>
         </header>
 
-        <section className="surface-card" style={{ marginBottom: 18 }}>
+        <section className="host-flow-card host-csv-template-card">
           <div className="section-header" style={{ marginBottom: 12 }}>
             <div>
               <p className="eyebrow" style={{ marginBottom: 2 }}>SHARED FORMAT</p>
@@ -875,7 +889,7 @@ export default function Host({ onHome, onActivityChange }) {
 
         <div className="round-upload-list">
           {Array.from({ length: rounds }, (_, i) => i + 1).map((n) => (
-            <section className="surface-card" key={n} style={{ marginBottom: 0 }}>
+            <section className="host-flow-card host-round-bank-card" key={n}>
               <div className="section-header">
                 <div>
                   <p className="eyebrow" style={{ marginBottom: 2 }}>
@@ -923,7 +937,7 @@ export default function Host({ onHome, onActivityChange }) {
 
         {error && <div className="error-banner">{error}</div>}
 
-        <div className="sticky-footer">
+        <div className="sticky-footer host-csv-sticky-footer">
           <div className="sticky-footer-inner">
             <span className="mono muted">
               {Array.from({ length: rounds }, (_, i) => i + 1).filter((n) => (counts[n] || 0) > 0).length}/{rounds} ROUNDS READY
@@ -940,6 +954,7 @@ export default function Host({ onHome, onActivityChange }) {
               Continue to Host Dashboard →
             </button>
           </div>
+        </div>
         </div>
       </main>
     );
