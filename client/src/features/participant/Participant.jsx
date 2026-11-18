@@ -359,7 +359,7 @@ export default function Participant({
 
   /* ACTIVE MATCH & LOBBY VIEW */
   return (
-    <main className={`app-shell ${status === "waiting" ? "ready-lobby-screen" : status === "running" ? "participant-live-screen" : ""}`}>
+    <main className={`app-shell ${status === "waiting" ? "ready-lobby-screen" : status === "running" ? "participant-live-screen" : status === "finished" ? "participant-finished-screen" : ""}`}>
       {status === "waiting" ? (
         <header className="lobby-topbar">
           <div className="lobby-brand">
@@ -383,6 +383,20 @@ export default function Participant({
           </div>
           <div className="lobby-topbar-actions">
             <span className="lobby-waiting-pill live-running-pill"><i /> RUNNING</span>
+            <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
+      ) : status === "finished" ? (
+        <header className="lobby-topbar finished-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUD<span>CLASH</span></strong>
+            <i /><span>PLAYER</span>
+            <i /><span>{participant.name}</span>
+            <i /><span>ROOM {participant.code}</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill finished-status-pill"><i /> FINISHED</span>
             <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
           </div>
         </header>
@@ -529,6 +543,10 @@ export default function Participant({
         </section>
       )}
 
+      {status === "finished" && (
+        <section className="finished-content">
+          <h1 className="finished-title">Match <span>Concluded.</span></h1>
+      )}
       {status === "finished" && !resultsRevealed && (
         <section className="surface-card results-waiting-card">
           <div className="results-spinner" />
@@ -562,7 +580,7 @@ export default function Participant({
         );
       })()}
       {status === "finished" && (
-        <section className="surface-card">
+        <section className="surface-card finished-telemetry-card">
           <p className="eyebrow">FINAL TELEMETRY</p>
           <h2>Match Complete</h2>
           <p className="muted" style={{ marginTop: 6 }}>
@@ -571,6 +589,7 @@ export default function Participant({
         </section>
       )}
 
+      {status === "finished" && <div className="finished-content-end" />}
       {status === "finished" && resultsRevealed && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
       {(status === "round_break" || (status === "finished" && resultsRevealed)) && (
         <section className="surface-card">
