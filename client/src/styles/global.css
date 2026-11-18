@@ -1991,6 +1991,7 @@ body:has(.landing-shell) #root {
   --cc-overlay-ink-14: rgba(23, 23, 23, 0.14);
   --cc-overlay-ink-25: rgba(23, 23, 23, 0.25);
   --cc-overlay-green: rgba(22, 199, 106, 0.6);
+  --cc-section-warm: var(--cc-section-warm);
   --cc-overlay-ink-24: rgba(23, 23, 23, 0.24);
   --cc-overlay-ink-17: rgba(23, 23, 23, 0.17);
   --cc-overlay-orange-15: rgba(255, 100, 46, 0.15);
@@ -2106,7 +2107,7 @@ body:has(.landing-shell) #root {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #16c76a;
+  background: var(--cc-overlay-green);
   box-shadow: 0 0 9px var(--cc-overlay-green);
 }
 
