@@ -1838,6 +1838,7 @@ p {
 
 .auth-toast > span:nth-child(2) {
   flex: 1;
+  color:#FF9494 ;
 }
 
 .auth-toast button {
