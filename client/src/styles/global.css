@@ -2782,6 +2782,7 @@ body:has(.landing-shell) #root {
   color: inherit;
   opacity: 0.72;
   font-size: 0.84rem;
+  font-weight: 500;
   line-height: 1.6;
 }
 
