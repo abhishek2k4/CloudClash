@@ -5416,3 +5416,49 @@ body:has(.landing-shell) #root {
   .profile-shell .account-form { gap: 17px; }
   .profile-shell .account-form .textarea-control { min-height: 116px; }
 }
+
+
+/* Keep every host-area logo consistent with the landing-page lockup */
+.host-initializing-brand img,
+.host-flow-brand img,
+.host-control-brand img {
+  display: block;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 5px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--cc-ink);
+  object-fit: contain;
+}
+.host-initializing-brand,
+.host-flow-brand,
+.host-control-brand {
+  gap: 8px;
+  color: var(--cc-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 850;
+  letter-spacing: -.055em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.host-initializing-brand > span > span,
+.host-flow-brand > span > span,
+.host-control-brand > span > span {
+  color: var(--cc-orange-live);
+}
+@media (max-width: 560px) {
+  .host-initializing-brand img,
+  .host-flow-brand img,
+  .host-control-brand img {
+    width: 30px;
+    height: 30px;
+    padding: 4px;
+    border-radius: 8px;
+  }
+  .host-initializing-brand,
+  .host-flow-brand,
+  .host-control-brand { font-size: 13px; }
+}
