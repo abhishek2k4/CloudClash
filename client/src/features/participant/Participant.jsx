@@ -320,32 +320,33 @@ export default function Participant({
 
   if (status === "paused") {
     return (
-      <main className="app-shell narrow">
-        <section
-          className="surface-card"
-          style={{
-            minHeight: "48vh",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            textAlign: "center",
-            borderColor: "rgba(245, 158, 11, 0.35)"
-          }}
-        >
-          <p className="eyebrow" style={{ color: "#fcd34d" }}>MATCH PAUSED</p>
-          <h1 style={{ marginTop: 8 }}>Quiz on Hold</h1>
-          <p className="muted" style={{ marginTop: 10, maxWidth: 420 }}>
-            The host has paused the quiz. Please wait here until the host resumes.
-          </p>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            style={{ marginTop: 24 }}
-            onClick={requestHome}
-          >
-            Leave Quiz
-          </button>
+      <main className="participant-paused-screen">
+        <header className="lobby-topbar paused-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUD<span>CLASH</span></strong>
+            <i />
+            <span>PLAYER</span>
+            <i />
+            <span>{participant?.name || name}</span>
+            <i />
+            <span>ROOM {participant?.code || code}</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill paused-status-pill"><i /> PAUSED</span>
+            <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
+        <section className="paused-content">
+          <div className="paused-card">
+            <div className="paused-icon" aria-hidden="true"><span /><span /></div>
+            <p className="lobby-section-label">MATCH PAUSED</p>
+            <h1 className="paused-title">Quiz <span>on Hold.</span></h1>
+            <p className="paused-description">
+              The host has paused the quiz. Please wait here until the host resumes.
+            </p>
+            <button type="button" className="paused-leave-button" onClick={requestHome}>Leave Quiz</button>
+          </div>
         </section>
       </main>
     );
