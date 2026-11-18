@@ -116,7 +116,7 @@ Never rely only on hiding the answer UI for eliminated players. Enforcement must
 
 ## 7. Host controls and transition requirements
 
-Host commands include room creation, question import/configuration, starting rounds, pause/resume, ending the current question/quiz, elimination confirmation and result reveal. Find their exact names and payloads in `server/index.js`.
+Host commands include room creation, question import/configuration, starting rounds, pause/resume, ending the current question/quiz, elimination confirmation and result reveal. The host can end the quiz during an active round or at a round break; the server finalizes the current standings, sends participants to the results flow and attempts the normal archive write. Find exact event names and payloads in `server/index.js`.
 
 When adding/modifying a command:
 - validate host ownership and status on the server;
