@@ -1424,13 +1424,25 @@ export default function Host({ onHome, onActivityChange }) {
           <button type="button" className="btn btn-primary btn-full" disabled={!eliminationsConfirmed} onClick={() => action("start_next_round")}>
             {round < rounds ? `Start Round ${String(round + 1).padStart(2, "0")} →` : "Finish Quiz & Reveal Podium →"}
           </button>
+          <button
+            type="button"
+            className="btn btn-danger btn-full"
+            style={{ marginTop: 10 }}
+            onClick={() => {
+              if (window.confirm("End the quiz now? The current standings will be finalized and participants will move to the results screen.")) {
+                action("end_quiz");
+              }
+            }}
+          >
+            End Quiz Early
+          </button>
         </section>
       )}
 
       {status === "finished" && resultsRevealed && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
       {status === "finished" && !resultsRevealed && (
         <section className="surface-card final-reveal-card">
-          <p className="eyebrow">FINAL ROUND COMPLETE</p>
+          <p className="eyebrow">QUIZ ENDED</p>
           <h2>Results are locked.</h2>
           <p className="muted">The final standings are hidden from everyone. Reveal them when you're ready to announce the winners.</p>
           <button type="button" className="btn btn-primary btn-full" onClick={() => action("reveal_final_leaderboard")}>👑 Reveal Final Leaderboard</button>
@@ -1491,6 +1503,33 @@ export default function Host({ onHome, onActivityChange }) {
               setRoomCode("");
               setRoomName("");
               setStatus("idle");
+              setRounds(2);
+              setActiveConfigRound(1);
+              setSettings({
+                roundSeconds: { 1: 15, 2: 25 },
+                marks: { 1: 10, 2: 20 },
+                speedBonusPercent: 10,
+                eliminationEnabled: false,
+                advanceCounts: { 1: 0, 2: 0 }
+              });
+              setParticipants([]);
+              setCounts({});
+              setRound(0);
+              setQuestion(null);
+              setSeconds(0);
+              setLeaderboard([]);
+              setResultsRevealed(false);
+              setLeaderboardView("overall");
+              setLeaderboardRound(1);
+              setExpandedPlayerId(null);
+              setRoundElimination(null);
+              setEliminationsConfirmed(true);
+              setQuestions([blankQuestion()]);
+              setError("");
+              setImportStatus("");
+              setRoundUploads({});
+              setRoundFilenames({});
+              setCopied(false);
               setStage("room");
             }}
           >

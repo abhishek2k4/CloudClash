@@ -31,7 +31,8 @@ CloudClash is a web-only, real-time quiz application designed for a host-led eve
 - Timed questions progress automatically.
 - Host can pause/resume an open question and end/control the quiz lifecycle.
 - Correct answer and explanation are revealed after the question has ended, not in the initial participant question payload.
-- Round breaks provide a standings and optional elimination review step.
+- Round breaks provide a standings and optional elimination review step. The host can end the quiz early from a round break, just as during an active/paused round; early endings use the normal final-results and archive flow.
+- After a quiz ends, the host can start another quiz without leaving the host area. The next room starts with a clean question bank and fresh setup state.
 - Eliminated participants may remain connected as spectators; server-side answer acceptance must reject them.
 - The leaderboard is server-generated and uses score, correct-answer count, lower total response time, then name ordering.
 - Participants receive personal final performance data and a round-wise report.
