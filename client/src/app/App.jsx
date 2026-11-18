@@ -16,6 +16,7 @@ export default function App() {
   const [profile, setProfile] = useState({ gameName: "", bio: "" });
   const [authReady, setAuthReady] = useState(false);
   const [authToast, setAuthToast] = useState(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const setActiveSession = useCallback((active) => {
     activeSessionRef.current = active;
@@ -154,16 +155,16 @@ export default function App() {
         </div>
       )}
 
-      <header className="brand-bar landing-nav">
+      <header className={`brand-bar landing-nav ${mobileNavOpen ? "mobile-nav-open" : ""}`}>
         <a className="brand-lockup" href="/" onClick={(event) => { event.preventDefault(); navigate("/"); }} aria-label="CloudClash home">
           <span className="brand-mark" aria-hidden="true"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
           <span className="brand-name">CLOUD<span>CLASH</span></span>
         </a>
-        <nav className="landing-nav-links" aria-label="Main navigation">
-          <a className="is-active" href="#" onClick={(event) => { event.preventDefault(); navigate("/"); }}>Home</a>
-          <a href="#features">Features</a>
-          <a href="#how-it-works">How it works</a>
-          <a href="#built-for">Use cases</a>
+        <nav className="landing-nav-links" id="landing-main-navigation" aria-label="Main navigation">
+          <a className="is-active" href="#" onClick={(event) => { event.preventDefault(); navigate("/"); setMobileNavOpen(false); }}>Home</a>
+          <a href="#features" onClick={() => setMobileNavOpen(false)}>Features</a>
+          <a href="#how-it-works" onClick={() => setMobileNavOpen(false)}>How it works</a>
+          <a href="#built-for" onClick={() => setMobileNavOpen(false)}>Use cases</a>
         </nav>
         <div className="landing-header-actions">
           <span className="live-arena-pill"><i /> LIVE ARENA</span>
@@ -177,6 +178,12 @@ export default function App() {
             <><button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/account")}>Sign in</button><button type="button" className="btn btn-primary btn-sm" onClick={() => navigate("/account/signup")}>Create account</button></>
           )}
         </div>
+        <button type="button" className="landing-menu-toggle"
+          aria-label={mobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-controls="landing-main-navigation" aria-expanded={mobileNavOpen}
+          onClick={() => setMobileNavOpen((open) => !open)}>
+          <span /><span /><span />
+        </button>
       </header>
 
       <section className="landing-hero-section">
