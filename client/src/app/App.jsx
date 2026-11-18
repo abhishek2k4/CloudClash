@@ -198,7 +198,7 @@ export default function App() {
           <form className="quick-join-card" onSubmit={handleQuickJoin}>
             <div className="quick-join-header">
               <div><p className="eyebrow">01 / PLAYER ENTRY</p><h2>Join a room</h2></div>
-              <span className="entry-icon" aria-hidden="true">↗</span>
+              {/* <span className="entry-icon" aria-hidden="true">↗</span> */}
             </div>
             <div className="field-group">
               <label className="field-label" htmlFor="landing-code">Room code</label>

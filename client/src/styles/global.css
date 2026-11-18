@@ -4160,6 +4160,7 @@ body:has(.landing-shell) #root {
   .landing-shell .mobile-nav-open .landing-menu-toggle span:nth-child(2) { opacity: 0; }
   .landing-shell .mobile-nav-open .landing-menu-toggle span:last-child { transform: translateY(-7px) rotate(-45deg); }
 }
+
 @media (max-width: 380px) {
   .landing-shell { padding-left: 13px; padding-right: 13px; }
   .landing-shell .brand-name { font-size: .94rem; }
@@ -4170,3 +4171,70 @@ body:has(.landing-shell) #root {
   .landing-shell .landing-nav-links { left: -13px; right: -13px; padding-left: 13px; padding-right: 13px; }
 }
 @media (prefers-reduced-motion: reduce) { .landing-menu-toggle span { transition: none; } }
+
+
+/* Compact mobile header: keep sign-in visible without adding a second row */
+@media (max-width: 520px) {
+  .landing-shell .brand-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .landing-shell .brand-lockup {
+    flex: 0 1 auto;
+    min-width: 0;
+    gap: 6px;
+  }
+  .landing-shell .brand-mark {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+  }
+  .landing-shell .brand-name {
+    font-size: clamp(.78rem, 3.8vw, .98rem);
+    white-space: nowrap;
+    letter-spacing: -.04em;
+  }
+  .landing-shell .landing-header-actions {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    margin-left: auto;
+    gap: 0;
+  }
+  .landing-shell .landing-header-actions > .btn {
+    display: none !important;
+  }
+  .landing-shell .landing-header-actions > .btn:first-of-type {
+    display: inline-flex !important;
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 6px 9px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .landing-shell .account-header {
+    display: flex;
+    flex: 0 0 auto;
+    width: auto;
+    gap: 5px;
+  }
+  .landing-shell .account-header > .btn {
+    min-height: 34px;
+    padding: 6px 8px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .landing-shell .landing-menu-toggle {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    margin-left: 2px;
+  }
+}
+@media (max-width: 380px) {
+  .landing-shell .brand-name { font-size: .76rem; }
+  .landing-shell .brand-lockup { gap: 5px; }
+  .landing-shell .landing-header-actions > .btn:first-of-type { padding: 6px 7px; font-size: 10px; }
+}

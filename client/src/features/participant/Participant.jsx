@@ -580,7 +580,7 @@ export default function Participant({
           </section>
         );
       })()}
-      {status === "finished" && (
+      {/* {status === "finished" && (
         <section className="surface-card finished-telemetry-card">
           <p className="eyebrow">FINAL TELEMETRY</p>
           <h2>Match Complete</h2>
@@ -588,7 +588,7 @@ export default function Participant({
             Final scores have been recorded. Check your placement below.
           </p>
         </section>
-      )}
+      )} */}
 
       {status === "finished" && resultsRevealed && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
       {(status === "round_break" || (status === "finished" && resultsRevealed)) && (
