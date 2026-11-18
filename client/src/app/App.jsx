@@ -97,6 +97,11 @@ export default function App() {
     if (profile.gameName) setPrefillJoin((current) => current.name ? current : { ...current, name: profile.gameName });
   }, [profile.gameName]);
 
+  const handleJoinFailure = useCallback((message) => {
+    setIsJoining(false);
+    setAuthToast({ type: "error", message });
+  }, []);
+
   const handleQuickJoin = (e) => {
     e.preventDefault();
     setIsJoining(true);
