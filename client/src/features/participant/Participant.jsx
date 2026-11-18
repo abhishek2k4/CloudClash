@@ -521,7 +521,7 @@ export default function Participant({
       )}
 
       {status === "round_break" && (
-        <section className="surface-card personal-report">
+        <section className="surface-card personal-report finished-personal-report">
           <p className="eyebrow">ROUND {String(personalRoundReport?.round || round).padStart(2, "0")} COMPLETE</p>
           <h2>{eliminated ? "Your run is complete" : "Your round report"}</h2>
           {personalRoundReport?.report ? (
@@ -592,7 +592,7 @@ export default function Participant({
 
       {status === "finished" && resultsRevealed && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
       {(status === "round_break" || (status === "finished" && resultsRevealed)) && (
-        <section className="surface-card">
+        <section className={`surface-card ${status === "finished" ? "finished-scoreboard-card" : ""}`}>
           <p className="eyebrow">SCOREBOARD</p>
           <h2>{status === "finished" ? "Final Standings" : "Current Standings"}</h2>
 

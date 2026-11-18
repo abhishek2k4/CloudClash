@@ -3992,3 +3992,134 @@ body:has(.landing-shell) #root {
   margin-left: auto;
   margin-right: auto;
 }
+
+
+/* Finished-state report + scoreboard: override legacy dark-theme component colors */
+.participant-finished-screen .finished-content {
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+.participant-finished-screen .finished-personal-report,
+.participant-finished-screen .finished-telemetry-card,
+.participant-finished-screen .finished-scoreboard-card {
+  width: min(100%, 780px);
+  margin: 0 auto 16px;
+  padding: 20px;
+  border: 1.5px solid var(--cc-ink);
+  border-radius: 12px;
+  background: var(--cc-surface);
+  color: var(--cc-ink);
+  box-shadow: 8px 8px 0 var(--cc-yellow-live);
+}
+.participant-finished-screen .personal-report-heading h2,
+.participant-finished-screen .finished-telemetry-card h2,
+.participant-finished-screen .finished-scoreboard-card > h2 {
+  margin: 0;
+  color: var(--cc-ink);
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: -.045em;
+}
+.participant-finished-screen .personal-report-heading .eyebrow,
+.participant-finished-screen .finished-telemetry-card .eyebrow,
+.participant-finished-screen .finished-scoreboard-card > .eyebrow {
+  margin-bottom: 6px;
+  color: var(--cc-orange-muted);
+}
+.participant-finished-screen .personal-rank { color: var(--cc-orange-live); }
+.participant-finished-screen .personal-rank small { color: var(--cc-text-muted); }
+.participant-finished-screen .personal-report-score {
+  margin: 13px 0 16px;
+}
+.participant-finished-screen .personal-report-score strong {
+  color: var(--cc-orange-live);
+  font-size: clamp(34px, 5vw, 46px);
+}
+.participant-finished-screen .personal-report-score span {
+  color: var(--cc-text-muted);
+}
+.participant-finished-screen .personal-report-grid {
+  gap: 8px;
+}
+.participant-finished-screen .personal-report-grid > div {
+  padding: 11px 12px;
+  border: 1px solid var(--cc-border-warm);
+  border-radius: 8px;
+  background: var(--cc-paper-warm);
+}
+.participant-finished-screen .personal-report-grid small {
+  color: var(--cc-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+.participant-finished-screen .personal-report-grid strong {
+  color: var(--cc-ink);
+  font-size: 13px;
+}
+.participant-finished-screen .personal-report-grid .host-player-correct { color: var(--cc-success-text); }
+.participant-finished-screen .personal-report-grid .host-player-wrong { color: var(--cc-danger-text); }
+.participant-finished-screen .personal-report-grid .personal-bonus { color: var(--cc-orange-live); }
+.participant-finished-screen .personal-round-toggle {
+  margin-top: 14px;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--cc-border-warm);
+  color: var(--cc-ink);
+}
+.participant-finished-screen .personal-round-toggle span { color: var(--cc-orange-live); }
+.participant-finished-screen .personal-round-card {
+  border-color: var(--cc-border-warm);
+  background: var(--cc-paper-warm);
+  color: var(--cc-ink);
+}
+.participant-finished-screen .personal-round-title,
+.participant-finished-screen .personal-round-title strong,
+.participant-finished-screen .personal-round-metrics { color: var(--cc-ink); }
+.participant-finished-screen .personal-round-title b { color: var(--cc-orange-live); }
+.participant-finished-screen .finished-telemetry-card {
+  padding: 17px 20px;
+}
+.participant-finished-screen .finished-telemetry-card .muted {
+  margin-top: 5px !important;
+  color: var(--cc-text-secondary);
+}
+.participant-finished-screen .finished-scoreboard-card {
+  margin-bottom: 0;
+}
+.participant-finished-screen .finished-scoreboard-card > h2 {
+  margin-bottom: 12px;
+}
+.participant-finished-screen .finished-scoreboard-card .standing-row {
+  padding: 12px 4px;
+  border-bottom-color: var(--cc-border-warm);
+  color: var(--cc-ink);
+}
+.participant-finished-screen .finished-scoreboard-card .standing-left strong {
+  color: var(--cc-ink);
+  font-size: 14px;
+}
+.participant-finished-screen .finished-scoreboard-card .standing-rank {
+  color: var(--cc-text-muted);
+}
+.participant-finished-screen .finished-scoreboard-card .avatar-monogram {
+  background: var(--cc-subtle);
+  border: 1px solid var(--cc-border-warm);
+  color: var(--cc-ink);
+}
+.participant-finished-screen .finished-scoreboard-card .standing-score {
+  color: var(--cc-orange-live);
+  font-weight: 800;
+}
+.participant-finished-screen .finished-scoreboard-card .podium-name { color: var(--cc-ink); }
+.participant-finished-screen .finished-scoreboard-card .podium-rank { color: var(--cc-text-muted); }
+.participant-finished-screen .finished-scoreboard-card .podium-score { color: var(--cc-orange-live); }
+@media (max-width: 620px) {
+  .participant-finished-screen .finished-personal-report,
+  .participant-finished-screen .finished-telemetry-card,
+  .participant-finished-screen .finished-scoreboard-card {
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .participant-finished-screen .personal-report-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
