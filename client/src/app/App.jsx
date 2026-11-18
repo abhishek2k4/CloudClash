@@ -156,8 +156,8 @@ export default function App() {
           <span className="live-arena-pill"><i /> LIVE ARENA</span>
           {session ? (
             <div className="account-header">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/profile")}>Profile</button>
               <span className="header-account-email" title={session.user?.email}>{session.user?.email || "Account"}</span>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("/profile")}>Profile</button>
               <button type="button" className="btn btn-primary btn-sm" onClick={handleSignOut}>Sign out</button>
             </div>
           ) : (
@@ -241,7 +241,10 @@ export default function App() {
       </section>
 
       <footer className="landing-footer">
-        <a className="brand-lockup" href="/" onClick={(event) => { event.preventDefault(); navigate("/"); }}><span className="brand-mark" aria-hidden="true" /><span className="brand-name">CLOUD<span>CLASH</span></span></a>
+        <a className="brand-lockup" href="/" onClick={(event) => { event.preventDefault(); navigate("/"); }}>
+          <span className="brand-mark" aria-hidden="true"><img alt="" src="/assets/cloudclash/branding/logo-mark.svg" /></span>
+          <span className="brand-name">CLOUD<span>CLASH</span></span>
+        </a>
         <span>ONE ROOM · ONE WINNER · NO INSTALLATION</span>
         <span>MADE FOR THE CLASH.</span>
       </footer>

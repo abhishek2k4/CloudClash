@@ -1958,12 +1958,14 @@ body:has(.landing-shell) #root {
 }
 
 .landing-shell .brand-mark {
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 38px;
   height: 38px;
   border: 0;
   border-radius: 10px;
-  background: #ff642e;
+  background: #171717;
   color: #171717;
   font-size: 23px;
   font-weight: 900;
@@ -2336,6 +2338,7 @@ body:has(.landing-shell) #root {
   width: 23px;
   height: 23px;
   object-fit: contain;
+
 }
 
 .landing-shell .feature-icon {
@@ -2352,6 +2355,7 @@ body:has(.landing-shell) #root {
   height: 42px;
   margin: 18px 0 10px;
   object-fit: contain;
+  filter: brightness(0) invert(1);
 }
 
 .hero-stamp {
@@ -2692,6 +2696,8 @@ body:has(.landing-shell) #root {
   align-self: flex-end;
   font: 700 0.65rem var(--font-mono);
   opacity: 0.65;
+  color:white;
+  /* font-weight: ; */
 }
 
 .use-case-card h3 {
