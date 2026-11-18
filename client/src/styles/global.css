@@ -3604,3 +3604,8 @@ body:has(.landing-shell) #root {
   background: #f8e5e1;
   color: #111;
 }
+
+
+.participant-question-card .selection-notice {
+  color: #51463d;
+}
