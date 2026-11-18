@@ -5043,6 +5043,16 @@ body:has(.landing-shell) #root {
 .host-control-screen .player-chip-name { color: var(--cc-ink); font-size: 11px; }
 .host-control-screen .error-banner,
 .host-control-screen .success-banner { margin-top: 12px; font-size: 11px; }
+.host-control-screen > .host-control-content > .success-banner {
+  padding: 11px 14px;
+  border: 1px solid #8bc9a0;
+  border-radius: 8px;
+  background: #d5efdc;
+  color: #176b3b;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
 .host-control-screen .host-live-panel {
   padding: 0 20px 20px;
   overflow: hidden;
@@ -5112,7 +5122,12 @@ body:has(.landing-shell) #root {
   background: var(--cc-success-bg);
   color: var(--cc-success-text);
 }
-.host-control-screen .host-final-reveal-card { max-width: 620px; margin: 0 auto 18px; text-align: center; }
+.host-control-screen .host-final-reveal-card {
+  width: 100%;
+  max-width: none;
+  margin: 0 0 18px;
+  text-align: center;
+}
 .host-control-screen .host-final-reveal-card .btn-primary { margin-top: 13px; }
 .host-control-screen .host-control-leaderboard { margin-top: 18px; }
 .host-control-screen .host-control-leaderboard .eyebrow { color: var(--cc-orange-muted); }
