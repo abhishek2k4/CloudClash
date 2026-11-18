@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { socket } from "./socket";
-import { getSession } from "./auth";
-import "./App.css";
+import { socket } from "../../services/socket";
+import { getSession } from "../../services/auth";
+
 
 const getInitials = (name = "") =>
   name
@@ -15,7 +15,9 @@ export default function Participant({
   onHome,
   onActivityChange,
   initialName = "",
-  initialCode = ""
+  initialCode = "",
+  autoJoin = false,
+  onJoinFailure
 }) {
   const [name, setName] = useState(initialName);
   const [code, setCode] = useState(initialCode);
@@ -24,6 +26,7 @@ export default function Participant({
     if (!participantRef.current && initialName) setName(initialName);
   }, [initialName]);
   const participantRef = useRef(null);
+  const autoJoinAttemptedRef = useRef(false);
 
   const [participant, setParticipant] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -45,7 +48,9 @@ export default function Participant({
 
   const apply = useCallback((r, joinedCode) => {
     if (!r?.success) {
-      setError(r?.message || "Could not join.");
+      const message = r?.message || "Could not join this room. Check the room code and try again.";
+      setError(message);
+      if (autoJoin) onJoinFailure?.(message);
       return;
     }
     const p = { ...r.participant, name: r.participant.name, code: joinedCode, eliminated: Boolean(r.snapshot?.eliminated) };
@@ -71,7 +76,7 @@ export default function Participant({
     } else {
       setSeconds(0);
     }
-  }, []);
+  }, [autoJoin, onJoinFailure]);
 
   useEffect(() => {
     socket.auth = (callback) => {
@@ -168,7 +173,11 @@ export default function Participant({
       }
     };
 
-    const onConnectError = (err) => setError(err?.message || "Could not connect to the quiz server.");
+    const onConnectError = (err) => {
+      const message = err?.message || "Could not connect to the quiz server.";
+      setError(message);
+      if (autoJoin) onJoinFailure?.(message);
+    };
     socket.on("connect", connect);
     socket.on("connect_error", onConnectError);
     socket.connect();
@@ -192,7 +201,7 @@ export default function Participant({
       socket.disconnect();
       socket.auth = {};
     };
-  }, [apply]);
+  }, [apply, autoJoin, onJoinFailure]);
 
   useEffect(() => {
     if (!question || status !== "running") return;
@@ -203,15 +212,26 @@ export default function Participant({
     return () => clearInterval(t);
   }, [question, status]);
 
-  const join = (e) => {
+  const join = useCallback((e) => {
     e?.preventDefault();
-    if (!name.trim() || !code.trim()) return;
+    if (!name.trim() || !code.trim()) {
+      const message = "Enter your room code and display name first.";
+      setError(message);
+      if (autoJoin) onJoinFailure?.(message);
+      return;
+    }
     setError("");
     const cleanCode = code.trim().toUpperCase();
     socket.emit("join_competition", { name: name.trim(), code: cleanCode }, (r) =>
       apply(r, cleanCode)
     );
-  };
+  }, [name, code, apply, autoJoin, onJoinFailure]);
+
+  useEffect(() => {
+    if (!autoJoin || autoJoinAttemptedRef.current) return;
+    autoJoinAttemptedRef.current = true;
+    join();
+  }, [autoJoin, join]);
 
   useEffect(() => {
     onActivityChange?.(Boolean(participant) && !["finished", "cancelled"].includes(status));
@@ -264,57 +284,35 @@ export default function Participant({
     );
   }
 
-  /* ENTRY VIEW */
-  if (!participant) {
+  /* Automatic home-page join: never show the legacy entry form. */
+  if (!participant && autoJoin) {
     return (
-      <main className="app-shell narrow">
-        <button className="back-link" onClick={requestHome}>
-          ← Back to Home
-        </button>
-
-        <section className="surface-card">
-          <p className="eyebrow">PLAYER ENTRY</p>
-          <h1>Enter the Arena.</h1>
-          <p className="muted" style={{ marginTop: 6, marginBottom: 20 }}>
-            Confirm your display name and the room access code shared by your host.
-          </p>
-
-          <form onSubmit={join} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="field-group">
-              <label className="field-label" htmlFor="join-code">Room Code</label>
-              <input
-                id="join-code"
-                className="input-control input-code"
-                placeholder="CODE"
-                maxLength={12}
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-              />
+      <main className="participant-joining-screen" role="status" aria-live="polite">
+        <header className="lobby-topbar joining-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUDCLASH</strong>
+            <i />
+            <span>PLAYER</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill"><i /> CONNECTING</span>
+          </div>
+        </header>
+        <section className="joining-content">
+          <p className="joining-kicker">PLAYER ENTRY · {code || initialCode}</p>
+          <h1 className="joining-title">You're almost <span>in.</span></h1>
+          <div className="joining-card">
+            <div className="joining-loader" aria-hidden="true"><span /></div>
+            <div className="joining-copy">
+              <p className="lobby-section-label">ESTABLISHING CONNECTION</p>
+              <h2>Joining the arena…</h2>
+              <p>Getting your seat ready. You'll be taken straight to the lobby.</p>
             </div>
-
-            <div className="field-group">
-              <label className="field-label" htmlFor="join-name">Display Name</label>
-              <input
-                id="join-name"
-                className="input-control"
-                placeholder="Your name on the leaderboard"
-                maxLength={40}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary btn-full"
-              style={{ marginTop: 6 }}
-              disabled={!name.trim() || !code.trim()}
-            >
-              Join Room →
-            </button>
-          </form>
-
-          {error && <div className="error-banner">{error}</div>}
+            <div className="joining-progress" aria-hidden="true"><span /></div>
+            {error && <div className="error-banner">{error}</div>}
+          </div>
+          <p className="joining-footnote">Keep this tab open while we connect you.</p>
         </section>
       </main>
     );
@@ -322,32 +320,33 @@ export default function Participant({
 
   if (status === "paused") {
     return (
-      <main className="app-shell narrow">
-        <section
-          className="surface-card"
-          style={{
-            minHeight: "48vh",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            textAlign: "center",
-            borderColor: "rgba(245, 158, 11, 0.35)"
-          }}
-        >
-          <p className="eyebrow" style={{ color: "#fcd34d" }}>MATCH PAUSED</p>
-          <h1 style={{ marginTop: 8 }}>Quiz on Hold</h1>
-          <p className="muted" style={{ marginTop: 10, maxWidth: 420 }}>
-            The host has paused the quiz. Please wait here until the host resumes.
-          </p>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            style={{ marginTop: 24 }}
-            onClick={requestHome}
-          >
-            Leave Quiz
-          </button>
+      <main className="participant-paused-screen">
+        <header className="lobby-topbar paused-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUD<span>CLASH</span></strong>
+            <i />
+            <span>PLAYER</span>
+            <i />
+            <span>{participant?.name || name}</span>
+            <i />
+            <span>ROOM {participant?.code || code}</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill paused-status-pill"><i /> PAUSED</span>
+            <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
+        <section className="paused-content">
+          <div className="paused-card">
+            <div className="paused-icon" aria-hidden="true"><span /><span /></div>
+            <p className="lobby-section-label">MATCH PAUSED</p>
+            <h1 className="paused-title">Quiz <span>on Hold.</span></h1>
+            <p className="paused-description">
+              The host has paused the quiz. Please wait here until the host resumes.
+            </p>
+            <button type="button" className="paused-leave-button" onClick={requestHome}>Leave Quiz</button>
+          </div>
         </section>
       </main>
     );
@@ -360,31 +359,64 @@ export default function Participant({
 
   /* ACTIVE MATCH & LOBBY VIEW */
   return (
-    <main className="app-shell">
-      <header className="dashboard-head">
-        <div>
-          <p className="eyebrow">
-            PLAYER · {participant.name} · ROOM {participant.code}
-          </p>
-          <h1>
-            {status === "waiting"
-              ? "Ready in Lobby"
-              : status === "finished"
-              ? "Match Concluded"
-              : "Stay Sharp."}
-          </h1>
-        </div>
-
-        <div className="header-actions">
-          <span className={`status-chip ${status}`}>{status.replace("_", " ")}</span>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={requestHome}>
-            Leave
-          </button>
-        </div>
-      </header>
+    <main className={`app-shell ${status === "waiting" ? "ready-lobby-screen" : status === "running" ? "participant-live-screen" : status === "finished" ? "participant-finished-screen" : ""}`}>
+      {status === "waiting" ? (
+        <header className="lobby-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUD<span>CLASH</span></strong>
+            <span>ROOM {participant.code}</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill"><i /> WAITING</span>
+            <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
+      ) : status === "running" ? (
+        <header className="lobby-topbar live-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUD<span>CLASH</span></strong>
+            <i /><span>PLAYER</span>
+            <i /><span>{participant.name}</span>
+            <i /><span>ROOM {participant.code}</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill live-running-pill"><i /> RUNNING</span>
+            <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
+      ) : status === "finished" ? (
+        <header className="lobby-topbar finished-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUD<span>CLASH</span></strong>
+            <i /><span>PLAYER</span>
+            <i /><span>{participant.name}</span>
+            <i /><span>ROOM {participant.code}</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill finished-status-pill"><i /> FINISHED</span>
+            <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
+      ) : (
+        <header className="dashboard-head">
+          <div>
+            <p className="eyebrow">PLAYER · {participant.name} · ROOM {participant.code}</p>
+            <h1>Match Concluded</h1>
+          </div>
+          <div className="header-actions">
+            <span className={`status-chip ${status}`}>{status.replace("_", " ")}</span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
+      )}
 
       {question && status === "running" && (
-        <section className="arena-card">
+        <section className="participant-live-content">
+          <h1 className="participant-live-title">Stay <span>Sharp.</span></h1>
+          <div className="arena-card participant-question-card">
           <div className="timer-track">
             <div className={`timer-fill ${timerState}`} style={{ width: `${progressPct}%` }} />
           </div>
@@ -438,34 +470,38 @@ export default function Participant({
               <p className="muted">{result.explanation}</p>
             </div>
           )}
+          </div>
         </section>
       )}
 
       {!question && status === "waiting" && (
-        <section className="surface-card">
-          <div className="section-header">
-            <div>
-              <p className="eyebrow" style={{ marginBottom: 2 }}>WAITING FOR HOST</p>
-              <h2>You're on the roster.</h2>
-            </div>
-            <span className="status-chip">{participants.length} Connected</span>
+        <section className="lobby-content">
+          <div className="lobby-title-block">
+            <p className="lobby-room-label">ROOM {participant.code}</p>
+            <h1>Ready in <span>Lobby</span></h1>
           </div>
-          <p className="muted">
-            The match will begin automatically as soon as the host launches Round 01.
-          </p>
-
-          {participants.length > 0 && (
-            <div className="roster-grid">
-              {participants.map((p) => (
-                <div className="player-chip" key={p.id}>
-                  <span className="avatar-monogram">{getInitials(p.name)}</span>
-                  <span className="player-chip-name">
-                    {p.name} {p.id === participant.id ? "(You)" : ""} {p.eliminated ? "· Eliminated" : ""}
-                  </span>
-                </div>
-              ))}
+          <section className="lobby-roster-card">
+            <div className="lobby-roster-heading">
+              <div>
+                <p className="lobby-section-label">WAITING FOR HOST</p>
+                <h2>You're on the roster.</h2>
+              </div>
+              <span className="lobby-connected-count">{participants.length} CONNECTED</span>
             </div>
-          )}
+            <p className="lobby-description">The match will begin automatically as soon as the host launches Round 01.</p>
+            <div className="lobby-roster-divider" />
+            {participants.length > 0 && (
+              <div className="lobby-player-list">
+                {participants.map((p) => (
+                  <div className="lobby-player-row" key={p.id}>
+                    <span className="lobby-player-avatar">{getInitials(p.name).slice(0, 1)}</span>
+                    <strong>{p.name}{p.id === participant.id ? " (You)" : ""}</strong>
+                    <span className="lobby-player-presence" aria-label="Connected" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </section>
       )}
 
@@ -485,7 +521,7 @@ export default function Participant({
       )}
 
       {status === "round_break" && (
-        <section className="surface-card personal-report">
+        <section className="surface-card personal-report finished-personal-report">
           <p className="eyebrow">ROUND {String(personalRoundReport?.round || round).padStart(2, "0")} COMPLETE</p>
           <h2>{eliminated ? "Your run is complete" : "Your round report"}</h2>
           {personalRoundReport?.report ? (
@@ -507,6 +543,11 @@ export default function Participant({
         </section>
       )}
 
+      {status === "finished" && (
+        <section className="finished-content">
+          <h1 className="finished-title">Match <span>Concluded.</span></h1>
+        </section>
+      )}
       {status === "finished" && !resultsRevealed && (
         <section className="surface-card results-waiting-card">
           <div className="results-spinner" />
@@ -540,7 +581,7 @@ export default function Participant({
         );
       })()}
       {status === "finished" && (
-        <section className="surface-card">
+        <section className="surface-card finished-telemetry-card">
           <p className="eyebrow">FINAL TELEMETRY</p>
           <h2>Match Complete</h2>
           <p className="muted" style={{ marginTop: 6 }}>
@@ -551,7 +592,7 @@ export default function Participant({
 
       {status === "finished" && resultsRevealed && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
       {(status === "round_break" || (status === "finished" && resultsRevealed)) && (
-        <section className="surface-card">
+        <section className={`surface-card ${status === "finished" ? "finished-scoreboard-card" : ""}`}>
           <p className="eyebrow">SCOREBOARD</p>
           <h2>{status === "finished" ? "Final Standings" : "Current Standings"}</h2>
 

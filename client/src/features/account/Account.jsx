@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { signIn, signUp } from "./auth";
-import "./App.css";
+import { signIn, signUp } from "../../services/auth";
+
 
 export default function Account({ onAuthenticated, onBack, initialMode = "login" }) {
   const [mode, setMode] = useState(initialMode);

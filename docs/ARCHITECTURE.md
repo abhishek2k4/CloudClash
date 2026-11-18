@@ -6,7 +6,7 @@ CloudClash is a browser client connected to one Node.js application server. The 
 
 ```text
 Browser (React + Vite)
-  ├─ Landing / route selection (App.jsx)
+  ├─ Landing / route selection (app/App.jsx)
   ├─ Account + profile UI
   ├─ Host dashboard
   └─ Participant gameplay
@@ -36,9 +36,9 @@ Browser (React + Vite)
 
 ### Frontend
 
-The application is a React 19 + Vite single-page app. `client/src/App.jsx` uses pathname checks and the browser history API for the landing, join, host, account and profile screens; this is not a full client-side router framework.
+The application is a React 19 + Vite single-page app. `client/src/app/App.jsx` uses pathname checks and the browser history API for the landing, join, host, account and profile screens; this is not a full client-side router framework.
 
-The top-level app:
+The frontend source is organised into `app/` for application bootstrap, `features/` for screen ownership, `services/` for external integrations, and `styles/` for shared global styling. The top-level app:
 - obtains a saved Supabase session during startup;
 - updates the visible session and profile state;
 - supplies saved game name as a join-name prefill;
@@ -46,12 +46,12 @@ The top-level app:
 - preserves a confirmation prompt when browser back navigation would leave an active quiz.
 
 Key screens:
-- `Host.jsx`: host setup, CSV/manual question authoring, room controls, round configuration, elimination review, leaderboards and host archive.
-- `Participant.jsx`: guest or signed-in joining, question selection, waiting/round-break/final states and personal performance report.
-- `Account.jsx`: email/password sign-up and sign-in.
-- `Profile.jsx`: player game name and bio.
-- `auth.js`: calls Supabase Auth endpoints directly and stores the session under `cloudclash.auth.session` in local storage.
-- `socket.js`: one shared Socket.IO client, initially disconnected.
+- `features/host/Host.jsx`: host setup, CSV/manual question authoring, room controls, round configuration, elimination review, leaderboards and host archive.
+- `features/participant/Participant.jsx`: guest or signed-in joining, question selection, waiting/round-break/final states and personal performance report.
+- `features/account/Account.jsx`: email/password sign-up and sign-in.
+- `features/profile/Profile.jsx`: player game name and bio.
+- `services/auth.js`: calls Supabase Auth endpoints directly and stores the session under `cloudclash.auth.session` in local storage.
+- `services/socket.js`: one shared Socket.IO client, initially disconnected.
 
 ### Backend
 

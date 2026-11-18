@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { getProfile, updateProfile } from "./auth";
-import "./App.css";
+import { getProfile, updateProfile } from "../../services/auth";
+
 
 export default function Profile({ session, onBack, onProfileUpdated }) {
   const saved = getProfile(session);
