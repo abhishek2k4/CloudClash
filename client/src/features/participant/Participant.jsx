@@ -368,28 +368,36 @@ export default function Participant({
 
   /* ACTIVE MATCH & LOBBY VIEW */
   return (
-    <main className="app-shell">
-      <header className="dashboard-head">
-        <div>
-          <p className="eyebrow">
-            PLAYER · {participant.name} · ROOM {participant.code}
-          </p>
-          <h1>
-            {status === "waiting"
-              ? "Ready in Lobby"
-              : status === "finished"
-              ? "Match Concluded"
-              : "Stay Sharp."}
-          </h1>
-        </div>
-
-        <div className="header-actions">
-          <span className={`status-chip ${status}`}>{status.replace("_", " ")}</span>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={requestHome}>
-            Leave
-          </button>
-        </div>
-      </header>
+    <main className={`app-shell ${status === "waiting" ? "ready-lobby-screen" : ""}`}>
+      {status === "waiting" ? (
+        <header className="lobby-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUD<span>CLASH</span></strong>
+            <i />
+            <span>PLAYER</span>
+            <i />
+            <span>{participant.name}</span>
+            <i />
+            <span>ROOM {participant.code}</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill"><i /> WAITING</span>
+            <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
+      ) : (
+        <header className="dashboard-head">
+          <div>
+            <p className="eyebrow">PLAYER · {participant.name} · ROOM {participant.code}</p>
+            <h1>{status === "finished" ? "Match Concluded" : "Stay Sharp."}</h1>
+          </div>
+          <div className="header-actions">
+            <span className={`status-chip ${status}`}>{status.replace("_", " ")}</span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
+      )}
 
       {question && status === "running" && (
         <section className="arena-card">
@@ -450,30 +458,33 @@ export default function Participant({
       )}
 
       {!question && status === "waiting" && (
-        <section className="surface-card">
-          <div className="section-header">
-            <div>
-              <p className="eyebrow" style={{ marginBottom: 2 }}>WAITING FOR HOST</p>
-              <h2>You're on the roster.</h2>
-            </div>
-            <span className="status-chip">{participants.length} Connected</span>
+        <section className="lobby-content">
+          <div className="lobby-title-block">
+            <p className="lobby-room-label">ROOM {participant.code}</p>
+            <h1>Ready in <span>Lobby</span></h1>
           </div>
-          <p className="muted">
-            The match will begin automatically as soon as the host launches Round 01.
-          </p>
-
-          {participants.length > 0 && (
-            <div className="roster-grid">
-              {participants.map((p) => (
-                <div className="player-chip" key={p.id}>
-                  <span className="avatar-monogram">{getInitials(p.name)}</span>
-                  <span className="player-chip-name">
-                    {p.name} {p.id === participant.id ? "(You)" : ""} {p.eliminated ? "· Eliminated" : ""}
-                  </span>
-                </div>
-              ))}
+          <section className="lobby-roster-card">
+            <div className="lobby-roster-heading">
+              <div>
+                <p className="lobby-section-label">WAITING FOR HOST</p>
+                <h2>You're on the roster.</h2>
+              </div>
+              <span className="lobby-connected-count">{participants.length} CONNECTED</span>
             </div>
-          )}
+            <p className="lobby-description">The match will begin automatically as soon as the host launches Round 01.</p>
+            <div className="lobby-roster-divider" />
+            {participants.length > 0 && (
+              <div className="lobby-player-list">
+                {participants.map((p) => (
+                  <div className="lobby-player-row" key={p.id}>
+                    <span className="lobby-player-avatar">{getInitials(p.name).slice(0, 1)}</span>
+                    <strong>{p.name}{p.id === participant.id ? " (You)" : ""}</strong>
+                    <span className="lobby-player-presence" aria-label="Connected" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </section>
       )}
 
