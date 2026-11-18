@@ -444,9 +444,9 @@ export default function Host({ onHome, onActivityChange }) {
       <main className="host-initializing-screen">
         <header className="host-initializing-topbar">
           <button type="button" className="host-home-link" onClick={requestHome}>← Home</button>
-          <a className="host-initializing-brand" href="/" onClick={(event) => { event.preventDefault(); requestHome(); }}>
+          <a className="host-initializing-brand" href="/" aria-label="CloudClash home" onClick={(event) => { event.preventDefault(); requestHome(); }}>
             <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
-            <img src="/assets/cloudclash/branding/logo-wordmark.svg" alt="CloudClash" />
+            <span>Cloud<span>Clash</span></span>
           </a>
         </header>
         <section className="host-initializing-card" role="status" aria-live="polite">

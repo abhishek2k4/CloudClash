@@ -4267,11 +4267,22 @@ body:has(.landing-shell) #root {
 .host-initializing-brand {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   height: 34px;
+  color: var(--cc-ink);
+  font-size: 14px;
+  font-weight: 850;
+  letter-spacing: -.045em;
+  line-height: 1;
+  text-decoration: none;
 }
-.host-initializing-brand img:first-child { width: 25px; height: 25px; }
-.host-initializing-brand img:last-child { width: 104px; height: auto; }
+.host-initializing-brand img {
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+.host-initializing-brand > span > span { color: var(--cc-orange-live); }
 .host-initializing-card {
   width: min(100%, 548px);
   min-height: 255px;
