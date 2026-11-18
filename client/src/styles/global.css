@@ -3607,5 +3607,9 @@ body:has(.landing-shell) #root {
 
 
 .participant-question-card .selection-notice {
+  padding: 10px 14px;
+  border: 1px solid #e1d3b8;
+  border-radius: 9px;
+  background: #f1e8d3;
   color: #51463d;
 }
