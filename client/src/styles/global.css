@@ -5462,3 +5462,23 @@ body:has(.landing-shell) #root {
   .host-flow-brand,
   .host-control-brand { font-size: 13px; }
 }
+
+
+/* Host control wordmark: keep the text treatment identical to the homepage */
+.host-control-brand > span {
+  display: inline-block;
+  color: var(--cc-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 850;
+  letter-spacing: -.055em;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+}
+.host-control-brand > span > span {
+  color: var(--cc-orange-live);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
