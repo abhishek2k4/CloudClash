@@ -3398,3 +3398,163 @@ body:has(.landing-shell) #root {
   .lobby-brand > i, .lobby-brand > span:not(.lobby-brand-mark) { display: none; }
   .lobby-roster-heading { align-items: flex-start; flex-direction: column; }
 }
+
+
+/* Participant live question screen — paired with the redesigned waiting lobby */
+.participant-live-screen {
+  --live-ink: #111;
+  --live-paper: #f5f1e5;
+  --live-orange: #ed5b35;
+  --live-yellow: #f3b936;
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0 6.4vw 60px;
+  background: var(--live-paper);
+  color: var(--live-ink);
+}
+.live-topbar { margin: 0 -6.4vw; padding: 0 6.4vw; }
+.live-running-pill i { background: #4b9e58; }
+.participant-live-content {
+  width: min(100%, 628px);
+  margin: 16px auto 0;
+}
+.participant-live-title {
+  margin: 0 0 12px;
+  color: var(--live-ink);
+  font-size: clamp(34px, 4.1vw, 42px);
+  line-height: 1.05;
+  font-weight: 850;
+  letter-spacing: -.065em;
+}
+.participant-live-title span { color: var(--live-orange); }
+.participant-question-card {
+  padding: 18px 20px 20px;
+  border: 1.5px solid #111;
+  border-radius: 12px;
+  background: #fffefa;
+  box-shadow: 8px 8px 0 var(--live-yellow);
+  color: #111;
+}
+.participant-question-card .timer-track { display: none; }
+.participant-question-card .question-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 7px;
+}
+.participant-question-card .hud-badge {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #171717;
+  font: 700 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+}
+.participant-question-card .timer-readout {
+  color: var(--live-orange);
+  font-size: 19px;
+  font-weight: 850;
+  line-height: 1;
+}
+.participant-question-card .question-prompt {
+  margin: 0 0 13px;
+  color: #111;
+  font-size: clamp(21px, 2.5vw, 25px);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -.045em;
+}
+.participant-question-card .options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.participant-question-card .option-tile {
+  min-height: 43px;
+  padding: 7px 9px;
+  border: 1px solid #171717;
+  border-radius: 9px;
+  background: #fff;
+  color: #111;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  box-shadow: none;
+}
+.participant-question-card .option-key {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border: 1px solid #171717;
+  border-radius: 6px;
+  background: var(--live-paper);
+  color: #111;
+  display: grid;
+  place-items: center;
+  font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.participant-question-card .option-text {
+  color: #111;
+  font-size: 13px;
+  font-weight: 650;
+}
+.participant-question-card .option-tile.selected {
+  border-color: #d66a47;
+  background: #fff0e9;
+  box-shadow: inset 0 0 0 1px #d66a47;
+}
+.participant-question-card .option-tile.correct-answer {
+  border-color: #3b8d50;
+  background: #e4f3e4;
+  color: #111;
+}
+.participant-question-card .option-tile.incorrect-answer {
+  border-color: #a33b31;
+  background: #f8e5e1;
+  color: #111;
+}
+.participant-question-card .option-feedback {
+  margin-left: auto;
+  font-size: 19px;
+  font-weight: 800;
+}
+.participant-question-card .correct-answer .option-feedback { color: #24763b; }
+.participant-question-card .incorrect-answer .option-feedback { color: #9a2f26; }
+.participant-question-card .selection-notice {
+  margin-top: 10px;
+  color: #6b6257;
+  font-size: 11px;
+}
+.participant-question-card > .surface-card {
+  margin-top: 15px !important;
+  padding: 14px 16px;
+  border: 1px solid #171717;
+  border-radius: 9px;
+  background: #f1e8d3;
+  box-shadow: none;
+}
+.participant-question-card > .surface-card .eyebrow {
+  margin-bottom: 5px;
+  color: #d36a47;
+  font-size: 9px;
+  letter-spacing: .13em;
+}
+.participant-question-card > .surface-card .muted {
+  margin: 0;
+  color: #252525;
+  font-size: 12px;
+  line-height: 1.45;
+}
+@media (max-width: 620px) {
+  .participant-live-screen { padding: 0 16px 40px; }
+  .live-topbar { margin: 0 -16px; padding: 0 16px; }
+  .participant-live-content { margin-top: 24px; }
+  .participant-question-card { padding: 15px 13px 16px; }
+  .participant-question-card .question-prompt { font-size: 21px; }
+  .participant-question-card .options-grid { grid-template-columns: 1fr; gap: 7px; }
+  .participant-question-card .option-tile { min-height: 44px; }
+}

@@ -338,7 +338,7 @@ export default function Participant({
 
   /* ACTIVE MATCH & LOBBY VIEW */
   return (
-    <main className={`app-shell ${status === "waiting" ? "ready-lobby-screen" : ""}`}>
+    <main className={`app-shell ${status === "waiting" ? "ready-lobby-screen" : status === "running" ? "participant-live-screen" : ""}`}>
       {status === "waiting" ? (
         <header className="lobby-topbar">
           <div className="lobby-brand">
@@ -351,11 +351,25 @@ export default function Participant({
             <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
           </div>
         </header>
+      ) : status === "running" ? (
+        <header className="lobby-topbar live-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUD<span>CLASH</span></strong>
+            <i /><span>PLAYER</span>
+            <i /><span>{participant.name}</span>
+            <i /><span>ROOM {participant.code}</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill live-running-pill"><i /> RUNNING</span>
+            <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
       ) : (
         <header className="dashboard-head">
           <div>
             <p className="eyebrow">PLAYER · {participant.name} · ROOM {participant.code}</p>
-            <h1>{status === "finished" ? "Match Concluded" : "Stay Sharp."}</h1>
+            <h1>Match Concluded</h1>
           </div>
           <div className="header-actions">
             <span className={`status-chip ${status}`}>{status.replace("_", " ")}</span>
@@ -365,7 +379,9 @@ export default function Participant({
       )}
 
       {question && status === "running" && (
-        <section className="arena-card">
+        <section className="participant-live-content">
+          <h1 className="participant-live-title">Stay <span>Sharp.</span></h1>
+          <div className="arena-card participant-question-card">
           <div className="timer-track">
             <div className={`timer-fill ${timerState}`} style={{ width: `${progressPct}%` }} />
           </div>
@@ -419,6 +435,7 @@ export default function Participant({
               <p className="muted">{result.explanation}</p>
             </div>
           )}
+          </div>
         </section>
       )}
 
