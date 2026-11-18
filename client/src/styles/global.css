@@ -4753,11 +4753,13 @@ body:has(.landing-shell) #root {
   font-weight: 750;
 }
 .host-round-bank-card > .muted { color: var(--cc-text-secondary); font-size: 9px !important; }
-.host-csv-screen .host-csv-content { padding-bottom: 0; }
+.host-csv-screen .host-csv-content { padding-bottom: 96px; }
 .host-csv-sticky-footer {
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
-  z-index: 10;
+  z-index: 30;
   width: 100%;
   margin: 0;
   border-top: 1px solid var(--cc-border-warm);
