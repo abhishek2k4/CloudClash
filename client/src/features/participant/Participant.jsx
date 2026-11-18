@@ -287,12 +287,32 @@ export default function Participant({
   /* Automatic home-page join: never show the legacy entry form. */
   if (!participant && autoJoin) {
     return (
-      <main className="app-shell narrow">
-        <section className="surface-card" role="status" aria-live="polite">
-          <p className="eyebrow">PLAYER ENTRY</p>
-          <h1>Joining the arena…</h1>
-          <p className="muted" style={{ marginTop: 8 }}>Connecting you directly to the lobby.</p>
-          {error && <div className="error-banner">{error}</div>}
+      <main className="participant-joining-screen" role="status" aria-live="polite">
+        <header className="lobby-topbar joining-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUDCLASH</strong>
+            <i />
+            <span>PLAYER</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill"><i /> CONNECTING</span>
+          </div>
+        </header>
+        <section className="joining-content">
+          <p className="joining-kicker">PLAYER ENTRY · {code || initialCode}</p>
+          <h1 className="joining-title">You're almost <span>in.</span></h1>
+          <div className="joining-card">
+            <div className="joining-loader" aria-hidden="true"><span /></div>
+            <div className="joining-copy">
+              <p className="lobby-section-label">ESTABLISHING CONNECTION</p>
+              <h2>Joining the arena…</h2>
+              <p>Getting your seat ready. You'll be taken straight to the lobby.</p>
+            </div>
+            <div className="joining-progress" aria-hidden="true"><span /></div>
+            {error && <div className="error-banner">{error}</div>}
+          </div>
+          <p className="joining-footnote">Keep this tab open while we connect you.</p>
         </section>
       </main>
     );
