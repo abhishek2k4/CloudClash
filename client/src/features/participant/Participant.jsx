@@ -16,7 +16,8 @@ export default function Participant({
   onActivityChange,
   initialName = "",
   initialCode = "",
-  autoJoin = false
+  autoJoin = false,
+  onJoinFailure
 }) {
   const [name, setName] = useState(initialName);
   const [code, setCode] = useState(initialCode);
@@ -47,7 +48,9 @@ export default function Participant({
 
   const apply = useCallback((r, joinedCode) => {
     if (!r?.success) {
-      setError(r?.message || "Could not join.");
+      const message = r?.message || "Could not join this room. Check the room code and try again.";
+      setError(message);
+      if (autoJoin) onJoinFailure?.(message);
       return;
     }
     const p = { ...r.participant, name: r.participant.name, code: joinedCode, eliminated: Boolean(r.snapshot?.eliminated) };
@@ -73,7 +76,7 @@ export default function Participant({
     } else {
       setSeconds(0);
     }
-  }, []);
+  }, [autoJoin, onJoinFailure]);
 
   useEffect(() => {
     socket.auth = (callback) => {
@@ -170,7 +173,11 @@ export default function Participant({
       }
     };
 
-    const onConnectError = (err) => setError(err?.message || "Could not connect to the quiz server.");
+    const onConnectError = (err) => {
+      const message = err?.message || "Could not connect to the quiz server.";
+      setError(message);
+      if (autoJoin) onJoinFailure?.(message);
+    };
     socket.on("connect", connect);
     socket.on("connect_error", onConnectError);
     socket.connect();
@@ -194,7 +201,7 @@ export default function Participant({
       socket.disconnect();
       socket.auth = {};
     };
-  }, [apply]);
+  }, [apply, autoJoin, onJoinFailure]);
 
   useEffect(() => {
     if (!question || status !== "running") return;
@@ -207,13 +214,18 @@ export default function Participant({
 
   const join = useCallback((e) => {
     e?.preventDefault();
-    if (!name.trim() || !code.trim()) return;
+    if (!name.trim() || !code.trim()) {
+      const message = "Enter your room code and display name first.";
+      setError(message);
+      if (autoJoin) onJoinFailure?.(message);
+      return;
+    }
     setError("");
     const cleanCode = code.trim().toUpperCase();
     socket.emit("join_competition", { name: name.trim(), code: cleanCode }, (r) =>
       apply(r, cleanCode)
     );
-  }, [name, code, apply]);
+  }, [name, code, apply, autoJoin, onJoinFailure]);
 
   useEffect(() => {
     if (!autoJoin || autoJoinAttemptedRef.current) return;
@@ -272,56 +284,14 @@ export default function Participant({
     );
   }
 
-  /* ENTRY VIEW */
-  if (!participant) {
+  /* Automatic home-page join: never show the legacy entry form. */
+  if (!participant && autoJoin) {
     return (
       <main className="app-shell narrow">
-        <button className="back-link" onClick={requestHome}>
-          ← Back to Home
-        </button>
-
-        <section className="surface-card">
+        <section className="surface-card" role="status" aria-live="polite">
           <p className="eyebrow">PLAYER ENTRY</p>
-          <h1>Enter the Arena.</h1>
-          <p className="muted" style={{ marginTop: 6, marginBottom: 20 }}>
-            Confirm your display name and the room access code shared by your host.
-          </p>
-
-          <form onSubmit={join} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="field-group">
-              <label className="field-label" htmlFor="join-code">Room Code</label>
-              <input
-                id="join-code"
-                className="input-control input-code"
-                placeholder="CODE"
-                maxLength={12}
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-              />
-            </div>
-
-            <div className="field-group">
-              <label className="field-label" htmlFor="join-name">Display Name</label>
-              <input
-                id="join-name"
-                className="input-control"
-                placeholder="Your name on the leaderboard"
-                maxLength={40}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary btn-full"
-              style={{ marginTop: 6 }}
-              disabled={!name.trim() || !code.trim()}
-            >
-              Join Room →
-            </button>
-          </form>
-
+          <h1>Joining the arena…</h1>
+          <p className="muted" style={{ marginTop: 8 }}>Connecting you directly to the lobby.</p>
           {error && <div className="error-banner">{error}</div>}
         </section>
       </main>

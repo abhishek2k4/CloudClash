@@ -104,6 +104,11 @@ export default function App() {
 
   const handleQuickJoin = (e) => {
     e.preventDefault();
+    if (!prefillJoin.code.trim() || !prefillJoin.name.trim()) {
+      setAuthToast({ type: "error", message: "Enter your room code and display name first." });
+      return;
+    }
+    setAuthToast(null);
     setIsJoining(true);
   };
 
@@ -129,6 +134,7 @@ export default function App() {
         initialName={prefillJoin.name}
         initialCode={prefillJoin.code}
         autoJoin
+        onJoinFailure={handleJoinFailure}
         onHome={() => {
           setIsJoining(false);
           setPrefillJoin({ name: "", code: "" });
