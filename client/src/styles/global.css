@@ -5483,3 +5483,15 @@ body:has(.landing-shell) #root {
   letter-spacing: inherit;
   text-transform: inherit;
 }
+
+
+/* Smooth in-page navigation for the landing page section links */
+html:has(.landing-shell) {
+  scroll-behavior: smooth;
+  scroll-padding-top: 18px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html:has(.landing-shell) {
+    scroll-behavior: auto;
+  }
+}
