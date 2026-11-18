@@ -4160,6 +4160,67 @@ body:has(.landing-shell) #root {
   .landing-shell .mobile-nav-open .landing-menu-toggle span:nth-child(2) { opacity: 0; }
   .landing-shell .mobile-nav-open .landing-menu-toggle span:last-child { transform: translateY(-7px) rotate(-45deg); }
 }
+
+/* Small-phone header: brand/menu on row one, account actions on row two */
+@media (max-width: 520px) {
+  .landing-shell .brand-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 36px;
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    row-gap: 11px;
+    align-items: center;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .landing-shell .brand-lockup {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    width: max-content;
+    max-width: 100%;
+  }
+  .landing-shell .brand-mark { flex: 0 0 34px; }
+  .landing-shell .brand-name {
+    font-size: clamp(.88rem, 4.4vw, 1.05rem);
+    white-space: nowrap;
+  }
+  .landing-shell .landing-menu-toggle {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .landing-shell .landing-header-actions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    justify-content: stretch;
+    gap: 9px;
+  }
+  .landing-shell .landing-header-actions > .btn {
+    flex: 1 1 0;
+    justify-content: center;
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .landing-shell .account-header {
+    width: 100%;
+    display: flex;
+    gap: 9px;
+  }
+  .landing-shell .account-header > .btn {
+    flex: 1 1 0;
+    justify-content: center;
+    min-width: 0;
+    min-height: 40px;
+    font-size: 12px;
+  }
+}
+
 @media (max-width: 380px) {
   .landing-shell { padding-left: 13px; padding-right: 13px; }
   .landing-shell .brand-name { font-size: .94rem; }
