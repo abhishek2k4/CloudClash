@@ -4930,14 +4930,17 @@ body:has(.landing-shell) #root {
 .host-control-screen .room-banner .btn-secondary {
   min-height: 38px;
   padding: 8px 14px;
-  border: 1px solid var(--cc-ink);
+  border: 1px solid var(--cc-orange-live);
   border-radius: 7px;
-  background: var(--cc-ink);
+  background: var(--cc-orange-live);
   color: var(--cc-white);
   font-size: 11px;
   font-weight: 800;
 }
-.host-control-screen .room-banner .btn-secondary:hover { background: #33302c; }
+.host-control-screen .room-banner .btn-secondary:hover {
+  border-color: var(--cc-orange-deep);
+  background: var(--cc-orange-deep);
+}
 .host-control-lobby-grid {
   display: grid;
   grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
@@ -5127,6 +5130,29 @@ body:has(.landing-shell) #root {
   border-color: var(--cc-orange-deep);
   background: var(--cc-option-selected);
   color: var(--cc-orange-deep);
+}
+.host-control-screen .leaderboard-round-select {
+  min-height: 31px;
+  padding: 7px 28px 7px 10px;
+  border: 1px solid var(--cc-border-warm);
+  border-radius: 7px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--cc-paper-warm);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236f675e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  color: var(--cc-text-secondary);
+  font: 750 10px/1.2 inherit;
+  cursor: pointer;
+}
+.host-control-screen .leaderboard-round-select:hover {
+  border-color: var(--cc-orange-deep);
+  background-color: var(--cc-subtle);
+}
+.host-control-screen .leaderboard-round-select:focus-visible {
+  outline: 2px solid var(--cc-orange-live);
+  outline-offset: 2px;
 }
 .host-control-screen .leaderboard-column-head {
   color: var(--cc-text-muted);
