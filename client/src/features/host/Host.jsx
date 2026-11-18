@@ -1214,16 +1214,31 @@ export default function Host({ onHome, onActivityChange }) {
 
   /* STAGE 04: LIVE HOST CONTROL ROOM */
   return (
-    <main className="app-shell">
-      <header className="dashboard-head">
-        <div>
-          <p className="eyebrow">HOST CONTROL ROOM</p>
-          <h1>{roomName || "Live Arena"}</h1>
+    <main className="host-control-screen">
+      <header className="host-control-topbar">
+        <a className="host-control-brand" href="/" aria-label="CloudClash home" onClick={(event) => { event.preventDefault(); requestHome(); }}>
+          <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
+          <span>Cloud<span>Clash</span></span>
+        </a>
+        <div className="host-control-topbar-meta">
+          <span className="host-control-live-indicator"><i /> HOST CONTROL ROOM</span>
+          <span className={`host-control-status ${status}`}>{status.replace("_", " ")}</span>
         </div>
-        <span className={`status-chip ${status}`}>{status.replace("_", " ")}</span>
+      </header>
+      <div className="host-control-content">
+      <header className="host-control-heading">
+        <div>
+          <p className="host-control-kicker">HOST CONTROL ROOM</p>
+          <h1>{roomName || "Live Arena"}<span>.</span></h1>
+          <p>Manage your room, monitor players and control the competition.</p>
+        </div>
+        <div className="host-control-round-indicator">
+          <span>{status === "waiting" ? "READY TO START" : status === "finished" ? "COMPETITION ENDED" : status === "round_break" ? "ROUND BREAK" : `ROUND ${String(round).padStart(2, "0")}`}</span>
+          <strong>{status === "waiting" ? "Lobby" : status === "finished" ? "Results" : status === "round_break" ? "Standings" : status === "paused" ? "Paused" : "Live"}</strong>
+        </div>
       </header>
 
-      <section className="room-banner">
+      <section className="room-banner host-room-banner">
         <div>
           <p className="eyebrow" style={{ marginBottom: 4 }}>ROOM ACCESS CODE</p>
           <div className="room-code-display">{roomCode}</div>
@@ -1240,8 +1255,8 @@ export default function Host({ onHome, onActivityChange }) {
       )}
 
       {status === "waiting" && (
-        <div className="host-lobby-grid">
-          <section className="surface-card">
+        <div className="host-lobby-grid host-control-lobby-grid">
+          <section className="surface-card host-control-panel host-question-overview">
             <div className="section-header">
               <div>
                 <p className="eyebrow" style={{ marginBottom: 2 }}>QUESTION BANK</p>
@@ -1274,7 +1289,7 @@ export default function Host({ onHome, onActivityChange }) {
             </button>
           </section>
 
-          <section className="surface-card">
+          <section className="surface-card host-control-panel host-player-lobby">
             <div className="section-header">
               <div>
                 <p className="eyebrow" style={{ marginBottom: 2 }}>WAITING LOBBY</p>
@@ -1333,7 +1348,7 @@ export default function Host({ onHome, onActivityChange }) {
       )}
 
       {(status === "running" || status === "paused") && (
-        <section className="arena-card">
+        <section className="arena-card host-live-panel">
           <div className="timer-track">
             <div
               className={`timer-fill ${timerState}`}
@@ -1407,7 +1422,7 @@ export default function Host({ onHome, onActivityChange }) {
       )}
 
       {status === "round_break" && (
-        <section className="surface-card">
+        <section className="surface-card host-round-break-card">
           <p className="eyebrow">ROUND {String(round).padStart(2, "0")} COMPLETE</p>
           <h2>Interim Standings Locked</h2>
           <p className="muted" style={{ margin: "6px 0 18px" }}>
@@ -1456,7 +1471,7 @@ export default function Host({ onHome, onActivityChange }) {
 
       {status === "finished" && resultsRevealed && leaderboard.length >= 3 && <div className="confetti-overlay" aria-hidden="true">{Array.from({ length: 42 }, (_, i) => <i key={i} style={{ "--confetti-x": `${(i * 37) % 100}%`, "--confetti-delay": `${(i % 9) * -0.37}s`, "--confetti-duration": `${4 + (i % 5)}s`, "--confetti-rotation": `${i * 47}deg` }} />)}</div>}
       {status === "finished" && !resultsRevealed && (
-        <section className="surface-card final-reveal-card">
+        <section className="surface-card final-reveal-card host-final-reveal-card">
           <p className="eyebrow">QUIZ ENDED</p>
           <h2>Results are locked.</h2>
           <p className="muted">The final standings are hidden from everyone. Reveal them when you're ready to announce the winners.</p>
@@ -1464,7 +1479,7 @@ export default function Host({ onHome, onActivityChange }) {
         </section>
       )}
       {(status === "round_break" || (status === "finished" && resultsRevealed)) && (
-        <section className="surface-card host-leaderboard">
+        <section className="surface-card host-leaderboard host-control-leaderboard">
           <div className="section-header host-leaderboard-heading">
             <div><p className="eyebrow">TELEMETRY STANDINGS</p><h2>{status === "finished" ? "Final Leaderboard" : "Current Leaderboard"}</h2></div>
             <div className="leaderboard-view-controls">
@@ -1553,7 +1568,8 @@ export default function Host({ onHome, onActivityChange }) {
         </div>
       )}
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && <div className="error-banner host-control-error">{error}</div>}
+      </div>
     </main>
   );
 }
