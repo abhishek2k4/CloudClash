@@ -441,14 +441,19 @@ export default function Host({ onHome, onActivityChange }) {
 
   if (!authenticated) {
     return (
-      <main className="app-shell narrow">
-        <button className="back-link" onClick={requestHome}>
-          ← Home
-        </button>
-        <section className="surface-card">
-          <p className="eyebrow">HOST SETUP</p>
-          <h1>Initializing Control Room</h1>
-          <p className="muted" style={{ marginTop: 10 }}>
+      <main className="host-initializing-screen">
+        <header className="host-initializing-topbar">
+          <button type="button" className="host-home-link" onClick={requestHome}>← Home</button>
+          <a className="host-initializing-brand" href="/" onClick={(event) => { event.preventDefault(); requestHome(); }}>
+            <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
+            <img src="/assets/cloudclash/branding/logo-wordmark.svg" alt="CloudClash" />
+          </a>
+        </header>
+        <section className="host-initializing-card" role="status" aria-live="polite">
+          <span className="host-initializing-spinner" aria-hidden="true" />
+          <p className="host-initializing-label">HOST SETUP</p>
+          <h1>Initializing <span>Control Room.</span></h1>
+          <p className="host-initializing-description">
             {connected ? "Authenticating host session..." : "Connecting to arena server..."}
           </p>
           {error && <div className="error-banner">{error}</div>}
