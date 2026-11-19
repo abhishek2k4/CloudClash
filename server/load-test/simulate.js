@@ -278,7 +278,7 @@ try {
           question.round >= 1 &&
           question.questionNumber >= 2 &&
           !randomDropScheduled.has(socket.participantId) &&
-          Math.random() < 0.035
+          Math.random() < 0.008
         ) {
           randomDropScheduled.add(socket.participantId);
           const dropDelay = 500 + Math.floor(Math.random() * 4500);
