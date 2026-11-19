@@ -268,6 +268,7 @@ export default function Participant({
       );
       if (!leave) return;
     }
+    if (participant) socket.emit("leave_competition");
     onHome();
   };
 
@@ -369,6 +370,32 @@ export default function Participant({
               The host has paused the quiz. Please wait here until the host resumes.
             </p>
             <button type="button" className="paused-leave-button" onClick={requestHome}>Leave Quiz</button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (status === "round_break") {
+    return (
+      <main className="participant-round-break-screen">
+        <header className="lobby-topbar round-break-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUD<span>CLASH</span></strong>
+            <span>ROOM {participant?.code || code}</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill round-break-status-pill"><i /> ROUND BREAK</span>
+            <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
+        <section className="round-break-content">
+          <div className="round-break-card">
+            <p className="lobby-section-label">ROUND {String(round).padStart(2, "0")} COMPLETE</p>
+            <h1>Take a <span>breather.</span></h1>
+            <p>The round has ended. Stay here while the host prepares the next round.</p>
+            <div className="round-break-waiting"><i /><span>WAITING FOR THE NEXT ROUND</span></div>
           </div>
         </section>
       </main>

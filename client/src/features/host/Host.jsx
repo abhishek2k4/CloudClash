@@ -290,6 +290,15 @@ export default function Host({ onHome, onActivityChange }) {
 
   const removeRound = (target) => {
     if (rounds <= 1) return;
+    if (target !== rounds) {
+      setError("Only the last round can be removed. Select the final round first.");
+      return;
+    }
+    if (Number(counts[target] || 0) > 0) {
+      setError("Remove the questions from Round " + target + " in the question bank before removing this round.");
+      return;
+    }
+    setError("");
     const nextTotal = rounds - 1;
     setSettings((s) => {
       const rs = {};
@@ -446,7 +455,7 @@ export default function Host({ onHome, onActivityChange }) {
           <button type="button" className="host-home-link" onClick={requestHome}>← Home</button>
           <a className="host-initializing-brand" href="/" aria-label="CloudClash home" onClick={(event) => { event.preventDefault(); requestHome(); }}>
             <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
-            <span>Cloud<span>Clash</span></span>
+            <span>CLOUD<span>CLASH</span></span>
           </a>
         </header>
         <section className="host-initializing-card" role="status" aria-live="polite">
@@ -470,7 +479,7 @@ export default function Host({ onHome, onActivityChange }) {
           <button className="host-flow-back" onClick={requestHome}>← Back to Home</button>
           <a className="host-flow-brand" href="/" aria-label="CloudClash home" onClick={(event) => { event.preventDefault(); requestHome(); }}>
             <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
-            <span>Cloud<span>Clash</span></span>
+            <span>CLOUD<span>CLASH</span></span>
           </a>
         </div>
         <div className="host-setup-content">
@@ -568,7 +577,7 @@ export default function Host({ onHome, onActivityChange }) {
         <header className="host-config-topbar">
           <button className="host-config-brand" type="button" onClick={requestHome} aria-label="Back to CloudClash home">
             <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
-            <span>Cloud<span>Clash</span></span>
+            <span>CLOUD<span>CLASH</span></span>
           </button>
           <div className="host-config-topbar-meta">
             <span className="host-config-status"><i /> HOST CONTROL ROOM</span>
@@ -606,7 +615,7 @@ export default function Host({ onHome, onActivityChange }) {
 
               <div className="host-config-section-heading">
                 <div><p className="eyebrow">{activeRoundLabel} PARAMETERS</p><h2>Timing &amp; Scoring Rules</h2></div>
-                {rounds > 1 && <button type="button" className="host-config-remove" onClick={() => removeRound(activeConfigRound)}>Remove</button>}
+                {rounds > 1 && <button type="button" className="host-config-remove" disabled={activeConfigRound !== rounds} title={activeConfigRound !== rounds ? "Select the last round to remove it" : "Remove the last round"} onClick={() => removeRound(activeConfigRound)}>Remove</button>}
               </div>
 
               <div className="host-config-controls">
@@ -708,7 +717,7 @@ export default function Host({ onHome, onActivityChange }) {
           <button className="host-flow-back" onClick={() => setStage("lobby")}>← Back to Host Dashboard</button>
           <a className="host-flow-brand" href="/" aria-label="CloudClash home" onClick={(event) => { event.preventDefault(); requestHome(); }}>
             <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
-            <span>Cloud<span>Clash</span></span>
+            <span>CLOUD<span>CLASH</span></span>
           </a>
         </div>
         <div className="host-method-content">
@@ -774,7 +783,7 @@ export default function Host({ onHome, onActivityChange }) {
           <button className="host-flow-back" onClick={() => setStage("method")}>← Back to Authoring Method</button>
           <a className="host-flow-brand" href="/" aria-label="CloudClash home" onClick={(event) => { event.preventDefault(); requestHome(); }}>
             <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
-            <span>Cloud<span>Clash</span></span>
+            <span>CLOUD<span>CLASH</span></span>
           </a>
         </div>
         <div className="host-csv-content">
@@ -1135,7 +1144,7 @@ export default function Host({ onHome, onActivityChange }) {
       <header className="host-control-topbar">
         <a className="host-control-brand" href="/" aria-label="CloudClash home" onClick={(event) => { event.preventDefault(); requestHome(); }}>
           <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
-          <span>Cloud<span>Clash</span></span>
+          <span>CLOUD<span>CLASH</span></span>
         </a>
         <div className="host-control-topbar-meta">
           <span className="host-control-live-indicator"><i /> HOST CONTROL ROOM</span>
