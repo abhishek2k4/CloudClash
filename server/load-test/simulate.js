@@ -66,7 +66,7 @@ function percentile(values, p) {
 }
 
 function printSummary() {
-  console.log("\n========== CLOUD CLASH DEPLOYED TEST ==========");
+  console.log("\n========== CLOUD CLASH SOCKET.IO LOAD TEST ==========");
   console.log("Backend URL:                    " + url);
   console.log("Requested participants:         " + stats.requested);
   console.log("Successfully joined:            " + stats.joined);
@@ -106,7 +106,7 @@ process.once("SIGTERM", shutdown);
 
 try {
   console.log("\nCloud Clash — Deployed Manual-Room Simulator");
-  console.log("This creates simulated participant connections to the backend you specify.");
+  console.log("This creates simulated participant connections to the backend and room you specify.");
   console.log("Create the room in the deployed host dashboard first. Enable elimination in Advanced Configuration.");
   console.log("For a meaningful elimination test, configure a keep-count after Round 1 (for example, keep top 20).\n");
 
@@ -119,10 +119,12 @@ try {
   const roomCode = (await ask("Room code: " )).toUpperCase();
   if (!roomCode) throw new Error("Room code is required.");
 
-  const rawCount = await ask("Simulated participants (1–40) [40]: ");
-  const count = rawCount ? Number(rawCount) : 40;
+  const envCount = Number(process.env.LOAD_TEST_PARTICIPANTS || 40);
+  const defaultCount = Number.isInteger(envCount) && envCount >= 1 && envCount <= 40 ? envCount : 40;
+  const rawCount = await ask("Simulated bot participants (1–40) [" + defaultCount + "]: ");
+  const count = rawCount ? Number(rawCount) : defaultCount;
   if (!Number.isInteger(count) || count < 1 || count > 40) {
-    throw new Error("Participant count must be an integer between 1 and 40.");
+    throw new Error("Bot participant count must be an integer between 1 and 40. Your physical devices can join separately.");
   }
   stats.requested = count;
 
@@ -135,11 +137,15 @@ try {
   const healthResponse = await fetch(url + "/health", { signal: AbortSignal.timeout(15000) });
   const healthBody = await healthResponse.json().catch(() => ({}));
   console.log("\nHealth check: HTTP " + healthResponse.status + " — " + (healthBody.status || "unknown"));
-  if (!healthResponse.ok) {
+  if (!healthResponse.ok || healthBody.status !== "ok") {
     throw new Error("Backend health check is not healthy. Check Render /health and persistence before load testing.");
+  }
+  if (healthBody.competition !== "waiting") {
+    throw new Error("The selected room must be in WAITING state before bots join. Current backend competition state: " + (healthBody.competition || "unknown"));
   }
 
   console.log("\nConnecting " + count + " simulated participants...");
+  console.log("You can also join this same room from your own phones/browsers; those are additional real participants.");
   for (let i = 1; i <= count; i++) {
     try {
       const socket = await connect();
@@ -256,6 +262,7 @@ try {
   console.log("Now start the quiz from the deployed host dashboard.");
   console.log("At each round break, review and confirm eliminations on the host dashboard before starting the next round.");
   console.log("The simulator intentionally keeps eliminated clients connected and attempts answers to verify server-side rejection.");
+  console.log("The bot count is separate from physical devices joining manually.");
   console.log("Keep this terminal open until the quiz is finished. Press Ctrl+C to disconnect everyone and print the report.\n");
 
   await new Promise(() => {});
