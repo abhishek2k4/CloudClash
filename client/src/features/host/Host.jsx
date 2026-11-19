@@ -560,230 +560,147 @@ export default function Host({ onHome, onActivityChange }) {
   if (stage === "advanced") {
     const currentSeconds = settings.roundSeconds[activeConfigRound] ?? 20;
     const currentMarks = settings.marks[activeConfigRound] ?? 10;
+    const bestCase = currentMarks * (1 + (settings.speedBonusPercent ?? 10) / 100);
+    const activeRoundLabel = `Round ${String(activeConfigRound).padStart(2, "0")}`;
 
     return (
-      <main className="app-shell narrow">
-        <button className="back-link" onClick={() => setStage("lobby")}>
-          ← Back to Host Dashboard
-        </button>
-
-        <header style={{ marginBottom: 22 }}>
-          <p className="eyebrow">HOST DASHBOARD · ADVANCED SETTINGS</p>
-          <h1>Configure your quiz.</h1>
-          <p className="muted" style={{ marginTop: 6 }}>
-            Fine-tune round timing, scoring and optional elimination before the quiz begins.
-          </p>
+      <main className="host-config-screen">
+        <header className="host-config-topbar">
+          <button className="host-config-brand" type="button" onClick={requestHome} aria-label="Back to CloudClash home">
+            <img src="/assets/cloudclash/branding/logo-mark.svg" alt="" />
+            <span>Cloud<span>Clash</span></span>
+          </button>
+          <div className="host-config-topbar-meta">
+            <span className="host-config-status"><i /> HOST CONTROL ROOM</span>
+            <span className="host-config-state">{status === "waiting" ? "CONFIGURING" : status.toUpperCase()}</span>
+          </div>
         </header>
 
-        <section className="surface-card">
-          <div className="telemetry-strip">
-            <div className="telemetry-cell">
-              <span>Total Rounds</span>
-              <strong>{String(rounds).padStart(2, "0")}</strong>
-            </div>
-            <div className="telemetry-cell">
-              <span>Active Timer</span>
-              <strong>{currentSeconds}s / Q</strong>
-            </div>
-            <div className="telemetry-cell">
-              <span>Active Weight</span>
-              <strong>{currentMarks} PTS</strong>
-            </div>
-          </div>
+        <div className="host-config-content">
+          <button className="host-config-back" type="button" onClick={() => setStage("lobby")}>← Back to Host Dashboard</button>
+          <header className="host-config-heading">
+            <p className="eyebrow">HOST CONTROL ROOM · ADVANCED SETTINGS</p>
+            <h1>Configure your quiz<span>.</span></h1>
+            <p>Fine-tune round timing, scoring and optional elimination before the quiz begins.</p>
+          </header>
 
-          <div className="round-tabs">
-            {Array.from({ length: rounds }, (_, i) => i + 1).map((n) => (
-              <button
-                type="button"
-                key={n}
-                className={`round-tab ${activeConfigRound === n ? "active" : ""}`}
-                onClick={() => setActiveConfigRound(n)}
-              >
-                R{String(n).padStart(2, "0")}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="round-tab-add"
-              onClick={addRound}
-              disabled={rounds >= 10}
-              title={rounds >= 10 ? "Maximum of 10 rounds" : "Add a round"}
-            >
-              {rounds >= 10 ? "10 Rounds Max" : "+ Add Round"}
-            </button>
-          </div>
+          <section className="host-config-metrics" aria-label="Current configuration summary">
+            <article><span>Total Rounds</span><strong>{String(rounds).padStart(2, "0")}</strong></article>
+            <article><span>Active Timer</span><strong>{currentSeconds}s / Q</strong></article>
+            <article><span>Active Weight</span><strong>{currentMarks} PTS</strong></article>
+          </section>
 
-          <div className="round-editor-box">
-            <div className="section-header" style={{ marginBottom: 0 }}>
-              <div>
-                <p className="eyebrow" style={{ marginBottom: 2 }}>
-                  ROUND {String(activeConfigRound).padStart(2, "0")} PARAMETERS
-                </p>
-                <h3 style={{ fontSize: "1rem" }}>Timing & Scoring Rules</h3>
-              </div>
-              {rounds > 1 && (
-                <button
-                  type="button"
-                  className="btn btn-danger btn-sm"
-                  onClick={() => removeRound(activeConfigRound)}
-                >
-                  Remove
+          <div className="host-config-layout">
+            <section className="host-config-editor">
+              <div className="host-config-round-tabs" aria-label="Select round to configure">
+                {Array.from({ length: rounds }, (_, i) => i + 1).map((n) => (
+                  <button type="button" key={n} className={activeConfigRound === n ? "active" : ""}
+                    aria-pressed={activeConfigRound === n} onClick={() => setActiveConfigRound(n)}>
+                    R{String(n).padStart(2, "0")}
+                  </button>
+                ))}
+                <button type="button" className="add-round" onClick={addRound} disabled={rounds >= 10}>
+                  + Add Round
                 </button>
-              )}
-            </div>
+              </div>
 
-            <div className="round-controls-grid">
-              <div className="field-group">
-                <label className="field-label">Seconds per Question</label>
-                <div className="stepper-row">
-                  <button
-                    type="button"
-                    className="stepper-btn"
-                    onClick={() =>
-                      setValue("roundSeconds", activeConfigRound, Math.max(5, currentSeconds - 5))
-                    }
-                  >
-                    -5
-                  </button>
-                  <input
-                    type="number"
-                    min="5"
-                    max="300"
-                    className="input-control mono"
-                    style={{ textAlign: "center" }}
-                    value={currentSeconds}
-                    onChange={(e) => setValue("roundSeconds", activeConfigRound, e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="stepper-btn"
-                    onClick={() =>
-                      setValue("roundSeconds", activeConfigRound, Math.min(300, currentSeconds + 5))
-                    }
-                  >
-                    +5
-                  </button>
+              <div className="host-config-section-heading">
+                <div><p className="eyebrow">{activeRoundLabel} PARAMETERS</p><h2>Timing &amp; Scoring Rules</h2></div>
+                {rounds > 1 && <button type="button" className="host-config-remove" onClick={() => removeRound(activeConfigRound)}>Remove</button>}
+              </div>
+
+              <div className="host-config-controls">
+                <div className="host-config-field">
+                  <label htmlFor="config-seconds">Seconds per question</label>
+                  <div className="host-config-stepper">
+                    <button type="button" aria-label="Decrease timer by 5 seconds" onClick={() => setValue("roundSeconds", activeConfigRound, Math.max(5, currentSeconds - 5))}>-5</button>
+                    <input id="config-seconds" type="number" min="5" max="300" value={currentSeconds}
+                      onChange={(e) => setValue("roundSeconds", activeConfigRound, e.target.value)} />
+                    <button type="button" aria-label="Increase timer by 5 seconds" onClick={() => setValue("roundSeconds", activeConfigRound, Math.min(300, currentSeconds + 5))}>+5</button>
+                  </div>
+                  <div className="host-config-presets">
+                    {[10, 15, 25, 45].map((sec) => <button type="button" key={sec}
+                      className={currentSeconds === sec ? "active" : ""} onClick={() => setValue("roundSeconds", activeConfigRound, sec)}>{sec}s</button>)}
+                  </div>
                 </div>
-                <div className="preset-row">
-                  {[15, 25, 45].map((sec) => (
-                    <button
-                      type="button"
-                      key={sec}
-                      className={`preset-pill ${currentSeconds === sec ? "active" : ""}`}
-                      onClick={() => setValue("roundSeconds", activeConfigRound, sec)}
-                    >
-                      {sec}s
-                    </button>
-                  ))}
+
+                <div className="host-config-field">
+                  <label htmlFor="config-marks">Points per correct answer</label>
+                  <div className="host-config-stepper">
+                    <button type="button" aria-label="Decrease points by 5" onClick={() => setValue("marks", activeConfigRound, Math.max(1, currentMarks - 5))}>-5</button>
+                    <input id="config-marks" type="number" min="1" max="100" value={currentMarks}
+                      onChange={(e) => setValue("marks", activeConfigRound, e.target.value)} />
+                    <button type="button" aria-label="Increase points by 5" onClick={() => setValue("marks", activeConfigRound, Math.min(100, currentMarks + 5))}>+5</button>
+                  </div>
+                  <div className="host-config-presets">
+                    {[5, 10, 25, 50].map((pt) => <button type="button" key={pt}
+                      className={currentMarks === pt ? "active" : ""} onClick={() => setValue("marks", activeConfigRound, pt)}>{pt} pts</button>)}
+                  </div>
                 </div>
               </div>
 
-              <div className="field-group">
-                <label className="field-label">Points per Correct Answer</label>
-                <div className="stepper-row">
-                  <button
-                    type="button"
-                    className="stepper-btn"
-                    onClick={() =>
-                      setValue("marks", activeConfigRound, Math.max(1, currentMarks - 5))
-                    }
-                  >
-                    -5
-                  </button>
-                  <input
-                    type="number"
-                    min="1"
-                    max="100"
-                    className="input-control mono"
-                    style={{ textAlign: "center" }}
-                    value={currentMarks}
-                    onChange={(e) => setValue("marks", activeConfigRound, e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="stepper-btn"
-                    onClick={() =>
-                      setValue("marks", activeConfigRound, Math.min(100, currentMarks + 5))
-                    }
-                  >
-                    +5
-                  </button>
-                </div>
-                <div className="preset-row">
-                  {[5, 10, 25].map((pt) => (
-                    <button
-                      type="button"
-                      key={pt}
-                      className={`preset-pill ${currentMarks === pt ? "active" : ""}`}
-                      onClick={() => setValue("marks", activeConfigRound, pt)}
-                    >
-                      {pt} pts
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="field-group" style={{ marginTop: 18, padding: 14, border: "1px solid var(--border-color, rgba(148,163,184,.2))", borderRadius: 12 }}>
-              <label className="field-label" htmlFor="elimination-enabled" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <span>Enable participant elimination</span>
-                <input id="elimination-enabled" type="checkbox" checked={!!settings.eliminationEnabled}
+              <label className="host-config-elimination">
+                <span><strong>Enable participant elimination</strong><small>Optional. When disabled, every participant advances through all rounds.</small></span>
+                <input type="checkbox" checked={!!settings.eliminationEnabled}
                   onChange={(e) => setSettings((current) => ({ ...current, eliminationEnabled: e.target.checked }))} />
+                <i aria-hidden="true" />
               </label>
-              <p className="muted" style={{ fontSize: "0.78rem", margin: "6px 0 0" }}>
-                Optional. When disabled, every participant advances through all rounds.
-              </p>
-            </div>
-            {settings.eliminationEnabled && (
-              <div className="field-group" style={{ marginTop: 16 }}>
-                {activeConfigRound < rounds ? (
-                  <>
-                    <label className="field-label" htmlFor="advance-count-input">Participants to keep after Round {activeConfigRound}</label>
-                    <div className="stepper-row">
-                      <input id="advance-count-input" type="number" min="0" max="500" step="1" className="input-control mono" style={{ maxWidth: 140, textAlign: "center" }} value={settings.advanceCounts?.[activeConfigRound] ?? 0}
-                        onChange={(e) => setSettings((current) => ({ ...current, advanceCounts: { ...current.advanceCounts, [activeConfigRound]: Math.min(500, Math.max(0, Math.floor(Number(e.target.value) || 0))) } }))} />
-                      <span className="muted">participants</span>
-                    </div>
-                    <p className="muted" style={{ marginTop: 6, fontSize: "0.78rem" }}>Set 0 to let everyone advance. Tied players at the cutoff are all kept.</p>
-                  </>
-                ) : (
-                  <p className="muted">Final round: all remaining participants compete. No elimination.</p>
-                )}
-              </div>
-            )}
-            <div className="field-group" style={{ marginTop: 16 }}>
-              <label className="field-label" htmlFor="speed-bonus-input">Maximum Speed Bonus (%)</label>
-              <div className="stepper-row">
-                <input
-                  id="speed-bonus-input"
-                  type="number"
-                  min="0"
-                  max="50"
-                  step="1"
-                  className="input-control mono"
-                  style={{ maxWidth: 140, textAlign: "center" }}
-                  value={settings.speedBonusPercent ?? 10}
-                  onChange={(e) => setSettings((current) => ({ ...current, speedBonusPercent: Math.min(50, Math.max(0, Number(e.target.value) || 0)) }))}
-                />
-                <span className="muted">of the question's base points</span>
-              </div>
-              <p className="muted" style={{ marginTop: 6, fontSize: "0.78rem" }}>
-                Correct answers earn up to this extra percentage for answering quickly. The bonus decreases linearly until the timer ends.
-              </p>
-            </div>
-          </div>
 
-          <button type="button" className="btn btn-primary btn-full" style={{ marginTop: 20 }}
-            disabled={!connected || !roomCode}
-            onClick={saveAdvancedConfig}>
-            Save Advanced Configuration →
-          </button>
-          {error && <div className="error-banner">{error}</div>}
-        </section>
+              <div className="host-config-advance">
+                <span className="host-config-chip">{activeConfigRound === rounds ? "FINAL ROUND" : "ROUND ADVANCE"}</span>
+                {settings.eliminationEnabled && activeConfigRound < rounds ? (
+                  <div className="host-config-keep">
+                    <label htmlFor="advance-count-input">Participants to keep after this round</label>
+                    <input id="advance-count-input" type="number" min="0" max="500" step="1"
+                      value={settings.advanceCounts?.[activeConfigRound] ?? 0}
+                      onChange={(e) => setSettings((current) => ({ ...current, advanceCounts: { ...current.advanceCounts, [activeConfigRound]: Math.min(500, Math.max(0, Math.floor(Number(e.target.value) || 0))) } }))} />
+                    <small>Set 0 to let everyone advance. Tied players at the cutoff are all kept.</small>
+                  </div>
+                ) : <p>{activeConfigRound === rounds ? "All remaining participants compete. No elimination." : "All participants advance to the next round."}</p>}
+              </div>
+
+              <div className="host-config-speed">
+                <label htmlFor="speed-bonus-input">Maximum speed bonus (%)</label>
+                <div className="host-config-speed-row">
+                  <input id="speed-bonus-input" type="number" min="0" max="50" step="1"
+                    value={settings.speedBonusPercent ?? 10}
+                    onChange={(e) => setSettings((current) => ({ ...current, speedBonusPercent: Math.min(50, Math.max(0, Number(e.target.value) || 0)) }))} />
+                  <input aria-label="Maximum speed bonus percentage" type="range" min="0" max="50" step="1"
+                    value={settings.speedBonusPercent ?? 10}
+                    onChange={(e) => setSettings((current) => ({ ...current, speedBonusPercent: Number(e.target.value) }))} />
+                </div>
+                <p>Correct answers earn up to this extra percentage for answering quickly. The bonus decreases linearly until the timer ends.</p>
+              </div>
+            </section>
+
+            <aside className="host-config-preview">
+              <p className="eyebrow">LIVE PREVIEW</p>
+              <div className="host-config-preview-title"><h2>Round Overview</h2><span>{rounds} Rounds</span></div>
+              <div className="host-config-round-list">
+                {Array.from({ length: rounds }, (_, i) => i + 1).map((n) => (
+                  <button type="button" key={n} className={activeConfigRound === n ? "active" : ""}
+                    onClick={() => setActiveConfigRound(n)}>
+                    <span><strong>Round {String(n).padStart(2, "0")}</strong><small>{settings.roundSeconds[n] ?? 20}s timer · {settings.marks[n] ?? 10} pts/Q{n < rounds && settings.eliminationEnabled ? ` · keep top ${settings.advanceCounts?.[n] || "all"}` : ""}</small></span>
+                    {activeConfigRound === n && <b>EDITING</b>}
+                  </button>
+                ))}
+              </div>
+              <div className="host-config-best-case">
+                <span>BEST CASE PER QUESTION · ROUND {String(activeConfigRound).padStart(2, "0")}</span>
+                <strong>{bestCase.toFixed(1)} pts</strong>
+                <p>{currentMarks} base + up to {(bestCase - currentMarks).toFixed(1)} for a fast correct answer.</p>
+              </div>
+              <button type="button" className="host-config-save" disabled={!connected || !roomCode} onClick={saveAdvancedConfig}>
+                Save Advanced Configuration →
+              </button>
+              {error && <div className="error-banner">{error}</div>}
+            </aside>
+          </div>
+        </div>
       </main>
     );
   }
 
-  /* STAGE 02: AUTHORING METHOD */
   if (stage === "method") {
     return (
       <main className="host-method-screen">
