@@ -5958,3 +5958,284 @@ body:has(.host-config-screen),
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* Mobile-first compression for the advanced configuration screen */
+@media (max-width: 700px) {
+  .host-config-screen {
+    padding-bottom: 28px;
+  }
+  .host-config-topbar {
+    min-height: 52px;
+    padding-inline: 14px;
+  }
+  .host-config-brand {
+    gap: 7px;
+    font-size: 13px;
+  }
+  .host-config-brand img {
+    width: 29px;
+    height: 29px;
+    padding: 4px;
+  }
+  .host-config-topbar-meta { gap: 5px; }
+  .host-config-status,
+  .host-config-state {
+    padding: 6px 8px;
+    font-size: 7px;
+    letter-spacing: .06em;
+  }
+  .host-config-content {
+    width: calc(100% - 28px);
+    margin: 17px auto 30px;
+  }
+  .host-config-heading {
+    margin: 12px 0 15px;
+  }
+  .host-config-heading .eyebrow {
+    margin-bottom: 6px;
+    font-size: 8px;
+  }
+  .host-config-heading h1 {
+    font-size: clamp(32px, 8vw, 43px);
+    letter-spacing: -.06em;
+  }
+  .host-config-heading > p:last-child {
+    max-width: 100%;
+    margin-top: 7px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .host-config-metrics {
+    gap: 7px;
+    margin-bottom: 12px;
+  }
+  .host-config-metrics article {
+    padding: 10px 9px 11px;
+    border-radius: 11px;
+    box-shadow: 2px 3px 0 var(--cc-yellow-live);
+  }
+  .host-config-metrics article span {
+    margin-bottom: 5px;
+    font-size: 7px;
+    letter-spacing: .08em;
+  }
+  .host-config-metrics article strong {
+    font-size: clamp(15px, 3.7vw, 20px);
+  }
+  .host-config-layout {
+    gap: 13px;
+  }
+  .host-config-editor,
+  .host-config-preview {
+    padding: 14px;
+    border-radius: 15px;
+    box-shadow: 4px 5px 0 var(--cc-yellow-live);
+  }
+  .host-config-round-tabs {
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .host-config-round-tabs button {
+    min-height: 34px;
+    padding-inline: 10px;
+    border-radius: 9px;
+    font-size: 10px;
+  }
+  .host-config-section-heading {
+    margin-bottom: 15px;
+  }
+  .host-config-section-heading h2,
+  .host-config-preview-title h2 {
+    font-size: 20px;
+  }
+  .host-config-remove {
+    padding: 7px 11px;
+  }
+  .host-config-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .host-config-field > label,
+  .host-config-speed > label,
+  .host-config-keep > label {
+    margin-bottom: 7px;
+    font-size: 8px;
+    letter-spacing: .09em;
+  }
+  .host-config-stepper {
+    min-height: 42px;
+    grid-template-columns: 35px minmax(0, 1fr) 35px;
+    border-radius: 10px;
+  }
+  .host-config-stepper button {
+    font-size: 11px;
+  }
+  .host-config-stepper input {
+    font-size: 16px;
+  }
+  .host-config-presets {
+    gap: 5px;
+    margin-top: 7px;
+  }
+  .host-config-presets button {
+    min-height: 30px;
+    padding-inline: 8px;
+    border-radius: 8px;
+    font-size: 9px;
+  }
+  .host-config-elimination {
+    gap: 9px;
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .host-config-elimination span {
+    gap: 4px;
+    min-width: 0;
+  }
+  .host-config-elimination strong {
+    font-size: 8px;
+  }
+  .host-config-elimination small {
+    max-width: none;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .host-config-elimination i {
+    flex-basis: 42px;
+    width: 42px;
+    height: 25px;
+  }
+  .host-config-elimination i::after {
+    width: 17px;
+    height: 17px;
+  }
+  .host-config-elimination input:checked + i::after {
+    transform: translateX(17px);
+  }
+  .host-config-advance {
+    gap: 8px;
+    margin-top: 11px;
+    padding: 11px;
+    border-radius: 11px;
+  }
+  .host-config-chip {
+    padding: 5px 8px;
+    font-size: 7px;
+  }
+  .host-config-advance p {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .host-config-keep {
+    gap: 6px;
+  }
+  .host-config-keep label {
+    font-size: 9px;
+  }
+  .host-config-keep input {
+    width: 90px;
+    min-height: 36px;
+    font-size: 14px;
+  }
+  .host-config-keep small {
+    font-size: 9px;
+  }
+  .host-config-speed {
+    margin-top: 15px;
+  }
+  .host-config-speed-row {
+    gap: 10px;
+  }
+  .host-config-speed-row > input[type="number"] {
+    width: 72px;
+    min-height: 37px;
+    padding: 6px;
+    font-size: 14px;
+  }
+  .host-config-speed > p {
+    margin-top: 7px;
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .host-config-preview {
+    position: static;
+  }
+  .host-config-preview-title {
+    margin-bottom: 10px;
+  }
+  .host-config-preview-title > span {
+    font-size: 10px;
+  }
+  .host-config-round-list {
+    gap: 5px;
+  }
+  .host-config-round-list button {
+    padding: 10px;
+    border-radius: 10px;
+  }
+  .host-config-round-list strong {
+    font-size: 11px;
+  }
+  .host-config-round-list small {
+    font-size: 9px;
+  }
+  .host-config-best-case {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 5px 10px;
+    margin: 11px 0;
+    padding: 11px;
+  }
+  .host-config-best-case > span {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+    font-size: 7px;
+  }
+  .host-config-best-case > strong {
+    font-size: 21px;
+  }
+  .host-config-best-case p {
+    max-width: 190px;
+    margin: 0;
+    font-size: 9px;
+    line-height: 1.35;
+  }
+  .host-config-save {
+    min-height: 45px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 11px;
+    box-shadow: 2px 3px 0 var(--cc-ink);
+  }
+}
+@media (max-width: 430px) {
+  .host-config-controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 13px;
+  }
+  .host-config-metrics article {
+    padding-inline: 7px;
+  }
+  .host-config-metrics article span {
+    font-size: 6px;
+    letter-spacing: .05em;
+  }
+  .host-config-metrics article strong {
+    font-size: 15px;
+  }
+  .host-config-best-case {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .host-config-best-case p {
+    max-width: none;
+  }
+}
+@media (max-width: 360px) {
+  .host-config-topbar-meta .host-config-status { display: none; }
+  .host-config-content { width: calc(100% - 22px); }
+  .host-config-editor,
+  .host-config-preview { padding: 12px; }
+}
