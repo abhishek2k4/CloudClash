@@ -23,10 +23,16 @@ const stats = {
   errors: 0,
   unexpectedDisconnects: 0,
   reconnections: 0,
+  intentionalDisconnects: 0,
+  reconnectAttempts: 0,
+  sessionRecoverySuccesses: 0,
+  sessionRecoveryFailures: 0,
+  sessionIdMismatches: 0,
   eliminationsConfirmed: 0,
   latencies: [],
 };
 let stopping = false;
+let disconnectTestStarted = false;
 let url = "";
 
 const ask = async (question) => (await rl.question(question)).trim();
@@ -72,7 +78,12 @@ function printSummary() {
   console.log("Successfully joined:            " + stats.joined);
   console.log("Join failures:                  " + stats.joinFailed);
   console.log("Disconnect events:               " + stats.unexpectedDisconnects);
-  console.log("Successful reconnections:        " + stats.reconnections);
+  console.log("Socket reconnections:             " + stats.reconnections);
+  console.log("Intentional test disconnects:     " + stats.intentionalDisconnects);
+  console.log("Participant recovery attempts:    " + stats.reconnectAttempts);
+  console.log("Participant recoveries passed:   " + stats.sessionRecoverySuccesses);
+  console.log("Participant recoveries failed:   " + stats.sessionRecoveryFailures);
+  console.log("Participant ID mismatches:       " + stats.sessionIdMismatches);
   console.log("Question events received:       " + stats.questionsSeen);
   console.log("Answer attempts:                " + stats.answerAttempts);
   console.log("Accepted answers:               " + stats.accepted);
@@ -128,6 +139,10 @@ try {
   }
   stats.requested = count;
 
+  const rawDisconnectCount = await ask("Participants to intentionally disconnect/reconnect after the first question [5]: ");
+  const disconnectCount = rawDisconnectCount ? Number(rawDisconnectCount) : 5;
+  if (!Number.isInteger(disconnectCount) || disconnectCount < 0 || disconnectCount > count) throw new Error("Disconnect count must be between 0 and the participant count.");
+
   console.log("\nTarget: " + url);
   console.log("Room:   " + roomCode);
   console.log("Load:   " + count + " simulated participants");
@@ -170,19 +185,26 @@ try {
       socket.on("connect", async () => {
         if (!socket.hasJoinedRoom || stopping) return;
         stats.reconnections++;
+        stats.reconnectAttempts++;
         try {
           const restored = await ack(socket, "join_competition", {
-            name: socket.displayName,
-            code: roomCode,
-            participantId: socket.participantId,
+            name: socket.displayName, code: roomCode, participantId: socket.participantId,
           });
           if (!restored.success) {
-            console.log("✗ " + socket.displayName + " could not rejoin: " + (restored.message || "rejected"));
+            stats.sessionRecoveryFailures++;
+            console.log("✗ " + socket.displayName + " session recovery rejected: " + (restored.message || "rejected"));
             return;
           }
+          if (restored.participant?.id !== socket.participantId) {
+            stats.sessionIdMismatches++; stats.sessionRecoveryFailures++;
+            console.log("✗ " + socket.displayName + " rejoined with a different participant ID.");
+            return;
+          }
+          stats.sessionRecoverySuccesses++;
           if (restored.snapshot?.eliminated) eliminatedIds.add(socket.participantId);
-          console.log("↻ " + socket.displayName + " rejoined successfully.");
+          console.log("↻ " + socket.displayName + " restored the same participant session.");
         } catch (error) {
+          stats.sessionRecoveryFailures++;
           console.log("⚠ Rejoin failed for " + socket.displayName + ": " + error.message);
         }
       });
@@ -190,6 +212,18 @@ try {
       socket.on("question_started", (question) => {
         if (stopping) return;
         stats.questionsSeen++;
+        if (question.round === 1 && question.questionNumber === 1 && disconnectCount > 0 && !disconnectTestStarted) {
+          disconnectTestStarted = true;
+          const targets = clients.filter((client) => client.connected).slice(0, disconnectCount);
+          console.log("\nStarting controlled reconnect test for " + targets.length + " participants...");
+          targets.forEach((client, index) => setTimeout(() => {
+            if (stopping || !client.connected) return;
+            stats.intentionalDisconnects++;
+            console.log("⤫ Forcing test disconnect: " + client.displayName);
+            client.disconnect();
+            setTimeout(() => { if (!stopping) client.connect(); }, 1200);
+          }, index * 250));
+        }
         // Keep eliminated sockets active and deliberately submit answers. The server must reject them.
         const wasEliminatedAtQuestionStart = eliminatedIds.has(socket.participantId);
         const delay = 200 + Math.floor(Math.random() * 900);
@@ -261,7 +295,9 @@ try {
   console.log("\nReady: " + stats.joined + "/" + count + " joined room " + roomCode + ".");
   console.log("Now start the quiz from the deployed host dashboard.");
   console.log("At each round break, review and confirm eliminations on the host dashboard before starting the next round.");
-  console.log("The simulator intentionally keeps eliminated clients connected and attempts answers to verify server-side rejection.");
+  console.log("The simulator intentionally tests participant recovery after Round 1 Question 1.");
+  console.log("Recovery passes only when the original participant ID is returned.");
+  console.log("The simulator also tests server-side rejection for eliminated participants.");
   console.log("The bot count is separate from physical devices joining manually.");
   console.log("Keep this terminal open until the quiz is finished. Press Ctrl+C to disconnect everyone and print the report.\n");
 

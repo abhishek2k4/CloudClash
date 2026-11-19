@@ -6239,3 +6239,99 @@ body:has(.host-config-screen),
   .host-config-editor,
   .host-config-preview { padding: 12px; }
 }
+
+/* Participant round break: keep scores private and use the light event theme */
+.participant-round-break-screen {
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 0 0 48px;
+  overflow-x: clip;
+  background: var(--cc-paper-warm);
+  color: var(--cc-ink);
+}
+.participant-round-break-screen .round-break-topbar {
+  border-bottom: 1px solid var(--cc-border-warm);
+  background: var(--cc-surface);
+}
+.participant-round-break-screen .round-break-status-pill {
+  border-color: var(--cc-border-warm);
+  background: #fff3d3;
+  color: var(--cc-ink);
+}
+.participant-round-break-screen .round-break-status-pill i {
+  background: var(--cc-orange-live);
+}
+.round-break-content {
+  width: min(760px, calc(100% - 40px));
+  margin: clamp(54px, 10vh, 110px) auto 48px;
+}
+.round-break-card {
+  padding: clamp(26px, 5vw, 52px);
+  border: 1px solid var(--cc-border-strong);
+  border-radius: 22px;
+  background: var(--cc-surface);
+  box-shadow: 8px 8px 0 var(--cc-yellow-live);
+}
+.round-break-card .lobby-section-label {
+  margin: 0 0 18px;
+  color: var(--cc-orange-deep);
+}
+.round-break-card h1 {
+  margin: 0;
+  color: var(--cc-ink);
+  font-size: clamp(38px, 7vw, 66px);
+  font-weight: 900;
+  letter-spacing: -.065em;
+  line-height: 1;
+}
+.round-break-card h1 span { color: var(--cc-orange-deep); }
+.round-break-card > p:not(.lobby-section-label) {
+  max-width: 490px;
+  margin: 18px 0 0;
+  color: var(--cc-text-secondary);
+  font-size: clamp(15px, 2vw, 18px);
+  line-height: 1.65;
+}
+.round-break-waiting {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 34px;
+  padding: 16px 18px;
+  border: 1px solid var(--cc-border-warm);
+  border-radius: 12px;
+  background: var(--cc-paper-warm);
+  color: var(--cc-ink);
+  font: 800 10px/1.4 ui-monospace, monospace;
+  letter-spacing: .13em;
+}
+.round-break-waiting i {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 50%;
+  background: var(--cc-orange-live);
+  box-shadow: 0 0 0 4px #f4c66b55;
+  animation: round-break-pulse 1.6s ease-in-out infinite;
+}
+@keyframes round-break-pulse {
+  50% { opacity: .45; transform: scale(.82); }
+}
+@media (max-width: 600px) {
+  .round-break-content {
+    width: calc(100% - 32px);
+    margin: 54px auto 32px;
+  }
+  .round-break-card {
+    padding: 27px 22px;
+    border-radius: 17px;
+    box-shadow: 5px 6px 0 var(--cc-yellow-live);
+  }
+  .round-break-waiting {
+    align-items: flex-start;
+    padding: 14px;
+    font-size: 9px;
+    letter-spacing: .09em;
+  }
+}
+

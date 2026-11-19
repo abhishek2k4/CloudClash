@@ -33,6 +33,8 @@ export default function Participant({
   const [question, setQuestion] = useState(null);
   const [round, setRound] = useState(0);
   const [seconds, setSeconds] = useState(0);
+  const [pendingResult, setPendingResult] = useState(null);
+  const serverClockOffsetRef = useRef(0);
   const [totalSeconds, setTotalSeconds] = useState(20);
   const [selected, setSelected] = useState(null);
   const [submitted, setSubmitted] = useState(false);
@@ -69,6 +71,8 @@ export default function Participant({
     setSelected(r.snapshot?.answer?.selectedOption ?? null);
     setSubmitted(Boolean(r.snapshot?.lastQuestionResult) || (Boolean(r.snapshot?.answer) && r.snapshot?.status !== "running"));
     setResult(r.snapshot?.lastQuestionResult || null);
+    setPendingResult(null);
+    if (snapQ?.serverTime) serverClockOffsetRef.current = snapQ.serverTime - Date.now();
     if (snapQ?.endsAt) {
       const rem = Math.max(0, Math.ceil((snapQ.endsAt - Date.now()) / 1000));
       setSeconds(rem);
@@ -97,14 +101,20 @@ export default function Participant({
       setSelected(null);
       setSubmitted(false);
       setResult(null);
-      const rem = Math.max(0, Math.ceil((q.endsAt - Date.now()) / 1000));
+      setPendingResult(null);
+      if (q.serverTime) serverClockOffsetRef.current = q.serverTime - Date.now();
+      const rem = Math.max(0, Math.ceil((q.endsAt - (Date.now() + serverClockOffsetRef.current)) / 1000));
       setSeconds(rem);
       setTotalSeconds(q.duration || rem || 20);
       setStatus("running");
     };
-    const onResume = (d) => setQuestion((q) => (q ? { ...q, endsAt: d.endsAt } : q));
+    const onResume = (d) => {
+      if (d.serverTime) serverClockOffsetRef.current = d.serverTime - Date.now();
+      setQuestion((q) => (q ? { ...q, endsAt: d.endsAt, serverTime: d.serverTime } : q));
+    };
     const onEnd = (d) => {
-      setResult(d);
+      if (d.serverTime) serverClockOffsetRef.current = d.serverTime - Date.now();
+      setPendingResult(d);
       setSubmitted(true);
     };
     const onRound = (d) => {
@@ -206,11 +216,24 @@ export default function Participant({
   useEffect(() => {
     if (!question || status !== "running") return;
     const tick = () =>
-      setSeconds(Math.max(0, Math.ceil((question.endsAt - Date.now()) / 1000)));
+      setSeconds(Math.max(0, Math.ceil((question.endsAt - (Date.now() + serverClockOffsetRef.current)) / 1000)));
     tick();
     const t = setInterval(tick, 200);
     return () => clearInterval(t);
   }, [question, status]);
+
+  useEffect(() => {
+    if (!pendingResult || !question || status !== "running") return;
+    const revealWhenDeadlinePasses = () => {
+      if (Date.now() + serverClockOffsetRef.current >= question.endsAt) {
+        setResult(pendingResult);
+        setPendingResult(null);
+      }
+    };
+    revealWhenDeadlinePasses();
+    const timer = setInterval(revealWhenDeadlinePasses, 50);
+    return () => clearInterval(timer);
+  }, [pendingResult, question, status]);
 
   const join = useCallback((e) => {
     e?.preventDefault();
@@ -245,6 +268,7 @@ export default function Participant({
       );
       if (!leave) return;
     }
+    if (participant) socket.emit("leave_competition");
     onHome();
   };
 
@@ -346,6 +370,32 @@ export default function Participant({
               The host has paused the quiz. Please wait here until the host resumes.
             </p>
             <button type="button" className="paused-leave-button" onClick={requestHome}>Leave Quiz</button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (status === "round_break") {
+    return (
+      <main className="participant-round-break-screen">
+        <header className="lobby-topbar round-break-topbar">
+          <div className="lobby-brand">
+            <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
+            <strong>CLOUD<span>CLASH</span></strong>
+            <span>ROOM {participant?.code || code}</span>
+          </div>
+          <div className="lobby-topbar-actions">
+            <span className="lobby-waiting-pill round-break-status-pill"><i /> ROUND BREAK</span>
+            <button type="button" className="lobby-leave-button" onClick={requestHome}>Leave</button>
+          </div>
+        </header>
+        <section className="round-break-content">
+          <div className="round-break-card">
+            <p className="lobby-section-label">ROUND {String(round).padStart(2, "0")} COMPLETE</p>
+            <h1>Take a <span>breather.</span></h1>
+            <p>The round has ended. Stay here while the host prepares the next round.</p>
+            <div className="round-break-waiting"><i /><span>WAITING FOR THE NEXT ROUND</span></div>
           </div>
         </section>
       </main>
