@@ -290,6 +290,15 @@ export default function Host({ onHome, onActivityChange }) {
 
   const removeRound = (target) => {
     if (rounds <= 1) return;
+    if (target !== rounds) {
+      setError("Only the last round can be removed. Select the final round first.");
+      return;
+    }
+    if (Number(counts[target] || 0) > 0) {
+      setError("Remove the questions from Round " + target + " in the question bank before removing this round.");
+      return;
+    }
+    setError("");
     const nextTotal = rounds - 1;
     setSettings((s) => {
       const rs = {};
@@ -606,7 +615,7 @@ export default function Host({ onHome, onActivityChange }) {
 
               <div className="host-config-section-heading">
                 <div><p className="eyebrow">{activeRoundLabel} PARAMETERS</p><h2>Timing &amp; Scoring Rules</h2></div>
-                {rounds > 1 && <button type="button" className="host-config-remove" onClick={() => removeRound(activeConfigRound)}>Remove</button>}
+                {rounds > 1 && <button type="button" className="host-config-remove" disabled={activeConfigRound !== rounds} title={activeConfigRound !== rounds ? "Select the last round to remove it" : "Remove the last round"} onClick={() => removeRound(activeConfigRound)}>Remove</button>}
               </div>
 
               <div className="host-config-controls">
