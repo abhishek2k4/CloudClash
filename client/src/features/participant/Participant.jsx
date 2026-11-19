@@ -377,9 +377,7 @@ export default function Participant({
           <div className="lobby-brand">
             <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
             <strong>CLOUD<span>CLASH</span></strong>
-            <i /><span>PLAYER</span>
-            <i /><span>{participant.name}</span>
-            <i /><span>ROOM {participant.code}</span>
+            <span>ROOM {participant.code}</span>
           </div>
           <div className="lobby-topbar-actions">
             <span className="lobby-waiting-pill live-running-pill"><i /> RUNNING</span>
@@ -391,9 +389,7 @@ export default function Participant({
           <div className="lobby-brand">
             <span className="lobby-brand-mark"><img src="/assets/cloudclash/branding/logo-mark.svg" alt="" /></span>
             <strong>CLOUD<span>CLASH</span></strong>
-            <i /><span>PLAYER</span>
-            <i /><span>{participant.name}</span>
-            <i /><span>ROOM {participant.code}</span>
+            <span>ROOM {participant.code}</span>
           </div>
           <div className="lobby-topbar-actions">
             <span className="lobby-waiting-pill finished-status-pill"><i /> FINISHED</span>

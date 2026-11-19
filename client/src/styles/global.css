@@ -5627,3 +5627,615 @@ html:has(.landing-shell) {
     font-size: 10px;
   }
 }
+
+
+/* Advanced quiz configuration — warm CloudClash control-room layout */
+.host-config-screen {
+  min-height: 100vh;
+  background: var(--cc-paper-warm);
+  color: var(--cc-ink);
+}
+.host-config-topbar {
+  min-height: 60px;
+  padding: 0 clamp(18px, 4vw, 56px);
+  border-bottom: 1px solid var(--cc-border-warm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.host-config-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cc-ink);
+  font-size: 15px;
+  font-weight: 850;
+  letter-spacing: -.055em;
+  cursor: pointer;
+}
+.host-config-brand img {
+  width: 32px;
+  height: 32px;
+  padding: 5px;
+  border-radius: 9px;
+  background: var(--cc-ink);
+}
+.host-config-brand > span > span { color: var(--cc-orange-live); }
+.host-config-topbar-meta { display: flex; align-items: center; gap: 9px; }
+.host-config-status, .host-config-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid var(--cc-border-warm);
+  border-radius: 999px;
+  background: var(--cc-surface);
+  color: var(--cc-text-secondary);
+  font: 750 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .09em;
+}
+.host-config-status i { width: 7px; height: 7px; border-radius: 50%; background: #36a56a; }
+.host-config-content { width: min(1110px, calc(100% - 40px)); margin: 30px auto 64px; }
+.host-config-back {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cc-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.host-config-back:hover { color: var(--cc-orange-deep); }
+.host-config-heading { margin: 17px 0 24px; }
+.host-config-heading .eyebrow, .host-config-editor .eyebrow, .host-config-preview .eyebrow {
+  margin: 0 0 8px;
+  color: var(--cc-orange-muted);
+  font: 800 10px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .15em;
+}
+.host-config-heading h1 {
+  margin: 0;
+  color: var(--cc-ink);
+  font-size: clamp(36px, 5vw, 58px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -.065em;
+}
+.host-config-heading h1 span { color: var(--cc-orange-live); }
+.host-config-heading > p:last-child { max-width: 520px; margin: 12px 0 0; color: var(--cc-text-secondary); font-size: 14px; line-height: 1.55; }
+.host-config-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-bottom: 22px; }
+.host-config-metrics article {
+  min-width: 0;
+  padding: 16px 19px;
+  border: 1px solid var(--cc-border-strong);
+  border-radius: 15px;
+  background: var(--cc-surface);
+  box-shadow: 3px 4px 0 var(--cc-yellow-live);
+}
+.host-config-metrics article span { display: block; margin-bottom: 8px; color: var(--cc-orange-muted); font: 800 9px/1.2 ui-monospace,monospace; letter-spacing: .16em; text-transform: uppercase; }
+.host-config-metrics article strong { color: var(--cc-ink); font-size: 25px; font-weight: 900; letter-spacing: -.05em; }
+.host-config-layout { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(290px,.9fr); gap: 22px; align-items: start; }
+.host-config-editor, .host-config-preview {
+  min-width: 0;
+  border: 1px solid var(--cc-border-strong);
+  border-radius: 20px;
+  background: var(--cc-surface);
+  box-shadow: 6px 7px 0 var(--cc-yellow-live);
+}
+.host-config-editor { padding: 24px; }
+.host-config-round-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+.host-config-round-tabs button {
+  min-height: 39px;
+  padding: 0 15px;
+  border: 1px solid var(--cc-border-strong);
+  border-radius: 11px;
+  background: var(--cc-paper-warm);
+  color: var(--cc-ink);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.host-config-round-tabs button.active { background: var(--cc-ink); color: var(--cc-surface); }
+.host-config-round-tabs button.add-round { border-style: dashed; border-color: var(--cc-border-soft); background: transparent; color: var(--cc-orange-deep); }
+.host-config-round-tabs button:disabled { opacity: .45; cursor: not-allowed; }
+.host-config-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+.host-config-section-heading .eyebrow { margin-bottom: 5px; }
+.host-config-section-heading h2, .host-config-preview-title h2 { margin: 0; color: var(--cc-ink); font-size: 24px; font-weight: 900; letter-spacing: -.055em; }
+.host-config-remove { padding: 9px 16px; border: 1px solid var(--cc-danger); border-radius: 10px; background: #fff0ec; color: var(--cc-danger-text); font-size: 11px; font-weight: 800; cursor: pointer; }
+.host-config-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; }
+.host-config-field { min-width: 0; }
+.host-config-field > label, .host-config-speed > label, .host-config-keep > label {
+  display: block; margin-bottom: 10px; color: var(--cc-text-secondary);
+  font: 800 9px/1.3 ui-monospace,monospace; letter-spacing: .14em; text-transform: uppercase;
+}
+.host-config-stepper { display: grid; grid-template-columns: 48px minmax(0,1fr) 48px; min-height: 49px; overflow: hidden; border: 1px solid var(--cc-border-strong); border-radius: 13px; background: var(--cc-surface); }
+.host-config-stepper button { border: 0; background: var(--cc-paper-warm); color: var(--cc-ink); font-size: 12px; font-weight: 850; cursor: pointer; }
+.host-config-stepper button:first-child { border-right: 1px solid var(--cc-border-warm); }
+.host-config-stepper button:last-child { border-left: 1px solid var(--cc-border-warm); }
+.host-config-stepper input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--cc-ink); text-align: center; font: 800 18px ui-monospace,monospace; }
+.host-config-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.host-config-presets button { min-height: 35px; padding: 0 12px; border: 1px solid var(--cc-border-warm); border-radius: 10px; background: var(--cc-surface); color: var(--cc-ink); font-size: 10px; font-weight: 750; cursor: pointer; }
+.host-config-presets button.active { border-color: var(--cc-orange-live); background: var(--cc-yellow-live); color: var(--cc-ink); }
+.host-config-elimination {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  margin-top: 23px; padding: 17px 18px; border: 1px solid var(--cc-border-strong); border-radius: 14px;
+  background: var(--cc-paper-warm); cursor: pointer;
+}
+.host-config-elimination span { display: grid; gap: 6px; }
+.host-config-elimination strong { color: var(--cc-ink); font: 800 9px/1.3 ui-monospace,monospace; letter-spacing: .12em; text-transform: uppercase; }
+.host-config-elimination small { color: var(--cc-text-secondary); font-size: 12px; line-height: 1.45; }
+.host-config-elimination input { position: absolute; right: 18px; width: 1px; height: 1px; opacity: 0; }
+.host-config-elimination i { flex: 0 0 48px; width: 48px; height: 27px; border: 1px solid var(--cc-border-strong); border-radius: 99px; background: #d9d2c7; transition: background .18s ease; }
+.host-config-elimination i::after { content: ""; display: block; width: 19px; height: 19px; margin: 3px; border-radius: 50%; background: white; box-shadow: 0 1px 3px #0002; transition: transform .18s ease; }
+.host-config-elimination input:checked + i { background: var(--cc-orange-live); }
+.host-config-elimination input:checked + i::after { transform: translateX(21px); }
+.host-config-elimination input:focus-visible + i { outline: 2px solid var(--cc-orange-live); outline-offset: 3px; }
+.host-config-advance { display: flex; align-items: flex-start; gap: 12px; margin-top: 20px; padding: 15px; border: 1px dashed var(--cc-border-soft); border-radius: 13px; }
+.host-config-chip { flex: 0 0 auto; padding: 6px 10px; border-radius: 99px; background: var(--cc-ink); color: var(--cc-surface); font: 800 8px ui-monospace,monospace; letter-spacing: .1em; }
+.host-config-advance p { margin: 2px 0 0; color: var(--cc-text-secondary); font-size: 12px; line-height: 1.5; }
+.host-config-keep { display: grid; gap: 7px; width: 100%; }
+.host-config-keep label { margin: 0; color: var(--cc-ink); font-size: 11px; font-weight: 750; }
+.host-config-keep input, .host-config-speed-row > input[type="number"] { width: 110px; min-height: 42px; padding: 8px 10px; border: 1px solid var(--cc-border-strong); border-radius: 10px; background: var(--cc-surface); color: var(--cc-ink); text-align: center; font: 800 16px ui-monospace,monospace; }
+.host-config-keep small { color: var(--cc-text-muted); font-size: 10px; line-height: 1.45; }
+.host-config-speed { margin-top: 22px; }
+.host-config-speed-row { display: flex; align-items: center; gap: 16px; }
+.host-config-speed-row > input[type="range"] { flex: 1; min-width: 0; accent-color: var(--cc-orange-live); }
+.host-config-speed > p { margin: 10px 0 0; color: var(--cc-text-secondary); font-size: 11px; line-height: 1.55; }
+.host-config-preview { position: sticky; top: 20px; padding: 22px; }
+.host-config-preview-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 19px; }
+.host-config-preview-title h2 { font-size: 23px; }
+.host-config-preview-title > span { color: var(--cc-text-secondary); font-size: 12px; white-space: nowrap; }
+.host-config-round-list { display: grid; gap: 8px; }
+.host-config-round-list button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 13px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--cc-ink); text-align: left; cursor: pointer; }
+.host-config-round-list button.active { border-color: var(--cc-border-strong); background: #fff6dc; }
+.host-config-round-list button > span { display: grid; gap: 5px; min-width: 0; }
+.host-config-round-list strong { font-size: 12px; }
+.host-config-round-list small { color: var(--cc-text-secondary); font-size: 10px; line-height: 1.4; }
+.host-config-round-list b { flex: 0 0 auto; padding: 5px 8px; border-radius: 99px; background: var(--cc-ink); color: var(--cc-surface); font: 800 8px ui-monospace,monospace; letter-spacing: .08em; }
+.host-config-best-case { margin: 17px 0; padding: 16px; border-radius: 13px; background: var(--cc-paper-warm); }
+.host-config-best-case > span { display: block; margin-bottom: 9px; color: var(--cc-text-secondary); font: 800 8px/1.4 ui-monospace,monospace; letter-spacing: .14em; }
+.host-config-best-case > strong { display: block; color: var(--cc-ink); font-size: 24px; font-weight: 900; letter-spacing: -.05em; }
+.host-config-best-case p { margin: 6px 0 0; color: var(--cc-text-secondary); font-size: 11px; line-height: 1.5; }
+.host-config-save { width: 100%; min-height: 48px; padding: 12px 15px; border: 1px solid var(--cc-ink); border-radius: 12px; background: var(--cc-orange-deep); color: white; box-shadow: 3px 4px 0 var(--cc-ink); font-size: 12px; font-weight: 850; cursor: pointer; }
+.host-config-save:hover:not(:disabled) { background: var(--cc-orange-live); }
+.host-config-save:disabled { opacity: .55; cursor: not-allowed; }
+.host-config-preview .error-banner { margin-top: 12px; }
+@media (max-width: 820px) {
+  .host-config-layout { grid-template-columns: 1fr; }
+  .host-config-preview { position: static; }
+}
+@media (max-width: 600px) {
+  .host-config-topbar { min-height: 56px; padding: 0 16px; }
+  .host-config-content { width: calc(100% - 30px); margin: 22px auto 44px; }
+  .host-config-heading { margin: 15px 0 20px; }
+  .host-config-heading h1 { font-size: clamp(34px, 10vw, 46px); }
+  .host-config-heading > p:last-child { font-size: 12px; }
+  .host-config-metrics { gap: 7px; margin-bottom: 17px; }
+  .host-config-metrics article { padding: 12px 10px; border-radius: 11px; }
+  .host-config-metrics article span { font-size: 7px; letter-spacing: .1em; }
+  .host-config-metrics article strong { font-size: clamp(15px, 4vw, 20px); }
+  .host-config-editor, .host-config-preview { padding: 16px; border-radius: 15px; }
+  .host-config-round-tabs { gap: 6px; margin-bottom: 20px; }
+  .host-config-round-tabs button { min-height: 36px; padding: 0 11px; font-size: 10px; }
+  .host-config-section-heading h2 { font-size: 20px; }
+  .host-config-controls { grid-template-columns: 1fr; gap: 18px; }
+  .host-config-elimination { padding: 14px 12px; gap: 10px; }
+  .host-config-elimination small { max-width: 230px; font-size: 10px; }
+  .host-config-elimination i { flex-basis: 44px; width: 44px; }
+  .host-config-elimination input:checked + i::after { transform: translateX(17px); }
+  .host-config-advance { flex-wrap: wrap; }
+  .host-config-status, .host-config-state { padding: 6px 8px; font-size: 7px; }
+}
+@media (max-width: 380px) {
+  .host-config-status { display: none; }
+  .host-config-metrics article strong { font-size: 15px; }
+  .host-config-preview-title h2 { font-size: 20px; }
+}
+
+
+/* Configuration screen: prevent grid/input overflow and restore visible control borders */
+.host-config-screen,
+.host-config-screen * {
+  box-sizing: border-box;
+}
+.host-config-screen {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+.host-config-content,
+.host-config-layout,
+.host-config-editor,
+.host-config-preview,
+.host-config-controls,
+.host-config-field {
+  min-width: 0;
+  max-width: 100%;
+}
+.host-config-stepper {
+  width: 100%;
+  min-width: 0;
+}
+.host-config-stepper input {
+  min-width: 0;
+  width: 100%;
+  border-left: 1px solid var(--cc-border-warm);
+  border-right: 1px solid var(--cc-border-warm);
+  border-radius: 0;
+  background: var(--cc-surface);
+  color: var(--cc-ink);
+  box-shadow: none;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.host-config-stepper input::-webkit-inner-spin-button,
+.host-config-stepper input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+.host-config-keep input,
+.host-config-speed-row > input[type="number"] {
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid var(--cc-border-strong);
+  outline: 0;
+  background: var(--cc-surface);
+  color: var(--cc-ink);
+  box-shadow: inset 0 1px 2px var(--cc-overlay-ink-12);
+}
+.host-config-keep input:focus,
+.host-config-speed-row > input[type="number"]:focus,
+.host-config-stepper input:focus {
+  border-color: var(--cc-orange-live);
+  outline: 2px solid var(--cc-overlay-orange-13);
+  outline-offset: -2px;
+}
+.host-config-speed-row > input[type="range"] {
+  min-width: 0;
+  max-width: 100%;
+}
+.host-config-save {
+  border-color: var(--cc-orange-live);
+  background: var(--cc-orange-live);
+  color: var(--cc-white);
+}
+.host-config-save:hover:not(:disabled) {
+  border-color: var(--cc-orange-deep);
+  background: var(--cc-orange-deep);
+}
+@media (max-width: 820px) {
+  .host-config-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .host-config-metrics,
+  .host-config-controls { min-width: 0; }
+  .host-config-metrics article { min-width: 0; }
+  .host-config-advance { min-width: 0; }
+  .host-config-keep { min-width: 0; }
+  .host-config-speed-row { min-width: 0; }
+}
+
+
+/* Final configuration screen corrections: use defined border tokens and keep the warm canvas full-height */
+.host-config-screen .host-config-stepper {
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface);
+}
+.host-config-screen .host-config-stepper input {
+  border: 0;
+  border-left: 1px solid var(--cc-border-warm);
+  border-right: 1px solid var(--cc-border-warm);
+  background: var(--cc-surface);
+}
+.host-config-screen .host-config-keep input,
+.host-config-screen .host-config-speed-row > input[type="number"] {
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface);
+}
+.host-config-screen {
+  min-height: 100vh;
+  min-height: 100svh;
+  padding-bottom: 48px;
+  background: var(--cc-paper-warm);
+}
+html:has(.host-config-screen),
+body:has(.host-config-screen),
+#root:has(.host-config-screen) {
+  min-height: 100%;
+  background: var(--cc-paper-warm);
+  color: var(--cc-ink);
+}
+.host-config-screen .host-config-layout {
+  grid-template-columns: minmax(0, 1.65fr) minmax(290px, .9fr);
+  align-items: start;
+}
+@media (max-width: 820px) {
+  .host-config-screen .host-config-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+/* Mobile-first compression for the advanced configuration screen */
+@media (max-width: 700px) {
+  .host-config-screen {
+    padding-bottom: 28px;
+  }
+  .host-config-topbar {
+    min-height: 52px;
+    padding-inline: 14px;
+  }
+  .host-config-brand {
+    gap: 7px;
+    font-size: 13px;
+  }
+  .host-config-brand img {
+    width: 29px;
+    height: 29px;
+    padding: 4px;
+  }
+  .host-config-topbar-meta { gap: 5px; }
+  .host-config-status,
+  .host-config-state {
+    padding: 6px 8px;
+    font-size: 7px;
+    letter-spacing: .06em;
+  }
+  .host-config-content {
+    width: calc(100% - 28px);
+    margin: 17px auto 30px;
+  }
+  .host-config-heading {
+    margin: 12px 0 15px;
+  }
+  .host-config-heading .eyebrow {
+    margin-bottom: 6px;
+    font-size: 8px;
+  }
+  .host-config-heading h1 {
+    font-size: clamp(32px, 8vw, 43px);
+    letter-spacing: -.06em;
+  }
+  .host-config-heading > p:last-child {
+    max-width: 100%;
+    margin-top: 7px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .host-config-metrics {
+    gap: 7px;
+    margin-bottom: 12px;
+  }
+  .host-config-metrics article {
+    padding: 10px 9px 11px;
+    border-radius: 11px;
+    box-shadow: 2px 3px 0 var(--cc-yellow-live);
+  }
+  .host-config-metrics article span {
+    margin-bottom: 5px;
+    font-size: 7px;
+    letter-spacing: .08em;
+  }
+  .host-config-metrics article strong {
+    font-size: clamp(15px, 3.7vw, 20px);
+  }
+  .host-config-layout {
+    gap: 13px;
+  }
+  .host-config-editor,
+  .host-config-preview {
+    padding: 14px;
+    border-radius: 15px;
+    box-shadow: 4px 5px 0 var(--cc-yellow-live);
+  }
+  .host-config-round-tabs {
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .host-config-round-tabs button {
+    min-height: 34px;
+    padding-inline: 10px;
+    border-radius: 9px;
+    font-size: 10px;
+  }
+  .host-config-section-heading {
+    margin-bottom: 15px;
+  }
+  .host-config-section-heading h2,
+  .host-config-preview-title h2 {
+    font-size: 20px;
+  }
+  .host-config-remove {
+    padding: 7px 11px;
+  }
+  .host-config-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .host-config-field > label,
+  .host-config-speed > label,
+  .host-config-keep > label {
+    margin-bottom: 7px;
+    font-size: 8px;
+    letter-spacing: .09em;
+  }
+  .host-config-stepper {
+    min-height: 42px;
+    grid-template-columns: 35px minmax(0, 1fr) 35px;
+    border-radius: 10px;
+  }
+  .host-config-stepper button {
+    font-size: 11px;
+  }
+  .host-config-stepper input {
+    font-size: 16px;
+  }
+  .host-config-presets {
+    gap: 5px;
+    margin-top: 7px;
+  }
+  .host-config-presets button {
+    min-height: 30px;
+    padding-inline: 8px;
+    border-radius: 8px;
+    font-size: 9px;
+  }
+  .host-config-elimination {
+    gap: 9px;
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .host-config-elimination span {
+    gap: 4px;
+    min-width: 0;
+  }
+  .host-config-elimination strong {
+    font-size: 8px;
+  }
+  .host-config-elimination small {
+    max-width: none;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .host-config-elimination i {
+    flex-basis: 42px;
+    width: 42px;
+    height: 25px;
+  }
+  .host-config-elimination i::after {
+    width: 17px;
+    height: 17px;
+  }
+  .host-config-elimination input:checked + i::after {
+    transform: translateX(17px);
+  }
+  .host-config-advance {
+    gap: 8px;
+    margin-top: 11px;
+    padding: 11px;
+    border-radius: 11px;
+  }
+  .host-config-chip {
+    padding: 5px 8px;
+    font-size: 7px;
+  }
+  .host-config-advance p {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .host-config-keep {
+    gap: 6px;
+  }
+  .host-config-keep label {
+    font-size: 9px;
+  }
+  .host-config-keep input {
+    width: 90px;
+    min-height: 36px;
+    font-size: 14px;
+  }
+  .host-config-keep small {
+    font-size: 9px;
+  }
+  .host-config-speed {
+    margin-top: 15px;
+  }
+  .host-config-speed-row {
+    gap: 10px;
+  }
+  .host-config-speed-row > input[type="number"] {
+    width: 72px;
+    min-height: 37px;
+    padding: 6px;
+    font-size: 14px;
+  }
+  .host-config-speed > p {
+    margin-top: 7px;
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .host-config-preview {
+    position: static;
+  }
+  .host-config-preview-title {
+    margin-bottom: 10px;
+  }
+  .host-config-preview-title > span {
+    font-size: 10px;
+  }
+  .host-config-round-list {
+    gap: 5px;
+  }
+  .host-config-round-list button {
+    padding: 10px;
+    border-radius: 10px;
+  }
+  .host-config-round-list strong {
+    font-size: 11px;
+  }
+  .host-config-round-list small {
+    font-size: 9px;
+  }
+  .host-config-best-case {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 5px 10px;
+    margin: 11px 0;
+    padding: 11px;
+  }
+  .host-config-best-case > span {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+    font-size: 7px;
+  }
+  .host-config-best-case > strong {
+    font-size: 21px;
+  }
+  .host-config-best-case p {
+    max-width: 190px;
+    margin: 0;
+    font-size: 9px;
+    line-height: 1.35;
+  }
+  .host-config-save {
+    min-height: 45px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 11px;
+    box-shadow: 2px 3px 0 var(--cc-ink);
+  }
+}
+@media (max-width: 430px) {
+  .host-config-controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 13px;
+  }
+  .host-config-metrics article {
+    padding-inline: 7px;
+  }
+  .host-config-metrics article span {
+    font-size: 6px;
+    letter-spacing: .05em;
+  }
+  .host-config-metrics article strong {
+    font-size: 15px;
+  }
+  .host-config-best-case {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .host-config-best-case p {
+    max-width: none;
+  }
+}
+@media (max-width: 360px) {
+  .host-config-topbar-meta .host-config-status { display: none; }
+  .host-config-content { width: calc(100% - 22px); }
+  .host-config-editor,
+  .host-config-preview { padding: 12px; }
+}
