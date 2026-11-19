@@ -5835,3 +5835,86 @@ html:has(.landing-shell) {
   .host-config-metrics article strong { font-size: 15px; }
   .host-config-preview-title h2 { font-size: 20px; }
 }
+
+
+/* Configuration screen: prevent grid/input overflow and restore visible control borders */
+.host-config-screen,
+.host-config-screen * {
+  box-sizing: border-box;
+}
+.host-config-screen {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+.host-config-content,
+.host-config-layout,
+.host-config-editor,
+.host-config-preview,
+.host-config-controls,
+.host-config-field {
+  min-width: 0;
+  max-width: 100%;
+}
+.host-config-stepper {
+  width: 100%;
+  min-width: 0;
+}
+.host-config-stepper input {
+  min-width: 0;
+  width: 100%;
+  border-left: 1px solid var(--cc-border-warm);
+  border-right: 1px solid var(--cc-border-warm);
+  border-radius: 0;
+  background: var(--cc-surface);
+  color: var(--cc-ink);
+  box-shadow: none;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.host-config-stepper input::-webkit-inner-spin-button,
+.host-config-stepper input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+.host-config-keep input,
+.host-config-speed-row > input[type="number"] {
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid var(--cc-border-strong);
+  outline: 0;
+  background: var(--cc-surface);
+  color: var(--cc-ink);
+  box-shadow: inset 0 1px 2px var(--cc-overlay-ink-12);
+}
+.host-config-keep input:focus,
+.host-config-speed-row > input[type="number"]:focus,
+.host-config-stepper input:focus {
+  border-color: var(--cc-orange-live);
+  outline: 2px solid var(--cc-overlay-orange-13);
+  outline-offset: -2px;
+}
+.host-config-speed-row > input[type="range"] {
+  min-width: 0;
+  max-width: 100%;
+}
+.host-config-save {
+  border-color: var(--cc-orange-live);
+  background: var(--cc-orange-live);
+  color: var(--cc-white);
+}
+.host-config-save:hover:not(:disabled) {
+  border-color: var(--cc-orange-deep);
+  background: var(--cc-orange-deep);
+}
+@media (max-width: 820px) {
+  .host-config-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .host-config-metrics,
+  .host-config-controls { min-width: 0; }
+  .host-config-metrics article { min-width: 0; }
+  .host-config-advance { min-width: 0; }
+  .host-config-keep { min-width: 0; }
+  .host-config-speed-row { min-width: 0; }
+}
