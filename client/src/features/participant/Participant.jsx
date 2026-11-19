@@ -268,6 +268,7 @@ export default function Participant({
       );
       if (!leave) return;
     }
+    if (participant) socket.emit("leave_competition");
     onHome();
   };
 
