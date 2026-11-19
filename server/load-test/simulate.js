@@ -15,6 +15,9 @@ const stats = {
   joinFailed: 0,
   questionsSeen: 0,
   answerAttempts: 0,
+  skippedAnswers: 0,
+  correctGuessCount: 0,
+  wrongGuessCount: 0,
   accepted: 0,
   rejected: 0,
   eliminatedAnswerAttempts: 0,
@@ -24,6 +27,8 @@ const stats = {
   unexpectedDisconnects: 0,
   reconnections: 0,
   intentionalDisconnects: 0,
+  randomDisconnects: 0,
+  randomDisconnectRecoveries: 0,
   reconnectAttempts: 0,
   sessionRecoverySuccesses: 0,
   sessionRecoveryFailures: 0,
@@ -33,6 +38,7 @@ const stats = {
 };
 let stopping = false;
 let disconnectTestStarted = false;
+const randomDropScheduled = new Set();
 let url = "";
 
 const ask = async (question) => (await rl.question(question)).trim();
@@ -52,7 +58,6 @@ const ack = (socket, event, payload, timeout = 15000) =>
 const connect = () =>
   new Promise((resolve, reject) => {
     const socket = io(url, {
-      transports: ["websocket"],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -80,12 +85,16 @@ function printSummary() {
   console.log("Disconnect events:               " + stats.unexpectedDisconnects);
   console.log("Socket reconnections:             " + stats.reconnections);
   console.log("Intentional test disconnects:     " + stats.intentionalDisconnects);
+  console.log("Additional random disconnects:    " + stats.randomDisconnects);
+  console.log("Random disconnect recoveries:    " + stats.randomDisconnectRecoveries);
+  console.log("Skipped answer decisions:        " + stats.skippedAnswers);
   console.log("Participant recovery attempts:    " + stats.reconnectAttempts);
   console.log("Participant recoveries passed:   " + stats.sessionRecoverySuccesses);
   console.log("Participant recoveries failed:   " + stats.sessionRecoveryFailures);
   console.log("Participant ID mismatches:       " + stats.sessionIdMismatches);
   console.log("Question events received:       " + stats.questionsSeen);
   console.log("Answer attempts:                " + stats.answerAttempts);
+  console.log("Skipped answer decisions:        " + stats.skippedAnswers);
   console.log("Accepted answers:               " + stats.accepted);
   console.log("Rejected answers:               " + stats.rejected);
   console.log("Answer acknowledgement errors:  " + stats.errors);
@@ -201,6 +210,7 @@ try {
             return;
           }
           stats.sessionRecoverySuccesses++;
+          if (randomDropScheduled.has(socket.participantId)) stats.randomDisconnectRecoveries++;
           if (restored.snapshot?.eliminated) eliminatedIds.add(socket.participantId);
           console.log("↻ " + socket.displayName + " restored the same participant session.");
         } catch (error) {
@@ -224,33 +234,64 @@ try {
             setTimeout(() => { if (!stopping) client.connect(); }, 1200);
           }, index * 250));
         }
-        // Keep eliminated sockets active and deliberately submit answers. The server must reject them.
+        // Each bot behaves differently: some skip, others answer after a randomized
+        // think-time. This is client-side pacing, not actual network packet shaping.
         const wasEliminatedAtQuestionStart = eliminatedIds.has(socket.participantId);
-        const delay = 200 + Math.floor(Math.random() * 900);
-        setTimeout(async () => {
-          if (stopping || !socket.connected) return;
-          stats.answerAttempts++;
-          if (wasEliminatedAtQuestionStart) stats.eliminatedAnswerAttempts++;
-          const startedAt = performance.now();
-          try {
-            const response = await ack(socket, "submit_answer", {
-              participantId: socket.participantId,
-              questionNumber: question.questionNumber,
-              selectedOption: Math.floor(Math.random() * 4),
-            });
-            stats.latencies.push(performance.now() - startedAt);
-            if (response.success && response.accepted) {
-              stats.accepted++;
-              if (wasEliminatedAtQuestionStart) stats.eliminatedAnswerAccepted++;
-            } else {
-              stats.rejected++;
-              if (wasEliminatedAtQuestionStart) stats.eliminatedAnswerRejected++;
+        const skipProbability = 0.12;
+        const answerProbability = Math.random();
+        if (answerProbability < skipProbability) {
+          stats.skippedAnswers++;
+        } else {
+          const remainingMs = Number.isFinite(question.endsAt)
+            ? Math.max(500, question.endsAt - Date.now() - 250)
+            : 8000;
+          const delay = 350 + Math.floor(Math.random() * Math.max(1, Math.min(remainingMs - 350, 8500)));
+          setTimeout(async () => {
+            if (stopping || !socket.connected) return;
+            stats.answerAttempts++;
+            if (wasEliminatedAtQuestionStart) stats.eliminatedAnswerAttempts++;
+            const startedAt = performance.now();
+            try {
+              const response = await ack(socket, "submit_answer", {
+                participantId: socket.participantId,
+                questionNumber: question.questionNumber,
+                selectedOption: Math.floor(Math.random() * 4),
+              });
+              stats.latencies.push(performance.now() - startedAt);
+              if (response.success && response.accepted) {
+                stats.accepted++;
+                if (wasEliminatedAtQuestionStart) stats.eliminatedAnswerAccepted++;
+              } else {
+                stats.rejected++;
+                if (wasEliminatedAtQuestionStart) stats.eliminatedAnswerRejected++;
+              }
+            } catch (error) {
+              stats.errors++;
+              console.log("Answer error for " + socket.displayName + ": " + error.message);
             }
-          } catch (error) {
-            stats.errors++;
-            console.log("Answer error for " + socket.displayName + ": " + error.message);
-          }
-        }, delay);
+          }, delay);
+        }
+
+        // A small random subset experiences one extra temporary connection drop
+        // during the quiz. Keep the original participant ID for recovery checks.
+        if (
+          question.round >= 1 &&
+          question.questionNumber >= 2 &&
+          !randomDropScheduled.has(socket.participantId) &&
+          Math.random() < 0.035
+        ) {
+          randomDropScheduled.add(socket.participantId);
+          const dropDelay = 500 + Math.floor(Math.random() * 4500);
+          setTimeout(() => {
+            if (stopping || !socket.connected) return;
+            stats.randomDisconnects++;
+            console.log("⤫ Random network interruption: " + socket.displayName);
+            socket.disconnect();
+            setTimeout(() => {
+              if (!stopping) socket.connect();
+            }, 1800 + Math.floor(Math.random() * 3200));
+          }, dropDelay);
+        }
       });
 
       socket.on("round_finished", (data) => {
@@ -289,13 +330,14 @@ try {
       console.log("✗ Participant " + i + " failed: " + error.message);
     }
     // Ramp connections gradually instead of opening all 40 at once.
-    if (i < count) await sleep(100);
+    if (i < count) await sleep(80 + Math.floor(Math.random() * 271));
   }
 
   console.log("\nReady: " + stats.joined + "/" + count + " joined room " + roomCode + ".");
   console.log("Now start the quiz from the deployed host dashboard.");
   console.log("At each round break, review and confirm eliminations on the host dashboard before starting the next round.");
-  console.log("The simulator intentionally tests participant recovery after Round 1 Question 1.");
+  console.log("The simulator tests controlled recovery after Round 1 Question 1 plus occasional random mid-quiz disconnects.");
+  console.log("Bots use randomized answer timing, occasional skipped answers, and staggered joins.");
   console.log("Recovery passes only when the original participant ID is returned.");
   console.log("The simulator also tests server-side rejection for eliminated participants.");
   console.log("The bot count is separate from physical devices joining manually.");
