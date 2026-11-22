@@ -9,6 +9,10 @@ const clients = [];
 const eliminatedIds = new Set();
 const finishedRounds = new Set();
 const confirmedRounds = new Set();
+const startedRounds = new Set();
+const roundMetrics = new Map();
+let quizFinished = false;
+let completionTimer = null;
 const stats = {
   requested: 50,
   joined: 0,
@@ -42,6 +46,10 @@ const randomDropScheduled = new Set();
 let url = "";
 
 const ask = async (question) => (await rl.question(question)).trim();
+const metricsForRound = (round) => {
+  if (!roundMetrics.has(round)) roundMetrics.set(round, { uniqueQuestions: new Set(), questionEvents: 0, answerAttempts: 0, skippedAnswers: 0, accepted: 0, rejected: 0, errors: 0 });
+  return roundMetrics.get(round);
+};
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const ack = (socket, event, payload, timeout = 15000) =>
@@ -104,7 +112,12 @@ function printSummary() {
   console.log("Post-elimination accepted:      " + stats.eliminatedAnswerAccepted);
   console.log("Answer ack latency p50:         " + percentile(stats.latencies, 0.5).toFixed(1) + " ms");
   console.log("Answer ack latency p95:         " + percentile(stats.latencies, 0.95).toFixed(1) + " ms");
-  console.log("Rounds observed:                " + [...finishedRounds].sort((a, b) => a - b).join(", "));
+  console.log("Rounds started:                 " + [...startedRounds].sort((a, b) => a - b).join(", "));
+  console.log("Rounds completed:               " + [...finishedRounds].sort((a, b) => a - b).join(", "));
+  console.log("Quiz completion detected:       " + (quizFinished ? "YES" : "NO — interrupted or still running"));
+  console.log("\nPer-round breakdown:");
+  console.log("Round | Questions | Bot events | Attempts | Skipped | Accepted | Rejected | Errors");
+  for (const [round, metric] of [...roundMetrics.entries()].sort((a, b) => a[0] - b[0])) console.log(String(round).padStart(5) + " | " + String(metric.uniqueQuestions.size).padStart(9) + " | " + String(metric.questionEvents).padStart(10) + " | " + String(metric.answerAttempts).padStart(8) + " | " + String(metric.skippedAnswers).padStart(7) + " | " + String(metric.accepted).padStart(8) + " | " + String(metric.rejected).padStart(8) + " | " + metric.errors);
   console.log("================================================");
   if (stats.joined !== stats.requested) console.log("WARNING: Not all requested participants joined.");
   if (stats.eliminationsConfirmed === 0) console.log("NOTE: No elimination confirmation was observed. Check that elimination is enabled and the host confirmed candidates.");
@@ -219,8 +232,17 @@ try {
         }
       });
 
+      socket.on("round_started", (data) => {
+        startedRounds.add(data.round);
+        metricsForRound(data.round);
+        console.log("\n▶ Round " + data.round + " started (" + (data.totalQuestions ?? "?") + " questions).");
+      });
+
       socket.on("question_started", (question) => {
         if (stopping) return;
+        const roundMetric = metricsForRound(question.round);
+        roundMetric.questionEvents++;
+        roundMetric.uniqueQuestions.add(String(question.round) + ":" + String(question.questionNumber));
         stats.questionsSeen++;
         if (question.round === 1 && question.questionNumber === 1 && disconnectCount > 0 && !disconnectTestStarted) {
           disconnectTestStarted = true;
@@ -241,6 +263,7 @@ try {
         const answerProbability = Math.random();
         if (answerProbability < skipProbability) {
           stats.skippedAnswers++;
+          roundMetric.skippedAnswers++;
         } else {
           const remainingMs = Number.isFinite(question.endsAt)
             ? Math.max(500, question.endsAt - Date.now() - 250)
@@ -249,6 +272,7 @@ try {
           setTimeout(async () => {
             if (stopping || !socket.connected) return;
             stats.answerAttempts++;
+            roundMetric.answerAttempts++;
             if (wasEliminatedAtQuestionStart) stats.eliminatedAnswerAttempts++;
             const startedAt = performance.now();
             try {
@@ -260,13 +284,16 @@ try {
               stats.latencies.push(performance.now() - startedAt);
               if (response.success && response.accepted) {
                 stats.accepted++;
+                roundMetric.accepted++;
                 if (wasEliminatedAtQuestionStart) stats.eliminatedAnswerAccepted++;
               } else {
                 stats.rejected++;
+                roundMetric.rejected++;
                 if (wasEliminatedAtQuestionStart) stats.eliminatedAnswerRejected++;
               }
             } catch (error) {
               stats.errors++;
+              roundMetric.errors++;
               console.log("Answer error for " + socket.displayName + ": " + error.message);
             }
           }, delay);
@@ -297,12 +324,29 @@ try {
       socket.on("round_finished", (data) => {
         if (finishedRounds.has(data.round)) return;
         finishedRounds.add(data.round);
+        const metric = metricsForRound(data.round);
+        console.log("  Round " + data.round + " recorded " + metric.uniqueQuestions.size + " unique questions and " + metric.answerAttempts + " bot answer attempts (" + metric.accepted + " accepted, " + metric.rejected + " rejected, " + metric.skippedAnswers + " skipped).");
         console.log("\n✓ Round " + data.round + " finished. Host can review elimination candidates and confirm them.");
         if (!data.eliminationsConfirmed) {
           console.log("  Pending elimination review detected. Waiting for host confirmation...");
         } else {
           console.log("  No pending eliminations for this round.");
         }
+      });
+
+      socket.on("competition_finished", () => {
+        if (quizFinished || stopping) return;
+        quizFinished = true;
+        console.log("\n🏁 QUIZ FINISHED event received from server. Collecting final acknowledgements...");
+        if (completionTimer) clearTimeout(completionTimer);
+        completionTimer = setTimeout(() => {
+          if (stopping) return;
+          stopping = true;
+          clients.forEach((client) => client.disconnect());
+          printSummary();
+          rl.close();
+          process.exit(0);
+        }, 1500);
       });
 
       socket.on("eliminations_confirmed", (data) => {
