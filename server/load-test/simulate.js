@@ -233,6 +233,7 @@ try {
       });
 
       socket.on("round_started", (data) => {
+        if (startedRounds.has(data.round)) return;
         startedRounds.add(data.round);
         metricsForRound(data.round);
         console.log("\n▶ Round " + data.round + " started (" + (data.totalQuestions ?? "?") + " questions).");
@@ -324,14 +325,7 @@ try {
       socket.on("round_finished", (data) => {
         if (finishedRounds.has(data.round)) return;
         finishedRounds.add(data.round);
-        const metric = metricsForRound(data.round);
-        console.log("  Round " + data.round + " recorded " + metric.uniqueQuestions.size + " unique questions and " + metric.answerAttempts + " bot answer attempts (" + metric.accepted + " accepted, " + metric.rejected + " rejected, " + metric.skippedAnswers + " skipped).");
-        console.log("\n✓ Round " + data.round + " finished. Host can review elimination candidates and confirm them.");
-        if (!data.eliminationsConfirmed) {
-          console.log("  Pending elimination review detected. Waiting for host confirmation...");
-        } else {
-          console.log("  No pending eliminations for this round.");
-        }
+        console.log("\n✓ Round " + data.round + " finished. Waiting for the host to confirm eliminations (if enabled) and start the next round.");
       });
 
       socket.on("competition_finished", () => {
