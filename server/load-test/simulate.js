@@ -10,7 +10,7 @@ const eliminatedIds = new Set();
 const finishedRounds = new Set();
 const confirmedRounds = new Set();
 const stats = {
-  requested: 40,
+  requested: 50,
   joined: 0,
   joinFailed: 0,
   questionsSeen: 0,
@@ -139,12 +139,12 @@ try {
   const roomCode = (await ask("Room code: " )).toUpperCase();
   if (!roomCode) throw new Error("Room code is required.");
 
-  const envCount = Number(process.env.LOAD_TEST_PARTICIPANTS || 40);
-  const defaultCount = Number.isInteger(envCount) && envCount >= 1 && envCount <= 40 ? envCount : 40;
-  const rawCount = await ask("Simulated bot participants (1–40) [" + defaultCount + "]: ");
+  const envCount = Number(process.env.LOAD_TEST_PARTICIPANTS || 50);
+  const defaultCount = Number.isInteger(envCount) && envCount >= 1 && envCount <= 50 ? envCount : 50;
+  const rawCount = await ask("Simulated bot participants (1–50) [" + defaultCount + "]: ");
   const count = rawCount ? Number(rawCount) : defaultCount;
-  if (!Number.isInteger(count) || count < 1 || count > 40) {
-    throw new Error("Bot participant count must be an integer between 1 and 40. Your physical devices can join separately.");
+  if (!Number.isInteger(count) || count < 1 || count > 50) {
+    throw new Error("Bot participant count must be an integer between 1 and 50. ");
   }
   stats.requested = count;
 
@@ -169,7 +169,7 @@ try {
   }
 
   console.log("\nConnecting " + count + " simulated participants...");
-  console.log("You can also join this same room from your own phones/browsers; those are additional real participants.");
+  console.log("You can also join this same room from your own phones/browsers; those are additional real participants beyond the bot count.");
   for (let i = 1; i <= count; i++) {
     try {
       const socket = await connect();
@@ -329,7 +329,7 @@ try {
       stats.joinFailed++;
       console.log("✗ Participant " + i + " failed: " + error.message);
     }
-    // Ramp connections gradually instead of opening all 40 at once.
+    // Ramp connections gradually instead of opening all 50 at once.
     if (i < count) await sleep(80 + Math.floor(Math.random() * 271));
   }
 
